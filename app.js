@@ -1,8 +1,37 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 
 // Track PHP availability
 let phpAvailable = true;
+
+// Wake Lock API to prevent screen sleep
+let wakeLock = null;
+
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock acquired - screen will stay on');
+            
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock released');
+            });
+        }
+    } catch (err) {
+        console.log('Wake Lock request failed:', err);
+    }
+}
+
+async function releaseWakeLock() {
+    if (wakeLock !== null) {
+        try {
+            await wakeLock.release();
+            wakeLock = null;
+        } catch (err) {
+            console.log('Wake Lock release failed:', err);
+        }
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Prevent context menu on right-click and long-press
@@ -16,6 +45,16 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeApp();
     });
     registerServiceWorker();
+    
+    // Request wake lock to keep screen on
+    requestWakeLock();
+});
+
+// Re-acquire wake lock when page becomes visible again (e.g., after switching tabs)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
 });
 
 // Check if PHP is available on the server

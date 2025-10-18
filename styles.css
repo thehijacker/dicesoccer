@@ -870,7 +870,7 @@ input:checked + .toggle-label::before {
 }
 
 .player-shirt.jumping-animation-player2-portrait {
-    animation: slideMove 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation: slideMoveRotated 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
 }
 
@@ -884,11 +884,15 @@ input:checked + .toggle-label::before {
     }
 }
 
-/* Removed hover scale effect to prevent flickering after animation
-.field-cell:hover:not(.empty-cell) {
-    transform: scale(1.05);
+/* Slide animation with 180deg rotation for Player 2 in portrait mode */
+@keyframes slideMoveRotated {
+    0% {
+        transform: translate(0, 0) rotate(180deg);
+    }
+    100% {
+        transform: translate(var(--deltaX), var(--deltaY)) rotate(180deg);
+    }
 }
-*/
 
 /* Game Controls */
 .game-controls {
@@ -1007,7 +1011,8 @@ input:checked + .toggle-label::before {
     min-width: 250px;
     max-width: 80vw;
     text-align: center;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
     animation: messagePopIn 0.3s ease;
 }
 
