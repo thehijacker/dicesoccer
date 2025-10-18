@@ -828,7 +828,10 @@ function openModal(modalId) {
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
+    const modal = document.getElementById(modalId);
+    modal.classList.remove('active');
+    // Reset any rotation transforms
+    modal.style.transform = '';
 }
 
 // Screen management

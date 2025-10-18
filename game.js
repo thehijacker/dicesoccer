@@ -1372,7 +1372,7 @@ class DiceSoccerGame {
         goalModal.classList.add('active');
         
         // Rotate goal modal for Player 2 in portrait 2-player mode
-        if (gameState.gameMode === 'twoPlayer' && window.innerHeight > window.innerWidth && this.currentPlayer === 2) {
+        if (gameState.twoPlayerMode && gameState.orientation === 'portrait' && scoringPlayer === 2) {
             goalModal.style.transform = 'rotate(180deg)';
         } else {
             goalModal.style.transform = '';
@@ -1439,7 +1439,17 @@ class DiceSoccerGame {
         
         document.getElementById('finalStatsContent').innerHTML = statsHTML;
         document.getElementById('goalModal').classList.remove('active');
-        document.getElementById('winnerModal').classList.add('active');
+        
+        const winnerModal = document.getElementById('winnerModal');
+        winnerModal.classList.add('active');
+        
+        // Rotate winner modal for Player 2 in portrait 2-player mode
+        const winningPlayer = this.player1Score >= 3 ? 1 : 2;
+        if (gameState.twoPlayerMode && gameState.orientation === 'portrait' && winningPlayer === 2) {
+            winnerModal.style.transform = 'rotate(180deg)';
+        } else {
+            winnerModal.style.transform = '';
+        }
     }
 
     formatTime(ms) {
