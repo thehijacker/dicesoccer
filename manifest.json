@@ -12,14 +12,14 @@
   "display_override": ["window-controls-overlay"],
   "screenshots": [
     {
-      "src": "screenshots/menu.png",
-      "sizes": "768x576",
+      "src": "screenshots/menu_landscape.png",
+      "sizes": "896x502",
       "type": "image/png",
       "label": "Main menu"
     },
     {
-      "src": "screenshots/game.png",
-      "sizes": "772x580",
+      "src": "screenshots/field_landscape.png",
+      "sizes": "936x608",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Game field"

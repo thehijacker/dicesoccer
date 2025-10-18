@@ -2,6 +2,19 @@
 
 A digital adaptation of the classic board game **Torjäger** by [Kosmos](https://www.kosmos.de/de/torjager-2507) (Germany), bringing strategic dice-based soccer gameplay to web browsers and mobile devices.
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="screenshots/menu_portrait.png" alt="Menu - Portrait Mode" width="200"/>
+  <img src="screenshots/field_portrait.png" alt="Game Field - Portrait Mode" width="200"/>
+  <img src="screenshots/2_player_game.png" alt="2 Player Game" width="200"/>
+</p>
+
+<p align="center">
+  <img src="screenshots/menu_landscape.png" alt="Menu - Landscape Mode" width="400"/>
+  <img src="screenshots/field_landscape.png" alt="Game Field - Landscape Mode" width="400"/>
+</p>
+
 ## 🎮 About the Game
 
 This game is a web-based recreation of Torjäger, a beloved board game that combines dice rolling with tactical soccer gameplay. Originally designed by Kosmos in Germany, this digital version allows players to enjoy the same strategic gameplay on any device - whether it's a desktop computer, tablet, or smartphone.
