@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Dice Soccer">
+    <meta name="theme-color" content="#4a7c59">
+    <title>Dice Soccer - Nogomet s kocko</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="icons/icon512_maskable.png">
+    <link rel="manifest" href="manifest.json?v=1.0.0">
+    <link rel="apple-touch-icon" href="icons/icon512_maskable.png">
+</head>
+<body>
+    <!-- Main Menu Screen -->
+    <div id="mainMenu" class="screen active">
+        <div class="menu-container">
+            <!-- Removed top logo/icon -->
+
+            <!-- New Game Button -->
+            <div class="menu-item" id="newGameBtn">
+                <img src="images/newgame128.png" alt="New Game" class="menu-icon">
+                <span class="menu-text" data-translate="newGame">New Game</span>
+            </div>
+
+            <!-- Two Player Game Toggle -->
+            <div class="menu-item toggle-item" id="twoPlayerToggle">
+                <img src="images/twoplayers128.png" alt="Two Players" class="menu-icon">
+                <span class="menu-text" data-translate="twoPlayerGame">2 Player Game</span>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="twoPlayerCheckbox">
+                    <label for="twoPlayerCheckbox" class="toggle-label"></label>
+                </div>
+            </div>
+
+            <!-- AI Difficulty (hidden when 2-player is on) -->
+            <div class="menu-item expandable" id="aiDifficultyItem">
+                <img src="images/ai128.png" alt="AI Difficulty" class="menu-icon">
+                <span class="menu-text" data-translate="aiDifficulty">A.I. Difficulty</span>
+                <span class="menu-value" id="difficultyValue" data-translate-value="easy">Easy</span>
+            </div>
+            <div class="submenu" id="difficultySubmenu">
+                <div class="submenu-option" data-difficulty="easy">
+                    <img src="images/difficultyeasy64.png" alt="Easy">
+                    <span data-translate="easy">Easy</span>
+                </div>
+                <div class="submenu-option" data-difficulty="normal">
+                    <img src="images/difficultymedium64.png" alt="Normal">
+                    <span data-translate="normal">Normal</span>
+                </div>
+                <div class="submenu-option" data-difficulty="hard">
+                    <img src="images/difficultyhard64.png" alt="Hard">
+                    <span data-translate="hard">Hard</span>
+                </div>
+            </div>
+
+            <!-- Orientation Option -->
+            <div class="menu-item expandable" id="orientationItem">
+                <img src="images/orientation128.png" alt="Orientation" class="menu-icon">
+                <span class="menu-text" data-translate="orientation">Orientation</span>
+                <span class="menu-value" id="orientationValue" data-translate-value="portrait">Portrait</span>
+            </div>
+            <div class="submenu" id="orientationSubmenu">
+                <div class="submenu-option" data-orientation="portrait">
+                    <img src="images/orientationportrait128.png" alt="Portrait">
+                    <span data-translate="portrait">Portrait</span>
+                </div>
+                <div class="submenu-option" data-orientation="landscape">
+                    <img src="images/orientationlandscape128.png" alt="Landscape">
+                    <span data-translate="landscape">Landscape</span>
+                </div>
+            </div>
+
+            <!-- Player 1 Name and Shirt -->
+            <div class="menu-item player-item">
+                <img src="images/selectcolor128.png" alt="Player 1" class="menu-icon shirt-icon" id="player1Shirt">
+                <input type="text" class="player-name-input" id="player1Name" placeholder="Player 1" data-translate-placeholder="player1">
+            </div>
+
+            <!-- Player 2 Name and Shirt or AI Difficulty -->
+            <div class="menu-item player-item" id="player2Container">
+                <img src="images/selectcolor128.png" alt="Player 2" class="menu-icon shirt-icon" id="player2Shirt">
+                <input type="text" class="player-name-input" id="player2Name" placeholder="Player 2" data-translate-placeholder="player2">
+                <span class="ai-difficulty-label hidden" id="aiDifficultyLabel"></span>
+            </div>
+
+            <!-- Host Game -->
+            <div class="menu-item" id="hostGameBtn">
+                <img src="images/hostgame128.png" alt="Host Game" class="menu-icon">
+                <span class="menu-text" data-translate="hostGame">Host Game</span>
+            </div>
+
+            <!-- Join Game -->
+            <div class="menu-item" id="joinGameBtn">
+                <img src="images/joingame128.png" alt="Join Game" class="menu-icon">
+                <span class="menu-text" data-translate="joinGame">Join Game</span>
+            </div>
+
+            <!-- Language -->
+            <div class="menu-item expandable" id="languageItem">
+                <img src="images/language128.png" alt="Language" class="menu-icon">
+                <span class="menu-text" data-translate="language">Language</span>
+                <span class="menu-value" id="languageValue">English</span>
+            </div>
+            <div class="submenu" id="languageSubmenu">
+                <div class="submenu-option" data-language="en">
+                    <img src="images/flagenglish64.png" alt="English">
+                    <span>English</span>
+                </div>
+                <div class="submenu-option" data-language="sl">
+                    <img src="images/flagslovenian64.png" alt="Slovenščina">
+                    <span>Slovenščina</span>
+                </div>
+            </div>
+
+            <!-- Sound Toggle -->
+            <div class="menu-item toggle-item" id="soundToggle">
+                <img src="images/soundon128.png" alt="Sound" class="menu-icon" id="soundIcon">
+                <span class="menu-text" data-translate="sound">Sound</span>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="soundCheckbox" checked>
+                    <label for="soundCheckbox" class="toggle-label"></label>
+                </div>
+            </div>
+            
+            <!-- Version Number -->
+            <div class="version-info" id="versionInfo"></div>
+        </div>
+    </div>
+
+    <!-- Shirt Color Selection Modal -->
+    <div id="shirtModal" class="modal">
+        <div class="modal-content">
+            <h2 data-translate="selectShirtColor">Select Shirt Color</h2>
+            <div class="shirt-grid" id="shirtGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            <button class="close-modal-btn" id="closeShirtModal" data-translate="close">Close</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen">
+        <div class="game-board-container">
+            <!-- Player 2 Info and Dice (Top in portrait/Right in landscape) -->
+            <div class="player-panel player2-panel">
+                <div class="player-info">
+                    <span class="player-name" id="player2NameDisplay">Player 2</span>
+                    <img src="images/connerror32.png" alt="Online" class="network-icon" id="networkIcon" style="display:none;">
+                    <span class="player-score" id="player2Score">0</span>
+                </div>
+                <div class="dice-container" id="player2DiceContainer">
+                    <img src="images/dice1.png" alt="Dice" class="dice-image" id="player2Dice">
+                </div>
+            </div>
+
+            <!-- Game Board Grid -->
+            <div class="game-field">
+                <div class="field-grid" id="fieldGrid">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Player 1 Info and Dice (Bottom in portrait/Left in landscape) -->
+            <div class="player-panel player1-panel">
+                <div class="player-info">
+                    <span class="player-name" id="player1NameDisplay">Player 1</span>
+                    <span class="player-score" id="player1Score">0</span>
+                </div>
+                <div class="dice-container" id="player1DiceContainer">
+                    <img src="images/dice1.png" alt="Dice" class="dice-image" id="player1Dice">
+                </div>
+            </div>
+
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <div id="backToMenuBtn" class="menu-square collapsed">
+                    <span class="menu-icon">☰</span>
+                    <span class="menu-text" data-translate="backToMenu">Back to Menu</span>
+                </div>
+            </div>
+            
+            <!-- Message Display -->
+            <div id="gameMessage" class="game-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Statistics Modal -->
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <h2 data-translate="statistics">Statistics</h2>
+            <div id="statsContent">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            <button class="close-modal-btn" id="closeStatsModal" data-translate="close">Close</button>
+        </div>
+    </div>
+
+    <!-- Goal Modal -->
+    <div id="goalModal" class="modal">
+        <div class="modal-content goal-modal-content">
+            <img src="images/goal128.png" alt="Goal!">
+            <h2 data-translate="goal">GOAL!</h2>
+            <p id="goalMessage"></p>
+            <button class="close-modal-btn" id="continueGameBtn" data-translate="continue">Continue</button>
+        </div>
+    </div>
+
+    <!-- Winner Modal -->
+    <div id="winnerModal" class="modal">
+        <div class="modal-content winner-modal-content">
+            <img src="images/win128.png" alt="Winner!">
+            <h2 id="winnerMessage"></h2>
+            <div id="finalStatsContent">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            <button class="close-modal-btn" id="newGameFromWinner" data-translate="newGame">New Game</button>
+            <button class="close-modal-btn" id="backToMenuFromWinner" data-translate="backToMenu">Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Host Waiting Modal -->
+    <div id="hostWaitingModal" class="modal">
+        <div class="modal-content">
+            <img src="images/hostgame128.png" alt="Hosting">
+            <h2 data-translate="waitingForPlayer">Waiting for Player 2...</h2>
+            <div class="host-info">
+                <p><strong data-translate="player">Player:</strong> <span id="hostPlayerName"></span></p>
+                <p><strong>IP:</strong> <span id="hostPlayerIp"></span></p>
+            </div>
+            <div class="loading-spinner"></div>
+            <button class="close-modal-btn" id="cancelHostBtn" data-translate="cancel">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Join Game Modal -->
+    <div id="joinGameModal" class="modal">
+        <div class="modal-content join-modal-content">
+            <h2 data-translate="availableHosts">Available Hosts</h2>
+            <div id="hostsList" class="hosts-list">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            <button class="close-modal-btn" id="refreshHostsBtn" data-translate="refresh">Refresh</button>
+            <button class="close-modal-btn" id="closeJoinModal" data-translate="close">Close</button>
+        </div>
+    </div>
+
+    <script src="translations.js"></script>
+    <script src="game.js"></script>
+    <script src="multiplayer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

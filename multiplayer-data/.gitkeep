@@ -1,0 +1,2 @@
+# This file ensures the multiplayer-data directory is tracked by Git
+# The actual JSON files in this directory are ignored via .gitignore

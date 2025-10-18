@@ -1,0 +1,5 @@
+# Multiplayer data files (temporary session data)
+multiplayer-data/*
+
+# Keep the folder but not its contents
+!multiplayer-data/.gitkeep

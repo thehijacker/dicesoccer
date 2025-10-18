@@ -1,0 +1,42 @@
+{
+  "name": "Dice Soccer",
+  "short_name": "DiceSoccer",
+  "description": "A fun dice-based soccer game for two players",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "theme_color": "#39f72b",
+  "background_color": "#03bd00",
+  "orientation": "any",
+  "id": "/index.html",
+  "prefer_related_applications": false,
+  "display_override": ["window-controls-overlay"],
+  "screenshots": [
+    {
+      "src": "screenshots/menu.png",
+      "sizes": "768x576",
+      "type": "image/png",
+      "label": "Main menu"
+    },
+    {
+      "src": "screenshots/game.png",
+      "sizes": "772x580",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Game field"
+    }
+  ],
+  "icons": [
+    {
+      "purpose": "maskable",
+      "sizes": "512x512",
+      "src": "icons/icon512_maskable.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "any",
+      "sizes": "512x512",
+      "src": "icons/icon512_rounded.png",
+      "type": "image/png"
+    }
+  ]
+}
