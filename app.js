@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 
 // Track PHP availability
 let phpAvailable = true;

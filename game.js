@@ -361,6 +361,11 @@ class DiceSoccerGame {
     handleCellClick(row, col) {
         if (this.isRolling || this.isMoving) return; // Prevent clicks during dice roll or move animation
         
+        // Prevent interaction when it's AI's turn
+        if (gameState.gameMode === 'ai' && this.currentPlayer === 2) {
+            return; // It's AI's turn, no human interaction allowed
+        }
+        
         // Collapse menu if expanded
         if (window.collapseMenuButton) window.collapseMenuButton();
         
@@ -676,8 +681,8 @@ class DiceSoccerGame {
                 const isPlayer2 = piece.player === 2;
                 const isPortrait = gameState.orientation === 'portrait';
                 
-                // For portrait mode Player 2, pieces are already rotated 180deg
-                const needsFlippedAnimation = isPortrait && isPlayer2;
+                // For portrait mode Player 2 in 2-player mode, pieces are already rotated 180deg
+                const needsFlippedAnimation = isPortrait && isPlayer2 && gameState.twoPlayerMode;
                 
                 // Create clone for animation
                 const clone = shirtImg.cloneNode(true);
