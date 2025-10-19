@@ -186,7 +186,8 @@ class DiceSoccerGame {
         this.isRolling = false;
         this.waitingForMove = false;
         this.isMoving = false; // Prevent multiple simultaneous moves
-        this.nextRoundStartPlayer = 1; // Track which player should start the next round (alternates within match)
+        this.nextRoundStartPlayer = 1; // Player 1 always starts the first round
+        this.lastRoundLoser = null; // Track who lost the last round (starts next round)
         this.activeTimeouts = []; // Track all active timeouts
         this.activeIntervals = []; // Track all active intervals
     }
@@ -822,9 +823,6 @@ class DiceSoccerGame {
             document.getElementById('player2DiceContainer').classList.toggle('disabled', this.currentPlayer !== 2);
         }
         
-        // Check if new player has any moves at all (stalemate check)
-        this.checkForStalemate();
-        
         // AI turn
         if (gameState.gameMode === 'ai' && this.currentPlayer === 2 && !this.isRolling) {
             const timeoutId = setTimeout(() => this.rollDice(), 800);
@@ -833,50 +831,64 @@ class DiceSoccerGame {
     }
 
     handleNoMovesAvailable() {
-        // Current player has no moves available
-        const playerName = this.currentPlayer === 1 ? 
+        // Current player has no moves available - opponent scores!
+        soundManager.play('crowdCheers');
+        
+        this.isMoving = false; // Reset moving flag
+        
+        const blockedPlayer = this.currentPlayer;
+        const scoringPlayer = this.currentPlayer === 1 ? 2 : 1;
+        
+        // Award point to opponent (the player who blocked)
+        if (scoringPlayer === 1) {
+            this.player1Score++;
+        } else {
+            this.player2Score++;
+        }
+        
+        this.updateUI();
+        
+        const blockedPlayerName = blockedPlayer === 1 ? 
+            (gameState.player1Name || translationManager.get('player1')) :
+            (gameState.gameMode === 'ai' ? 
+                `AI (${translationManager.get(gameState.difficulty)})` : 
+                (gameState.player2Name || translationManager.get('player2')));
+                
+        const scorerName = scoringPlayer === 1 ? 
             (gameState.player1Name || translationManager.get('player1')) :
             (gameState.gameMode === 'ai' ? 
                 `AI (${translationManager.get(gameState.difficulty)})` : 
                 (gameState.player2Name || translationManager.get('player2')));
         
-        this.showMessage(`${playerName} ${translationManager.get('noMovesAvailable')}`, 2500);
+        // Get player names for score display
+        const player1Name = gameState.player1Name || translationManager.get('player1');
+        const player2Name = gameState.gameMode === 'ai' ? 
+            `AI (${translationManager.get(gameState.difficulty)})` :
+            (gameState.player2Name || translationManager.get('player2'));
         
-        // Switch to other player after message
-        const timeoutId = setTimeout(() => {
-            this.switchPlayer();
-        }, 2500);
-        this.activeTimeouts.push(timeoutId);
-    }
-
-    checkForStalemate() {
-        // Check if the new current player has ANY possible moves
-        const currentPlayerMoves = this.getAllMovablePlayers();
+        // Show blocked message and current score
+        document.getElementById('goalMessage').textContent = `${blockedPlayerName} ${translationManager.get('noMovesAvailable')}!\n${scorerName} ${translationManager.get('scores')}!`;
+        const scoreDisplay = `${player1Name} ${this.player1Score}:${this.player2Score} ${player2Name}`;
+        document.getElementById('goalMessage').textContent += `\n${scoreDisplay}`;
         
-        if (currentPlayerMoves.length === 0) {
-            // Current player can't move, check if opponent can either
-            const otherPlayer = this.currentPlayer === 1 ? 2 : 1;
-            const savedPlayer = this.currentPlayer;
-            this.currentPlayer = otherPlayer;
-            const otherPlayerMoves = this.getAllMovablePlayers();
-            this.currentPlayer = savedPlayer;
-            
-            if (otherPlayerMoves.length === 0) {
-                // Neither player can move - STALEMATE!
-                this.handleStalemate();
-            }
+        const goalModal = document.getElementById('goalModal');
+        goalModal.classList.add('active');
+        
+        // Rotate goal modal for Player 2 in portrait 2-player mode
+        if (gameState.twoPlayerMode && gameState.orientation === 'portrait' && scoringPlayer === 2) {
+            goalModal.style.transform = 'rotate(180deg)';
+        } else {
+            goalModal.style.transform = '';
         }
-    }
-
-    handleStalemate() {
-        // Both players are stuck - it's a draw
-        this.showMessage(translationManager.get('stalemate'), 3000);
         
-        const timeoutId = setTimeout(() => {
-            // Reset the round without awarding points
-            this.resetRound();
-        }, 3000);
-        this.activeTimeouts.push(timeoutId);
+        // Track who lost this round (for next round start)
+        this.lastRoundLoser = blockedPlayer;
+        
+        // Check for winner
+        if (this.player1Score >= 3 || this.player2Score >= 3) {
+            const timeoutId = setTimeout(() => this.endGame(), 2000);
+            this.activeTimeouts.push(timeoutId);
+        }
     }
 
     makeAIMove() {
@@ -968,6 +980,12 @@ class DiceSoccerGame {
             return 10000; // Immediately score!
         }
         
+        // CRITICAL: Check if this move would block ALL opponent moves (instant win!)
+        const blockingScore = this.evaluateCompleteBlockingWin(playerPos, move);
+        if (blockingScore > 0) {
+            return 9500 + blockingScore; // Almost as good as scoring a goal!
+        }
+        
         // CRITICAL: Am I currently blocking an opponent? Don't move unless absolutely necessary!
         const currentlyBlocking = this.isBlockingOpponent(playerPos.row, playerPos.col);
         if (currentlyBlocking) {
@@ -1033,6 +1051,57 @@ class DiceSoccerGame {
         }
         
         return score;
+    }
+
+    evaluateCompleteBlockingWin(playerPos, move) {
+        // Simulate the move and check if opponent would have ANY valid moves left
+        const opponent = this.currentPlayer === 1 ? 2 : 1;
+        
+        // Temporarily simulate the move
+        const originalPiece = this.board[playerPos.row][playerPos.col];
+        const targetPiece = this.board[move.row][move.col];
+        
+        this.board[move.row][move.col] = originalPiece;
+        this.board[playerPos.row][playerPos.col] = null;
+        
+        // Temporarily switch to opponent
+        const savedPlayer = this.currentPlayer;
+        this.currentPlayer = opponent;
+        
+        // Check if opponent has ANY movable players
+        const opponentMovablePlayers = this.getAllMovablePlayers();
+        
+        // Restore board and player
+        this.currentPlayer = savedPlayer;
+        this.board[playerPos.row][playerPos.col] = originalPiece;
+        this.board[move.row][move.col] = targetPiece;
+        
+        // If opponent has no moves, this is a winning move!
+        if (opponentMovablePlayers.length === 0) {
+            // Return high score based on how many opponent pieces we're blocking
+            const opponentPieceCount = this.countPlayerPieces(opponent);
+            return 100 + (opponentPieceCount * 10); // More pieces blocked = better
+        }
+        
+        // If opponent has very few moves (1-2), this is still strategically valuable
+        if (opponentMovablePlayers.length <= 2) {
+            return 50 + (3 - opponentMovablePlayers.length) * 20; // Reward limiting options
+        }
+        
+        return 0;
+    }
+
+    countPlayerPieces(player) {
+        let count = 0;
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const piece = this.board[row][col];
+                if (piece && piece.player === player) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     isBlockingOpponent(row, col) {
@@ -1348,6 +1417,9 @@ class DiceSoccerGame {
         
         this.isMoving = false; // Reset moving flag
         
+        const scoringPlayer = this.currentPlayer;
+        const losingPlayer = this.currentPlayer === 1 ? 2 : 1;
+        
         if (this.currentPlayer === 1) {
             this.player1Score++;
         } else {
@@ -1383,6 +1455,9 @@ class DiceSoccerGame {
             goalModal.style.transform = '';
         }
         
+        // Track who lost this round (for next round start)
+        this.lastRoundLoser = losingPlayer;
+        
         // Check for winner
         if (this.player1Score >= 3 || this.player2Score >= 3) {
             const timeoutId = setTimeout(() => this.endGame(), 2000);
@@ -1398,12 +1473,14 @@ class DiceSoccerGame {
     }
 
     resetRound() {
-        // Alternate the starting player for this round (after the first round)
-        this.nextRoundStartPlayer = this.nextRoundStartPlayer === 1 ? 2 : 1;
+        // The losing player starts the next round
+        if (this.lastRoundLoser) {
+            this.nextRoundStartPlayer = this.lastRoundLoser;
+        }
         
         this.initBoard();
         this.renderBoard();
-        this.currentPlayer = this.nextRoundStartPlayer; // Use alternating start player for each round
+        this.currentPlayer = this.nextRoundStartPlayer; // Losing player starts next round
         this.waitingForMove = false;
         this.currentGameStartTime = Date.now();
         
@@ -1458,10 +1535,23 @@ class DiceSoccerGame {
     }
 
     formatTime(ms) {
-        const seconds = Math.floor(ms / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        // If less than 1 minute, show as seconds only
+        if (totalSeconds < 60) {
+            return `${seconds}s`;
+        }
+        
+        // If less than 1 hour, show as m:ss
+        if (hours === 0) {
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // If 1 hour or more, show as h:m:ss
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
     updateUI() {

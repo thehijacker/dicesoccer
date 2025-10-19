@@ -73,8 +73,8 @@ const translations = {
         totalTime: "Total Time",
         rollDiceFirst: "Dice needs to be rolled first",
         cannotMovePlayer: "This player cannot be moved",
-        noMovesAvailable: "has no moves available. Turn passed.",
-        stalemate: "Both players are stuck! Starting new round...",
+        noMovesAvailable: "has no moves available",
+        scores: "scores",
         
         // Status messages
         on: "On",
@@ -153,8 +153,8 @@ const translations = {
         totalTime: "Skupni čas",
         rollDiceFirst: "Najprej vrzi kocko",
         cannotMovePlayer: "Ta igralec ne more igrati",
-        noMovesAvailable: "nima na voljo nobenih premikov. Poteza podana.",
-        stalemate: "Oba igralca sta blokirana! Začenjam nov krog...",
+        noMovesAvailable: "nima na voljo nobenih premikov",
+        scores: "dobi točko",
         
         // Status messages
         on: "Vključeno",

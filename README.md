@@ -53,17 +53,27 @@ Be the first player to score **3 goals** by moving your soccer players across th
    - Empty cells in the corners (first and last columns, except goal) cannot be entered
 
 4. **Scoring**:
-   - A goal is scored when a player piece reaches the opponent's goal cell (middle cell of the first/last column)
-   - After a goal, the round resets with all players returning to their starting positions
+   - **Goal Scoring**: A goal is scored when a player piece reaches the opponent's goal cell (middle cell of the first/last column)
+   - **Blocking Victory**: A player also scores if their opponent has no valid moves available (all opponent pieces are blocked)
+   - After scoring (by either method), the round resets with all players returning to their starting positions
+   - The player who lost the previous round starts the next round
    - First player to reach 3 goals wins the match
 
-5. **Strategy**:
+5. **Game Statistics**:
+   After a match ends (first player to reach 3 goals), detailed statistics are displayed:
+   - **Final Score**: Points scored by each player (winner: 3 points)
+   - **Thinking Time**: Total time each player took to make their moves (measured from dice roll to piece movement)
+     - Helps track decision-making speed and strategic planning time
+     - Only counts active thinking time, not waiting time between rounds
+   - **Total Moves**: Total number of piece movements made by the winning player throughout the match
+   - **Total Game Time**: Complete duration of the match from start to finish
+   - Statistics are displayed in hours:minutes:seconds format (h:m:s) for times over 60 seconds
+
+6. **Strategy**:
    - **Offense**: Create clear paths to the goal, position players strategically for goal-scoring opportunities
    - **Defense**: Block opponent's forward progress, protect your goalkeeper, trap opponent pieces in corners
    - **Positioning**: Middle rows offer more movement flexibility than edge rows
-
-6. **Stalemate**:
-   - If both players have no valid moves available, the round resets without awarding points
+   - **Blocking**: Strategically position your pieces to eliminate all opponent's possible moves and score without reaching their goal
 
 ## 🏟️ Game Field Layout
 
@@ -139,10 +149,17 @@ Challenge the computer opponent with three difficulty levels.
   - Evaluates threats and maintains blocking positions
   - Attempts to trap opponent pieces in corners
   - Guards goal area with multiple defenders
+- **Blocking Victory Strategy**:
+  - Actively evaluates moves that would eliminate ALL opponent moves
+  - Simulates each potential move to check if opponent would be completely blocked
+  - Prioritizes complete blocking scenarios almost as highly as scoring goals
+  - Recognizes when opponent has very few moves left (1-2) and works to eliminate them
+  - Balances between advancing to goal vs. blocking opponent's ability to move
 - **Tactical Evaluation**:
   - Scores each possible move combination
   - Considers consequences of leaving positions
   - Evaluates immediate goal opportunities (highest priority)
+  - Evaluates complete blocking opportunities (second highest priority)
   - Calculates opponent threats after each potential move
   - Balances offense and defense dynamically
 
