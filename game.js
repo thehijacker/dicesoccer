@@ -810,6 +810,14 @@ class DiceSoccerGame {
         this.diceValue = 0;
         this.updateUI();
         
+        // Check if current player has ANY possible moves before allowing dice roll
+        const allMovablePlayers = this.getAllMovablePlayers();
+        if (allMovablePlayers.length === 0) {
+            // Current player is completely blocked - opponent wins this round!
+            this.handleNoMovesAvailable();
+            return;
+        }
+        
         // Update menu button rotation and collapse if expanded
         if (window.updateMenuRotation) window.updateMenuRotation();
         if (window.collapseMenuButton) window.collapseMenuButton();
@@ -1495,6 +1503,17 @@ class DiceSoccerGame {
         this.currentPlayer = this.nextRoundStartPlayer; // Losing player starts next round
         this.waitingForMove = false;
         this.currentGameStartTime = Date.now();
+        
+        // Update UI to reflect current player (scores and active player highlight)
+        this.updateUI();
+        
+        // Check if current player has ANY possible moves before allowing dice roll
+        const allMovablePlayers = this.getAllMovablePlayers();
+        if (allMovablePlayers.length === 0) {
+            // Current player is completely blocked at round start - opponent wins this round!
+            this.handleNoMovesAvailable();
+            return;
+        }
         
         // Update dice enabled state based on current starting player
         if (this.currentPlayer === 1) {

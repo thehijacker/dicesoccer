@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 
 // Track PHP availability
 let phpAvailable = true;
@@ -259,7 +259,6 @@ function initializeApp() {
 function setupEventListeners() {
     // New Game button
     document.getElementById('newGameBtn').addEventListener('click', () => {
-        soundManager.play('whistle');
         // Show hints selection modal
         showHintsModal('new');
     });
@@ -716,6 +715,9 @@ function handleHintsSelection(hintsEnabled) {
     
     // Continue with the original action
     if (hintsModalMode === 'new') {
+        // Play start sound
+        soundManager.play('whistle');
+
         // Start new game
         const mode = gameState.twoPlayerMode ? 'local' : 'ai';
         gameState.startGame(mode);
@@ -770,6 +772,8 @@ async function hostGame() {
                 if (event.hintsEnabled !== undefined) {
                     gameState.hintsEnabled = event.hintsEnabled;
                 }
+                // Play start sound
+                soundManager.play('whistle');
                 // Host is player 1, guest is player 2
                 startMultiplayerGame('host', event.opponent);
             }
@@ -844,6 +848,9 @@ async function joinGame(hostId, hostName) {
         if (result.hintsEnabled !== undefined) {
             gameState.hintsEnabled = result.hintsEnabled;
         }
+        // Play start sound
+        soundManager.play('whistle');
+        // Guest is player 2, host is player 1
         startMultiplayerGame('guest', result.opponent);
     } else {
         console.error('Failed to join game:', result.error);

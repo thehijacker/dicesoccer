@@ -309,14 +309,6 @@ Settings persist across game sessions using localStorage.
 - ✅ Session persistence with localStorage
 - ✅ Comprehensive game statistics tracking
 
-## 🎲 Game Statistics
-
-The game tracks:
-- Total score for each player
-- Number of moves per player
-- Total game time
-- Winner and final statistics displayed at game end
-
 ## 🤝 Credits
 
 - **Original Board Game**: Torjäger by Kosmos (Germany)
