@@ -27,16 +27,17 @@ class MultiplayerManager {
     }
 
     // Host a new game
-    async hostGame(playerName) {
+    async hostGame(playerName, hintsEnabled) {
         try {
-            console.log(`Hosting game as ${playerName}`);
+            console.log(`Hosting game as ${playerName} with hints ${hintsEnabled ? 'enabled' : 'disabled'}`);
             const response = await fetch(this.serverUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'host',
                     playerId: this.playerId,
-                    playerName: playerName
+                    playerName: playerName,
+                    hintsEnabled: hintsEnabled
                 })
             });
 
@@ -109,7 +110,7 @@ class MultiplayerManager {
                 console.log(`Successfully joined game ${this.gameId} with playerId ${this.playerId}, starting polling...`);
                 this.startPolling();
                 this.startHeartbeat();
-                return { success: true, gameId: this.gameId, playerId: this.playerId, opponent: result.data.opponent };
+                return { success: true, gameId: this.gameId, playerId: this.playerId, opponent: result.data.opponent, hintsEnabled: result.data.hintsEnabled };
             } else {
                 throw new Error(result.error);
             }

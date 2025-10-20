@@ -9,6 +9,7 @@ class GameState {
         this.soundEnabled = localStorage.getItem('dicesoccer_sound') !== 'false';
         this.orientation = localStorage.getItem('dicesoccer_orientation') || 'portrait';
         this.twoPlayerMode = localStorage.getItem('dicesoccer_twoPlayerMode') === 'true';
+        this.hintsEnabled = localStorage.getItem('dicesoccer_hints') !== 'off';
         this.isMultiplayer = false;
         this.gameMode = 'local'; // can be local, ai, multiplayer
         
@@ -392,13 +393,15 @@ class DiceSoccerGame {
                 this.clearHighlights();
                 this.selectedPlayer = null;
                 
-                // Show all movable players again
-                const movablePlayers = this.getMovablePlayers(this.diceValue);
-                if (movablePlayers.length === 0) {
-                    const allMovable = this.getAllMovablePlayers();
-                    allMovable.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
-                } else {
-                    movablePlayers.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
+                // Show all movable players again (only if hints are enabled)
+                if (gameState.hintsEnabled) {
+                    const movablePlayers = this.getMovablePlayers(this.diceValue);
+                    if (movablePlayers.length === 0) {
+                        const allMovable = this.getAllMovablePlayers();
+                        allMovable.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
+                    } else {
+                        movablePlayers.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
+                    }
                 }
             }
         } else {
@@ -505,16 +508,20 @@ class DiceSoccerGame {
             // No players with this number can move, try all movable players
             const allMovable = this.getAllMovablePlayers();
             if (allMovable.length > 0) {
-                // Highlight all that can move
-                allMovable.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
+                // Highlight all that can move (only if hints are enabled)
+                if (gameState.hintsEnabled) {
+                    allMovable.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
+                }
             } else {
                 // No moves possible for current player
                 this.handleNoMovesAvailable();
                 return;
             }
         } else {
-            // Highlight only movable players with this number
-            movablePlayers.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
+            // Highlight only movable players with this number (only if hints are enabled)
+            if (gameState.hintsEnabled) {
+                movablePlayers.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
+            }
         }
         
         // AI move
@@ -682,8 +689,9 @@ class DiceSoccerGame {
                 const isPlayer2 = piece.player === 2;
                 const isPortrait = gameState.orientation === 'portrait';
                 
-                // For portrait mode Player 2 in 2-player mode, pieces are already rotated 180deg
-                const needsFlippedAnimation = isPortrait && isPlayer2 && gameState.twoPlayerMode;
+                // For portrait mode Player 2 in LOCAL 2-player mode, pieces are already rotated 180deg
+                // In multiplayer, guest sees themselves at bottom with no rotation
+                const needsFlippedAnimation = isPortrait && isPlayer2 && gameState.twoPlayerMode && gameState.gameMode !== 'multiplayer';
                 
                 // Create clone for animation
                 const clone = shirtImg.cloneNode(true);
@@ -778,10 +786,14 @@ class DiceSoccerGame {
 
     highlightValidMoves(row, col) {
         this.clearHighlights();
+        // Always highlight the selected player (even with hints disabled)
         this.highlightCell(row, col, 'movable');
         
-        const validMoves = this.getValidMoves(row, col);
-        validMoves.forEach(move => this.highlightCell(move.row, move.col, 'valid-move'));
+        // Only highlight valid move positions if hints are enabled
+        if (gameState.hintsEnabled) {
+            const validMoves = this.getValidMoves(row, col);
+            validMoves.forEach(move => this.highlightCell(move.row, move.col, 'valid-move'));
+        }
     }
 
     clearHighlights() {
@@ -1565,6 +1577,20 @@ class DiceSoccerGame {
         
         document.getElementById('player1NameDisplay').textContent = p1Name;
         document.getElementById('player2NameDisplay').textContent = p2Name;
+        
+        // Highlight active player panel with red border
+        const player1Panel = document.querySelector('.player1-panel');
+        const player2Panel = document.querySelector('.player2-panel');
+        
+        if (player1Panel && player2Panel) {
+            if (this.currentPlayer === 1) {
+                player1Panel.classList.add('active-player');
+                player2Panel.classList.remove('active-player');
+            } else {
+                player1Panel.classList.remove('active-player');
+                player2Panel.classList.add('active-player');
+            }
+        }
     }
 
     start() {
@@ -1633,7 +1659,6 @@ class DiceSoccerGame {
                         return;
                     }
                 }
-                console.log(`Player 1 dice clicked, rolling for player ${effectivePlayer}`);
                 this.rollDice();
             }
         });
@@ -1655,7 +1680,6 @@ class DiceSoccerGame {
                         return;
                     }
                 }
-                console.log(`Player 2 dice clicked, rolling for player ${effectivePlayer}`);
                 this.rollDice();
             }
         });

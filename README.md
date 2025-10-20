@@ -220,6 +220,36 @@ The game features complete internationalization:
 - Menu items, game messages, and modals fully localized
 - Easy to add additional languages by extending the translation system
 
+#### Hints Mode
+When starting a new game (local or multiplayer), you can choose your preferred difficulty level:
+
+**Play with Hints** (Default):
+- **Movable players highlighted**: After rolling the dice, all players that can be moved are visually highlighted on the board
+- **Valid moves shown**: When you select a player, all possible destination cells are highlighted
+- **Easier gameplay**: Perfect for beginners, learning the game, or casual play
+- **Less challenging**: Reduces need to mentally calculate which pieces can move and where
+
+**Play without Hints** (Challenge Mode):
+- **No movable player highlighting**: After rolling the dice, you must look at the dice number and manually find matching players on the board
+- **No move destination highlighting**: When you select a player, you must figure out valid move positions yourself
+- **Selected player indicator**: The player you select IS still highlighted (shows who you clicked/tapped)
+- **Warning messages still work**: If you try to move an invalid player, you still get error messages
+- **Significantly more challenging**: Requires careful attention to dice rolls and board state
+- **Strategic depth**: Forces players to think ahead and remember piece positions
+- **Better game knowledge**: Helps players learn movement rules more thoroughly
+
+**Multiplayer Synchronization**:
+- In multiplayer games, the **host's hints preference is applied to both players**
+- When hosting a game, your hints selection determines the difficulty for the entire match
+- Guests automatically receive the same hints setting as the host
+- Ensures fair gameplay with identical difficulty for both players
+
+**Use Cases**:
+- **With Hints**: Teaching new players, casual gaming, quick matches
+- **Without Hints**: Competitive play, skill improvement, tournament-style games, maximum challenge
+
+Settings can be changed for each new game, allowing flexibility based on mood and opponent skill level.
+
 #### Sound Effects
 Toggle sound effects on/off:
 - **Rolling Dice**: Realistic dice rolling sound
@@ -286,12 +316,6 @@ The game tracks:
 - Number of moves per player
 - Total game time
 - Winner and final statistics displayed at game end
-
-## 🔄 Version
-
-Current version: **1.0.0**
-
-Version number displays at the bottom of the main menu.
 
 ## 🤝 Credits
 

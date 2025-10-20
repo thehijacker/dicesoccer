@@ -37,6 +37,16 @@ const translations = {
         landscape: "Landscape",
         difficulty: "difficulty",
 
+        // Hints
+        hints: "Hints",
+        hintsOn: "Hints On",
+        hintsOff: "Hints Off",
+        selectHints: "Select Game Mode",
+        playWithHints: "Play with Hints",
+        playWithoutHints: "Play without Hints",
+        hintsOnDescription: "Movable players and valid moves are highlighted",
+        hintsOffDescription: "No highlighting - more challenging!",
+
         // Modals
         selectShirtColor: "Select Shirt Color",
         close: "Close",
@@ -117,6 +127,16 @@ const translations = {
         landscape: "Ležeče",
         difficulty: "težavnost",
         
+        // Hints
+        hints: "Namigi",
+        hintsOn: "Vključi namige",
+        hintsOff: "Izključi namige",
+        selectHints: "Izberi način igre",
+        playWithHints: "Igraj z namigi",
+        playWithoutHints: "Igraj brez namigov",
+        hintsOnDescription: "Premakljivi igralci in veljavne poteze so označene",
+        hintsOffDescription: "Brez označevanja - večji izziv!",
+
         // Modals
         selectShirtColor: "Izberi barvo dresa",
         close: "Zapri",

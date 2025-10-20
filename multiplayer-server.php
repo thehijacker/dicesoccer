@@ -83,6 +83,7 @@ function handleHostGame() {
         $playerId = $data['playerId'] ?? generateId();
         $playerName = $data['playerName'] ?? 'Player 1';
         $playerIp = $_SERVER['REMOTE_ADDR'];
+        $hintsEnabled = $data['hintsEnabled'] ?? true;
                 
         // Clean up any old files for this player before hosting
         $oldHostFile = GAME_DATA_DIR . "/host_{$playerId}.json";
@@ -118,7 +119,8 @@ function handleHostGame() {
             'playerIp' => $playerIp,
             'timestamp' => time(),
             'status' => 'waiting',
-            'gameId' => null
+            'gameId' => null,
+            'hintsEnabled' => $hintsEnabled
         ];
         
         $result = @file_put_contents(
@@ -239,6 +241,7 @@ function handleJoinGame() {
     addGameEvent($gameId, [
         'type' => 'gameStart',
         'gameId' => $gameId,
+        'hintsEnabled' => $hostData['hintsEnabled'],
         'opponent' => [
             'playerId' => $playerId,
             'playerName' => $playerName
@@ -249,6 +252,7 @@ function handleJoinGame() {
         'gameId' => $gameId,
         'playerId' => $playerId,
         'role' => 'guest',
+        'hintsEnabled' => $hostData['hintsEnabled'],
         'opponent' => [
             'playerId' => $hostData['playerId'],
             'playerName' => $hostData['playerName']

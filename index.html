@@ -11,7 +11,7 @@
     <title>Dice Soccer - Nogomet s kocko</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="icons/icon512_maskable.png">
-    <link rel="manifest" href="manifest.json?v=1.0.3">
+    <link rel="manifest" href="manifest.json?v=1.0.4">
     <link rel="apple-touch-icon" href="icons/icon512_maskable.png">
 </head>
 <body>
@@ -35,6 +35,19 @@
                     <label for="twoPlayerCheckbox" class="toggle-label"></label>
                 </div>
             </div>
+
+            <!-- Player 1 Name and Shirt -->
+            <div class="menu-item player-item">
+                <img src="images/selectcolor128.png" alt="Player 1" class="menu-icon shirt-icon" id="player1Shirt">
+                <input type="text" class="player-name-input" id="player1Name" placeholder="Player 1" data-translate-placeholder="player1">
+            </div>
+
+            <!-- Player 2 Name and Shirt or AI Difficulty -->
+            <div class="menu-item player-item" id="player2Container">
+                <img src="images/selectcolor128.png" alt="Player 2" class="menu-icon shirt-icon" id="player2Shirt">
+                <input type="text" class="player-name-input" id="player2Name" placeholder="Player 2" data-translate-placeholder="player2">
+                <span class="ai-difficulty-label hidden" id="aiDifficultyLabel"></span>
+            </div>            
 
             <!-- AI Difficulty (hidden when 2-player is on) -->
             <div class="menu-item expandable" id="aiDifficultyItem">
@@ -72,19 +85,6 @@
                     <img src="images/orientationlandscape128.png" alt="Landscape">
                     <span data-translate="landscape">Landscape</span>
                 </div>
-            </div>
-
-            <!-- Player 1 Name and Shirt -->
-            <div class="menu-item player-item">
-                <img src="images/selectcolor128.png" alt="Player 1" class="menu-icon shirt-icon" id="player1Shirt">
-                <input type="text" class="player-name-input" id="player1Name" placeholder="Player 1" data-translate-placeholder="player1">
-            </div>
-
-            <!-- Player 2 Name and Shirt or AI Difficulty -->
-            <div class="menu-item player-item" id="player2Container">
-                <img src="images/selectcolor128.png" alt="Player 2" class="menu-icon shirt-icon" id="player2Shirt">
-                <input type="text" class="player-name-input" id="player2Name" placeholder="Player 2" data-translate-placeholder="player2">
-                <span class="ai-difficulty-label hidden" id="aiDifficultyLabel"></span>
             </div>
 
             <!-- Host Game -->
@@ -139,6 +139,25 @@
                 <!-- Will be populated by JavaScript -->
             </div>
             <button class="close-modal-btn" id="closeShirtModal" data-translate="close">Close</button>
+        </div>
+    </div>
+
+    <!-- Hints Selection Modal -->
+    <div id="hintsModal" class="modal">
+        <div class="modal-content">
+            <h2 data-translate="selectHints">Select Game Mode</h2>
+            <div class="hints-options">
+                <button class="hints-option-btn" id="hintsOnBtn">
+                    <img src="images/hintson128.png" alt="Hints On">
+                    <span data-translate="playWithHints">Play with Hints</span>
+                    <p class="hints-description" data-translate="hintsOnDescription">Movable players and valid moves are highlighted</p>
+                </button>
+                <button class="hints-option-btn" id="hintsOffBtn">
+                    <img src="images/hintsoff128.png" alt="Hints Off">
+                    <span data-translate="playWithoutHints">Play without Hints</span>
+                    <p class="hints-description" data-translate="hintsOffDescription">No highlighting - more challenging!</p>
+                </button>
+            </div>
         </div>
     </div>
 

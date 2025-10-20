@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 
 // Track PHP availability
 let phpAvailable = true;
@@ -33,6 +33,32 @@ async function releaseWakeLock() {
     }
 }
 
+// Handle orientation changes during gameplay
+function handleGameplayOrientationChange() {
+    // Only handle if game screen is active
+    const gameScreen = document.getElementById('gameScreen');
+    if (!gameScreen || !gameScreen.classList.contains('active')) {
+        return;
+    }
+    
+    // Detect current physical orientation
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const newOrientation = isLandscape ? 'landscape' : 'portrait';
+    
+    // If orientation changed during gameplay, update the game board
+    if (gameState.orientation !== newOrientation) {
+        gameState.orientation = newOrientation;
+        
+        // Update the game screen layout
+        updateGameScreenOrientation(newOrientation);
+        
+        // Re-render the board with current game state if game is active
+        if (currentGame) {
+            currentGame.renderBoard();
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Prevent context menu on right-click and long-press
     document.addEventListener('contextmenu', (e) => {
@@ -48,6 +74,24 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Request wake lock to keep screen on
     requestWakeLock();
+});
+
+// Handle Escape key to close modals and submenus
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+        // First, check for any active modal and close it
+        const activeModal = document.querySelector('.modal.active');
+        if (activeModal) {
+            closeModal(activeModal.id);
+            return;
+        }
+        
+        // If no modal is open, check for any active submenu and close it
+        const activeSubmenu = document.querySelector('.submenu.active');
+        if (activeSubmenu) {
+            activeSubmenu.classList.remove('active');
+        }
+    }
 });
 
 // Re-acquire wake lock when page becomes visible again (e.g., after switching tabs)
@@ -89,12 +133,16 @@ function setViewportHeight() {
         setHeight();
         // Auto-detect orientation on resize (more reliable than orientationchange)
         handleAutoOrientationDetection();
+        // Handle orientation changes during gameplay
+        handleGameplayOrientationChange();
     });
     window.addEventListener('orientationchange', () => {
         // Wait longer for dimensions to update after orientation change
         setTimeout(() => {
             setHeight();
             handleAutoOrientationDetection();
+            // Handle orientation changes during gameplay
+            handleGameplayOrientationChange();
         }, 300);
     });
 }
@@ -212,11 +260,8 @@ function setupEventListeners() {
     // New Game button
     document.getElementById('newGameBtn').addEventListener('click', () => {
         soundManager.play('whistle');
-        const mode = gameState.twoPlayerMode ? 'local' : 'ai';
-        gameState.startGame(mode);
-        showScreen('gameScreen');
-        updateGameScreenOrientation(gameState.orientation);
-        startNewGame();
+        // Show hints selection modal
+        showHintsModal('new');
     });
 
     // Two Player toggle
@@ -239,6 +284,15 @@ function setupEventListeners() {
             updateOrientationDisplay(orientation);
             toggleSubmenu('orientationSubmenu', false);
         });
+    });
+
+    // Hints modal buttons
+    document.getElementById('hintsOnBtn').addEventListener('click', () => {
+        handleHintsSelection(true);
+    });
+
+    document.getElementById('hintsOffBtn').addEventListener('click', () => {
+        handleHintsSelection(false);
     });
 
     // AI Difficulty
@@ -276,7 +330,8 @@ function setupEventListeners() {
 
     // Host game
     document.getElementById('hostGameBtn').addEventListener('click', () => {
-        hostGame();
+        // Show hints selection modal for multiplayer host
+        showHintsModal('host');
     });
 
     // Join game
@@ -421,6 +476,8 @@ function setupEventListeners() {
     // Goal modal continue button
     document.getElementById('continueGameBtn').addEventListener('click', () => {
         if (currentGame) {
+            // stop all sounds (cheering))
+            soundManager.stopAll();
             currentGame.continueAfterGoal();
         }
     });
@@ -428,10 +485,15 @@ function setupEventListeners() {
     // Winner modal buttons
     document.getElementById('newGameFromWinner').addEventListener('click', () => {
         closeModal('winnerModal');
+        // stop all sounds (cheering))
+        soundManager.stopAll();
         startNewGame();
     });
 
     document.getElementById('backToMenuFromWinner').addEventListener('click', async () => {
+        // stop all sounds (cheering))
+        soundManager.stopAll();
+
         closeModal('winnerModal');
         
         // Leave multiplayer game if active
@@ -639,6 +701,35 @@ function selectShirt(color) {
     closeModal('shirtModal');
 }
 
+// Hints selection modal functions
+let hintsModalMode = null; // 'new' for new game, 'host' for multiplayer
+
+function showHintsModal(mode) {
+    hintsModalMode = mode;
+    openModal('hintsModal');
+}
+
+function handleHintsSelection(hintsEnabled) {
+    gameState.hintsEnabled = hintsEnabled;
+    localStorage.setItem('dicesoccer_hints', hintsEnabled ? 'on' : 'off');
+    closeModal('hintsModal');
+    
+    // Continue with the original action
+    if (hintsModalMode === 'new') {
+        // Start new game
+        const mode = gameState.twoPlayerMode ? 'local' : 'ai';
+        gameState.startGame(mode);
+        showScreen('gameScreen');
+        updateGameScreenOrientation(gameState.orientation);
+        startNewGame();
+    } else if (hintsModalMode === 'host') {
+        // Host multiplayer game
+        hostGame();
+    }
+    
+    hintsModalMode = null;
+}
+
 // Multiplayer functions
 async function hostGame() {
     const playerName = gameState.player1Name || translationManager.get('player1');
@@ -648,7 +739,7 @@ async function hostGame() {
         multiplayerManager.init();
     }
     
-    const result = await multiplayerManager.hostGame(playerName);
+    const result = await multiplayerManager.hostGame(playerName, gameState.hintsEnabled);
     
     if (result.success) {
         // Show waiting modal
@@ -675,6 +766,10 @@ async function hostGame() {
             if (event.type === 'gameStart') {
                 console.log('Player joined:', event.opponent);
                 closeModal('hostWaitingModal');
+                // Apply hints setting from event (host's preference)
+                if (event.hintsEnabled !== undefined) {
+                    gameState.hintsEnabled = event.hintsEnabled;
+                }
                 // Host is player 1, guest is player 2
                 startMultiplayerGame('host', event.opponent);
             }
@@ -745,6 +840,10 @@ async function joinGame(hostId, hostName) {
     if (result.success) {
         console.log('Joined game:', result);
         closeModal('joinGameModal');
+        // Apply hints setting from host
+        if (result.hintsEnabled !== undefined) {
+            gameState.hintsEnabled = result.hintsEnabled;
+        }
         startMultiplayerGame('guest', result.opponent);
     } else {
         console.error('Failed to join game:', result.error);
