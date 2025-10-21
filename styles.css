@@ -5,7 +5,7 @@
     flex-wrap: wrap;
     align-items: flex-start;
     justify-content: center;
-    max-width: 95vw;
+    max-width: min(95vw, 900px);
     gap: 10px;
 }
 
@@ -308,14 +308,15 @@ input:checked + .toggle-label::before {
     z-index: 500;
     background: white;
     border-radius: 15px;
-    padding: 25px;
+    padding: 20px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    max-width: 500px;
-    min-width: 320px;
+    max-width: 650px;
+    min-width: 400px;
     max-height: 80vh;
     overflow-y: auto;
     flex-direction: column;
     animation: modalPopIn 0.3s ease;
+    gap: 0;
 }
 
 /* Backdrop for submenu */
@@ -326,10 +327,43 @@ input:checked + .toggle-label::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(85, 83, 83, 0.7);
     backdrop-filter: blur(3px);
     z-index: -1;
     animation: fadeIn 0.3s ease;
+}
+
+/* Settings submenu - two columns in landscape */
+#settingsSubmenu.submenu.active {
+    flex-direction: column;
+}
+
+@media (orientation: landscape) {
+    #settingsSubmenu.submenu.active {
+        flex-direction: row;
+        flex-wrap: wrap;
+        max-width: 850px;
+        gap: 25px;
+        padding: 20px;
+    }
+    
+    #settingsSubmenu .submenu-section {
+        flex: 1 1 45%;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+    
+    #settingsSubmenu .submenu-section:not(:last-child) {
+        border-right: 1px solid #e0e0e0 !important;
+        padding-right: 25px !important;
+    }
+    
+    #settingsSubmenu .close-modal-btn {
+        flex: 1 1 100%;
+        order: 10;
+        margin-top: 15px;
+    }
 }
 
 @keyframes fadeIn {
@@ -381,6 +415,65 @@ input:checked + .toggle-label::before {
 .submenu-option span {
     font-size: 16px;
     color: #333;
+}
+
+/* Settings Submenu Sections */
+.submenu-section {
+    margin: 0;
+    padding: 0;
+}
+
+.submenu-section:first-child {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+}
+
+.submenu-section:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.submenu-header {
+    font-size: 14px;
+    font-weight: 600;
+    color: #000000;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.submenu-toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: #f5f5f5;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 12px;
+}
+
+.submenu-toggle-item:last-child {
+    margin-bottom: 0;
+}
+
+.submenu-toggle-item .menu-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.submenu-toggle-text {
+    font-size: 15px;
+    color: #333;
+    flex: 1;
+    margin-right: 15px;
+}
+
+/* Close button in submenu */
+#settingsSubmenu .close-modal-btn {
+    margin-top: 20px;
+    width: 100%;
 }
 
 /* Version Info */

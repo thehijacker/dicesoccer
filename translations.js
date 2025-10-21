@@ -7,8 +7,12 @@ const translations = {
         aiDifficulty: "A.I. Difficulty",
         hostGame: "Host Game",
         joinGame: "Join Game",
+        settings: "Settings",
+        gameSettings: "Game Settings",
         language: "Language",
         sound: "Sound",
+        fastAI: "Fast AI Movement",
+        autoDice: "Auto Dice Rolling",
         
         // Difficulty levels
         easy: "Easy",
@@ -97,8 +101,12 @@ const translations = {
         aiDifficulty: "A.I. težavnost",
         hostGame: "Gostuj igro",
         joinGame: "Pridruži se igri",
+        settings: "Nastavitve",
+        gameSettings: "Nastavitve igre",
         language: "Jezik",
         sound: "Zvok",
+        fastAI: "Hitro AI gibanje",
+        autoDice: "Samodejno metanje kocke",
         
         // Difficulty levels
         easy: "Lahka",

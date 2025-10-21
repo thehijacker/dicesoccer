@@ -10,6 +10,8 @@ class GameState {
         this.orientation = localStorage.getItem('dicesoccer_orientation') || 'portrait';
         this.twoPlayerMode = localStorage.getItem('dicesoccer_twoPlayerMode') === 'true';
         this.hintsEnabled = localStorage.getItem('dicesoccer_hints') !== 'off';
+        this.fastAI = localStorage.getItem('dicesoccer_fastAI') === 'true';
+        this.autoDice = localStorage.getItem('dicesoccer_autoDice') === 'true';
         this.isMultiplayer = false;
         this.gameMode = 'local'; // can be local, ai, multiplayer
         
@@ -48,6 +50,8 @@ class GameState {
         localStorage.setItem('dicesoccer_sound', this.soundEnabled.toString());
         localStorage.setItem('dicesoccer_orientation', this.orientation);
         localStorage.setItem('dicesoccer_twoPlayerMode', this.twoPlayerMode.toString());
+        localStorage.setItem('dicesoccer_fastAI', this.fastAI.toString());
+        localStorage.setItem('dicesoccer_autoDice', this.autoDice.toString());
     }
 
     setPlayerName(player, name) {
@@ -81,6 +85,16 @@ class GameState {
 
     setTwoPlayerMode(enabled) {
         this.twoPlayerMode = enabled;
+        this.save();
+    }
+
+    setFastAI(enabled) {
+        this.fastAI = enabled;
+        this.save();
+    }
+
+    setAutoDice(enabled) {
+        this.autoDice = enabled;
         this.save();
     }
 
@@ -451,7 +465,8 @@ class DiceSoccerGame {
     }
 
     rollDice() {
-        if (this.isRolling || this.waitingForMove) return;
+        // Prevent rolling while already rolling, waiting for a move, or while a move animation is in progress
+        if (this.isRolling || this.waitingForMove || this.isMoving) return;
         
         // Collapse menu if expanded
         if (window.collapseMenuButton) window.collapseMenuButton();
@@ -475,6 +490,10 @@ class DiceSoccerGame {
         const visualPlayer = (gameState.gameMode === 'multiplayer' && multiplayerManager && !multiplayerManager.isHost && this.currentPlayer === 2) ? 1 : this.currentPlayer;
         const diceImg = document.getElementById(`player${visualPlayer}Dice`);
         
+        // Check if this is AI turn with Fast AI enabled
+        const isFastAI = gameState.fastAI && gameState.gameMode === 'ai' && this.currentPlayer === 2;
+        const animationDuration = isFastAI ? 100 : 1000;
+        
         diceImg.classList.add('rolling');
         soundManager.play('rollingDice');
         
@@ -485,7 +504,7 @@ class DiceSoccerGame {
         }, 100);
         this.activeIntervals.push(rollInterval);
         
-        // Stop after animation (approximately 1 seconds) and show final value
+        // Stop after animation and show final value
         const timeoutId = setTimeout(() => {
             clearInterval(rollInterval);
             diceImg.src = `images/dice${this.diceValue}.png`;
@@ -493,7 +512,7 @@ class DiceSoccerGame {
             this.isRolling = false;
             
             this.handleDiceRolled();
-        }, 1000);
+        }, animationDuration);
         this.activeTimeouts.push(timeoutId);
     }
 
@@ -847,6 +866,18 @@ class DiceSoccerGame {
         if (gameState.gameMode === 'ai' && this.currentPlayer === 2 && !this.isRolling) {
             const timeoutId = setTimeout(() => this.rollDice(), 800);
             this.activeTimeouts.push(timeoutId);
+        }
+        // Auto dice for human players when enabled
+        else if (gameState.autoDice && !this.isRolling) {
+            // Don't auto-roll for AI player, and don't auto-roll in multiplayer for remote player
+            const shouldAutoRoll = gameState.gameMode === 'local' || 
+                                  (gameState.gameMode === 'ai' && this.currentPlayer === 1) ||
+                                  (gameState.gameMode === 'multiplayer' && multiplayerManager && this.currentPlayer === multiplayerManager.localPlayer);
+            
+            if (shouldAutoRoll) {
+                const timeoutId = setTimeout(() => this.rollDice(), 500);
+                this.activeTimeouts.push(timeoutId);
+            }
         }
     }
 
@@ -1528,6 +1559,17 @@ class DiceSoccerGame {
         if (gameState.gameMode === 'ai' && this.currentPlayer === 2) {
             setTimeout(() => this.rollDice(), 1000);
         }
+        // Auto dice for human players when enabled
+        else if (gameState.autoDice) {
+            // Don't auto-roll for AI player, and don't auto-roll in multiplayer for remote player
+            const shouldAutoRoll = gameState.gameMode === 'local' || 
+                                  (gameState.gameMode === 'ai' && this.currentPlayer === 1) ||
+                                  (gameState.gameMode === 'multiplayer' && multiplayerManager && this.currentPlayer === multiplayerManager.localPlayer);
+            
+            if (shouldAutoRoll) {
+                setTimeout(() => this.rollDice(), 500);
+            }
+        }
     }
 
     endGame() {
@@ -1665,7 +1707,8 @@ class DiceSoccerGame {
             // In multiplayer, guest sees P1 dice but they control P2
             const effectivePlayer = (gameState.gameMode === 'multiplayer' && multiplayerManager && !multiplayerManager.isHost) ? 2 : 1;
             
-            if (this.currentPlayer === effectivePlayer && !this.isRolling && !this.waitingForMove) {
+            // Also prevent clicking while a move animation is running (isMoving)
+            if (this.currentPlayer === effectivePlayer && !this.isRolling && !this.waitingForMove && !this.isMoving) {
                 // In multiplayer, check if it's local player's turn
                 if (gameState.gameMode === 'multiplayer') {
                     if (multiplayerManager.localPlayer !== effectivePlayer) {
@@ -1686,7 +1729,8 @@ class DiceSoccerGame {
             // In multiplayer, guest sees P2 dice but opponent controls P1
             const effectivePlayer = (gameState.gameMode === 'multiplayer' && multiplayerManager && !multiplayerManager.isHost) ? 1 : 2;
             
-            if (this.currentPlayer === effectivePlayer && !this.isRolling && !this.waitingForMove) {
+            // Also prevent clicking while a move animation is running (isMoving)
+            if (this.currentPlayer === effectivePlayer && !this.isRolling && !this.waitingForMove && !this.isMoving) {
                 // In multiplayer, check if it's local player's turn
                 if (gameState.gameMode === 'multiplayer') {
                     if (multiplayerManager.localPlayer !== effectivePlayer) {
@@ -1730,6 +1774,26 @@ class DiceSoccerGame {
         // Set up multiplayer handlers if in multiplayer mode
         if (gameState.gameMode === 'multiplayer') {
             this.setupMultiplayerHandlers();
+        }
+        
+        // Auto-roll dice for the first turn if autoDice is enabled
+        if (gameState.autoDice && !this.isRolling) {
+            // AI turn
+            if (gameState.gameMode === 'ai' && this.currentPlayer === 2) {
+                const timeoutId = setTimeout(() => this.rollDice(), 800);
+                this.activeTimeouts.push(timeoutId);
+            }
+            // Auto dice for human players when enabled
+            else {
+                const shouldAutoRoll = gameState.gameMode === 'local' || 
+                                      (gameState.gameMode === 'ai' && this.currentPlayer === 1) ||
+                                      (gameState.gameMode === 'multiplayer' && multiplayerManager && this.currentPlayer === multiplayerManager.localPlayer);
+                
+                if (shouldAutoRoll) {
+                    const timeoutId = setTimeout(() => this.rollDice(), 500);
+                    this.activeTimeouts.push(timeoutId);
+                }
+            }
         }
     }
     

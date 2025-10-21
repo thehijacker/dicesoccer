@@ -210,8 +210,10 @@ Play against another person over the network.
 - Visual distinction helps identify pieces on the field
 - Synchronized in multiplayer games
 
-#### Language Selection
-Currently supports:
+#### Game Settings
+
+**Language Selection**:
+Available in the Settings menu:
 - **English** (default)
 - **Slovenian** (Slovenščina)
 
@@ -219,6 +221,28 @@ The game features complete internationalization:
 - All UI text and messages translate dynamically
 - Menu items, game messages, and modals fully localized
 - Easy to add additional languages by extending the translation system
+
+**Fast AI Movement**:
+Toggle to control AI animation speed:
+- **Enabled**: AI moves execute quickly with minimal animation delay
+- **Disabled**: AI moves play at normal speed with full animations
+- Only affects AI opponent moves, not human player moves
+- Useful for faster gameplay when playing against computer
+- Great for experienced players who want quicker matches
+
+**Automated Dice Rolling**:
+Toggle to automatically roll dice at the start of each turn:
+- **Enabled**: Dice automatically rolls when it becomes your turn
+  - Eliminates manual dice clicking for faster gameplay
+  - Small delay (0.5s for humans, 0.8s for AI) before automatic roll
+  - Rolls for both local players in 2-player mode
+  - In multiplayer, only rolls for the local player's turn
+- **Disabled**: Must manually click dice to roll (traditional gameplay)
+- Works in all game modes: Local, AI, and Multiplayer
+- Automatically rolls for the first player when starting a new game
+- Streamlines gameplay flow and reduces repetitive clicking
+
+Both settings are accessible from the Settings menu in the main menu and persist across game sessions.
 
 #### Hints Mode
 When starting a new game (local or multiplayer), you can choose your preferred difficulty level:
@@ -302,6 +326,8 @@ Settings persist across game sessions using localStorage.
 - ✅ Real-time multiplayer with automatic synchronization
 - ✅ Automatic PHP detection - disables multiplayer if PHP not available
 - ✅ Three AI difficulty levels with distinct strategies
+- ✅ Fast AI movement option for quicker gameplay
+- ✅ Automated dice rolling for streamlined turns
 - ✅ Sound effects with toggle control
 - ✅ Multiple language support
 - ✅ Team customization with shirt colors

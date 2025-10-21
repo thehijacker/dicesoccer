@@ -11,13 +11,23 @@
     <title>Dice Soccer - Nogomet s kocko</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="icons/icon512_maskable.png">
-    <link rel="manifest" href="manifest.json?v=1.0.7">
+    <link rel="manifest" href="manifest.json?v=1.0.8">
     <link rel="apple-touch-icon" href="icons/icon512_maskable.png">
+    
+    <!-- Early orientation detection to prevent layout jump -->
+    <script>
+        (function() {
+            const isLandscape = window.innerWidth > window.innerHeight;
+            const orientation = isLandscape ? 'landscape' : 'portrait';
+            // Store for later use
+            sessionStorage.setItem('initialOrientation', orientation);
+        })();
+    </script>
 </head>
 <body>
     <!-- Main Menu Screen -->
     <div id="mainMenu" class="screen active">
-        <div class="menu-container">
+        <div class="menu-container" id="menuContainer">
             <!-- Removed top logo/icon -->
 
             <!-- New Game Button -->
@@ -99,21 +109,48 @@
                 <span class="menu-text" data-translate="joinGame">Join Game</span>
             </div>
 
-            <!-- Language -->
-            <div class="menu-item expandable" id="languageItem">
-                <img src="images/language128.png" alt="Language" class="menu-icon">
-                <span class="menu-text" data-translate="language">Language</span>
-                <span class="menu-value" id="languageValue">English</span>
+            <!-- Settings -->
+            <div class="menu-item expandable" id="settingsItem">
+                <img src="images/settings128.png" alt="Settings" class="menu-icon">
+                <span class="menu-text" data-translate="settings">Settings</span>
+                <span class="menu-value"></span>
             </div>
-            <div class="submenu" id="languageSubmenu">
-                <div class="submenu-option" data-language="en">
-                    <img src="images/flagenglish64.png" alt="English">
-                    <span>English</span>
+            <div class="submenu" id="settingsSubmenu">
+                <!-- Language submenu -->
+                <div class="submenu-section">
+                    <div class="submenu-header" data-translate="language">Language</div>
+                    <div class="submenu-option" data-language="en">
+                        <img src="images/flagenglish64.png" alt="English">
+                        <span>English</span>
+                    </div>
+                    <div class="submenu-option" data-language="sl">
+                        <img src="images/flagslovenian64.png" alt="Slovenščina">
+                        <span>Slovenščina</span>
+                    </div>
                 </div>
-                <div class="submenu-option" data-language="sl">
-                    <img src="images/flagslovenian64.png" alt="Slovenščina">
-                    <span>Slovenščina</span>
-                </div>
+                
+                <!-- Fast AI toggle and Auto Dice toggle -->
+                <div class="submenu-section">
+                    <div class="submenu-header" data-translate="gameSettings">Game settings</div>
+                    <div class="submenu-toggle-item">                        
+                        <img src="images/fastai128.png" alt="Fast AI Movement" class="menu-icon">                        
+                        <span class="submenu-toggle-text" data-translate="fastAI">Fast AI Movement</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="fastAICheckbox">
+                            <label for="fastAICheckbox" class="toggle-label"></label>
+                        </div>
+                    </div>                    
+                    <div class="submenu-toggle-item">
+                        <img src="images/autodice128.png" alt="Automated Dice Rolling" class="menu-icon">
+                        <span class="submenu-toggle-text" data-translate="autoDice">Automated Dice Rolling</span>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="autoDiceCheckbox">
+                            <label for="autoDiceCheckbox" class="toggle-label"></label>
+                        </div>
+                    </div>
+                </div>                
+                <!-- Close Button -->
+                <button class="close-modal-btn" id="closeSettingsBtn" data-translate="close">Close</button>
             </div>
 
             <!-- Sound Toggle -->

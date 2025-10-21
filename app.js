@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 
 // Track PHP availability
 let phpAvailable = true;
@@ -313,19 +313,40 @@ function initializeApp() {
     // Set sound toggle
     document.getElementById('soundCheckbox').checked = gameState.soundEnabled;
     updateSoundIcon(gameState.soundEnabled);
+    
+    // Set Fast AI toggle
+    document.getElementById('fastAICheckbox').checked = gameState.fastAI;
+    
+    // Set Auto Dice toggle
+    document.getElementById('autoDiceCheckbox').checked = gameState.autoDice;
 
     // Set two player mode toggle
     document.getElementById('twoPlayerCheckbox').checked = gameState.twoPlayerMode;
     updatePlayer2UI(gameState.twoPlayerMode);
 
-    // Auto-detect initial orientation based on device
+    // Use early detected orientation from sessionStorage (set in head script)
+    const initialOrientation = sessionStorage.getItem('initialOrientation');
     const isLandscape = window.innerWidth > window.innerHeight;
-    const detectedOrientation = isLandscape ? 'landscape' : 'portrait';
+    const detectedOrientation = initialOrientation || (isLandscape ? 'landscape' : 'portrait');
     
-    // Use detected orientation (prefer auto-detection over saved preference)
+    // Use detected orientation and apply immediately to prevent visual jump
     gameState.orientation = detectedOrientation;
     localStorage.setItem('dicesoccer_orientation', detectedOrientation);
-    updateOrientationDisplay(detectedOrientation);
+    
+    // Apply orientation classes immediately without animation
+    const menuContainer = document.getElementById('menuContainer');
+    if (detectedOrientation === 'landscape') {
+        menuContainer.classList.add('horizontal-menu');
+        menuContainer.classList.remove('vertical-menu');
+    } else {
+        menuContainer.classList.add('vertical-menu');
+        menuContainer.classList.remove('horizontal-menu');
+    }
+    
+    // Update the orientation display value
+    const orientationValue = document.getElementById('orientationValue');
+    orientationValue.setAttribute('data-translate-value', detectedOrientation);
+    orientationValue.textContent = translationManager.get(detectedOrientation);
 
     // Disable multiplayer options if PHP is not available
     if (!phpAvailable) {
@@ -434,20 +455,35 @@ function setupEventListeners() {
         openJoinModal();
     });
 
-    // Language
-    document.getElementById('languageItem').addEventListener('click', () => {
-        toggleSubmenu('languageSubmenu');
+    // Settings menu
+    document.getElementById('settingsItem').addEventListener('click', () => {
+        toggleSubmenu('settingsSubmenu');
     });
 
-    document.querySelectorAll('#languageSubmenu .submenu-option').forEach(option => {
+    // Language options within settings
+    document.querySelectorAll('#settingsSubmenu .submenu-option').forEach(option => {
         option.addEventListener('click', (e) => {
             const lang = e.currentTarget.getAttribute('data-language');
             translationManager.setLanguage(lang);
             // Update orientation and AI difficulty labels after language change
             updateOrientationDisplay(gameState.orientation);
             updatePlayer2UI(gameState.twoPlayerMode);
-            toggleSubmenu('languageSubmenu', false);
         });
+    });
+    
+    // Close settings button
+    document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+        toggleSubmenu('settingsSubmenu', false);
+    });
+    
+    // Fast AI toggle
+    document.getElementById('fastAICheckbox').addEventListener('change', (e) => {
+        gameState.setFastAI(e.target.checked);
+    });
+    
+    // Auto Dice toggle
+    document.getElementById('autoDiceCheckbox').addEventListener('change', (e) => {
+        gameState.setAutoDice(e.target.checked);
     });
 
     // Sound toggle
