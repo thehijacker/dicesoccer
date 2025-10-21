@@ -485,7 +485,7 @@ class DiceSoccerGame {
         }, 100);
         this.activeIntervals.push(rollInterval);
         
-        // Stop after animation (approximately 2 seconds) and show final value
+        // Stop after animation (approximately 1 seconds) and show final value
         const timeoutId = setTimeout(() => {
             clearInterval(rollInterval);
             diceImg.src = `images/dice${this.diceValue}.png`;
@@ -493,7 +493,7 @@ class DiceSoccerGame {
             this.isRolling = false;
             
             this.handleDiceRolled();
-        }, 2000);
+        }, 1000);
         this.activeTimeouts.push(timeoutId);
     }
 
@@ -508,8 +508,8 @@ class DiceSoccerGame {
             // No players with this number can move, try all movable players
             const allMovable = this.getAllMovablePlayers();
             if (allMovable.length > 0) {
-                // Highlight all that can move (only if hints are enabled)
-                if (gameState.hintsEnabled) {
+                // Highlight all that can move (only if hints are enabled AND not AI's turn)
+                if (gameState.hintsEnabled && !(gameState.gameMode === 'ai' && this.currentPlayer === 2)) {
                     allMovable.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
                 }
             } else {
@@ -518,15 +518,15 @@ class DiceSoccerGame {
                 return;
             }
         } else {
-            // Highlight only movable players with this number (only if hints are enabled)
-            if (gameState.hintsEnabled) {
+            // Highlight only movable players with this number (only if hints are enabled AND not AI's turn)
+            if (gameState.hintsEnabled && !(gameState.gameMode === 'ai' && this.currentPlayer === 2)) {
                 movablePlayers.forEach(pos => this.highlightCell(pos.row, pos.col, 'movable'));
             }
         }
         
-        // AI move
+        // AI move - execute faster without too much delay for faster gameplay
         if (gameState.gameMode === 'ai' && this.currentPlayer === 2) {
-            const timeoutId = setTimeout(() => this.makeAIMove(), 1000);
+            const timeoutId = setTimeout(() => this.makeAIMove(), 500);
             this.activeTimeouts.push(timeoutId);
         }
     }
@@ -980,7 +980,7 @@ class DiceSoccerGame {
                     bestPlayerMove.move.row, 
                     bestPlayerMove.move.col
                 );
-            }, 500);
+            }, 200);
             this.activeTimeouts.push(timeoutId);
         } else {
             this.switchPlayer();
@@ -1867,13 +1867,13 @@ class DiceSoccerGame {
                 }, 100);
                 this.activeIntervals.push(rollInterval);
                 
-                // Stop after 2 seconds and show the actual rolled value
+                // Stop after 1 seconds and show the actual rolled value
                 const diceTimeoutId = setTimeout(() => {
                     clearInterval(rollInterval);
                     diceImg.src = `images/dice${event.value}.png`;
                     diceImg.classList.remove('rolling');
                     this.waitingForMove = true;
-                }, 2000);
+                }, 1000);
                 this.activeTimeouts.push(diceTimeoutId);
                 break;
                 
