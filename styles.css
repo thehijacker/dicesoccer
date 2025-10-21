@@ -569,14 +569,16 @@ input:checked + .toggle-label::before {
 /* Shirt Grid */
 .shirt-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    grid-template-columns: repeat(3, 1fr); /* 3 columns by default (portrait) */
     gap: 15px;
     margin: 20px 0;
+    max-height: 60vh;
+    overflow-y: auto;
 }
 
 .shirt-option {
     cursor: pointer;
-    padding: 15px;
+    padding: 12px;
     background: #f5f5f5;
     border-radius: 12px;
     transition: all 0.3s ease;
@@ -593,13 +595,14 @@ input:checked + .toggle-label::before {
 }
 
 .shirt-option img {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 8px;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 6px;
 }
 
 .shirt-option span {
-    font-size: 14px;
+    font-size: 12px;
+    text-align: center;
     color: #333;
     font-weight: 500;
 }
@@ -677,6 +680,61 @@ input:checked + .toggle-label::before {
     
     .hints-description {
         font-size: 12px;
+    }
+    
+    /* Shirt grid in landscape - show more columns */
+    .shirt-grid {
+        grid-template-columns: repeat(5, 1fr); /* 5 columns in landscape */
+        gap: 12px;
+        max-height: 45vh; /* Reduced height to fit Close button */
+    }
+    
+    .shirt-option {
+        padding: 8px;
+    }
+    
+    .shirt-option img {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .shirt-option span {
+        font-size: 10px;
+    }
+    
+    /* Make modal content more compact in landscape */
+    .modal-content {
+        padding: 20px;
+        max-height: 85vh;
+    }
+    
+    .modal-content h2 {
+        margin-bottom: 12px;
+        font-size: 20px;
+    }
+    
+    .close-modal-btn {
+        margin-top: 12px;
+        padding: 10px 24px;
+        font-size: 14px;
+    }
+}
+
+/* For wider landscape screens (tablets in landscape, small desktops) */
+@media (orientation: landscape) and (min-width: 800px) {
+    .shirt-grid {
+        grid-template-columns: repeat(5, 1fr); /* 5 columns on wider screens */
+        gap: 15px;
+        max-height: 50vh; /* Controlled height for wider screens */
+    }
+    
+    .shirt-option img {
+        width: 52px;
+        height: 52px;
+    }
+    
+    .shirt-option span {
+        font-size: 11px;
     }
 }
 
@@ -1371,13 +1429,21 @@ input:checked + .toggle-label::before {
     }
 
     .shirt-grid {
-        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(3, 1fr); /* Keep 3 columns on small screens */
+        gap: 8px;
+    }
+    
+    .shirt-option {
+        padding: 8px;
     }
 
     .shirt-option img {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
+    }
+    
+    .shirt-option span {
+        font-size: 10px;
     }
 }
 

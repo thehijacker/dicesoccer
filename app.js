@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 
 // Track PHP availability
 let phpAvailable = true;
@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Request wake lock to keep screen on
     requestWakeLock();
+    
+    // Handle browser back button for PWA
+    setupBackButtonHandler();
 });
 
 // Handle Escape key to close modals and submenus
@@ -93,6 +96,99 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// Handle browser back button for PWA
+function setupBackButtonHandler() {
+    // Push a dummy state to history when app loads
+    window.history.pushState({ page: 'game' }, '', '');
+    
+    // Listen for back button
+    window.addEventListener('popstate', async (event) => {
+        // Push state back immediately to prevent actual navigation
+        window.history.pushState({ page: 'game' }, '', '');
+        
+        // Check if we're in an active game
+        const gameScreen = document.getElementById('gameScreen');
+        const isInGame = gameScreen && gameScreen.classList.contains('active');
+        
+        if (isInGame && currentGame) {
+            const backToMenuBtn = document.getElementById('backToMenuBtn');
+            
+            // Check if menu is already expanded
+            const isMenuExpanded = backToMenuBtn && !backToMenuBtn.classList.contains('collapsed');
+            
+            if (isMenuExpanded) {
+                // Second back press while menu is expanded - go back to menu
+                await handleBackToMenu();
+            } else {
+                // First back press - expand the menu
+                if (backToMenuBtn) {
+                    backToMenuBtn.classList.remove('collapsed');
+                    
+                    // Update rotation based on current player
+                    if (window.updateMenuRotation) {
+                        window.updateMenuRotation();
+                    }
+                    
+                    // Auto-collapse after 3 seconds
+                    setTimeout(() => {
+                        backToMenuBtn.classList.add('collapsed');
+                    }, 3000);
+                    
+                    // Play a sound to indicate the action
+                    soundManager.play('pop');
+                }
+            }
+        } else {
+            // Not in game - allow back button to close app (do nothing, let browser handle)
+            // But keep the history state to maintain consistency
+        }
+    });
+}
+
+// Helper function to handle returning to menu (shared by button click and back press)
+async function handleBackToMenu() {
+    // Leave multiplayer game if active
+    if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+        await multiplayerManager.leaveGame();
+    }
+    
+    // Restore original player 2 name if it was changed for multiplayer
+    if (gameState.originalPlayer2Name) {
+        gameState.player2Name = gameState.originalPlayer2Name;
+        gameState.originalPlayer2Name = null;
+    }
+    
+    // Properly cleanup the game
+    if (currentGame) {
+        // Stop all sounds
+        soundManager.stopAll();
+        
+        // Call game cleanup to stop all timers and reset state
+        currentGame.cleanup();
+        
+        // Clear the board grid
+        const fieldGrid = document.getElementById('fieldGrid');
+        if (fieldGrid) {
+            while (fieldGrid.firstChild) {
+                fieldGrid.removeChild(fieldGrid.firstChild);
+            }
+        }
+        
+        // Reset game reference
+        currentGame = null;
+    }
+    
+    // Close any open modals
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('active');
+    });
+    
+    // Clear multiplayer colors
+    gameState.clearMultiplayerColors();
+    
+    showScreen('mainMenu');
+}
 
 // Re-acquire wake lock when page becomes visible again (e.g., after switching tabs)
 document.addEventListener('visibilitychange', () => {
@@ -383,15 +479,14 @@ function setupEventListeners() {
 
     // Back to menu - expandable square
     const backToMenuBtn = document.getElementById('backToMenuBtn');
-    let menuExpanded = false;
     let collapseTimeout = null;
     
     // Global function to collapse menu (called from game actions)
     window.collapseMenuButton = function() {
-        if (menuExpanded && collapseTimeout) {
+        const isExpanded = backToMenuBtn && !backToMenuBtn.classList.contains('collapsed');
+        if (isExpanded && collapseTimeout) {
             clearTimeout(collapseTimeout);
             backToMenuBtn.classList.add('collapsed');
-            menuExpanded = false;
         }
     };
     
@@ -407,10 +502,12 @@ function setupEventListeners() {
         }
     };
     
-    backToMenuBtn.addEventListener('click', async () => {
-        if (!menuExpanded) {
+    backToMenuBtn.addEventListener('click', async (e) => {
+        // Check if button is currently expanded (checking at click time)
+        const isExpanded = !backToMenuBtn.classList.contains('collapsed');
+        
+        if (!isExpanded) {
             // First click: expand the menu
-            menuExpanded = true;
             backToMenuBtn.classList.remove('collapsed');
             
             // Update rotation based on current player
@@ -419,56 +516,16 @@ function setupEventListeners() {
             // Auto-collapse after 3 seconds
             collapseTimeout = setTimeout(() => {
                 backToMenuBtn.classList.add('collapsed');
-                menuExpanded = false;
             }, 3000);
         } else {
-            // Second click: go back to menu
+            // Menu is expanded - clicking on text goes back to menu
             clearTimeout(collapseTimeout);
             
-            // Leave multiplayer game if active
-            if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
-                await multiplayerManager.leaveGame();
-            }
-            
-            // Restore original player 2 name if it was changed for multiplayer
-            if (gameState.originalPlayer2Name) {
-                gameState.player2Name = gameState.originalPlayer2Name;
-                gameState.originalPlayer2Name = null;
-            }
-            
-            // Properly cleanup the game
-            if (currentGame) {
-                // Stop all sounds
-                soundManager.stopAll();
-                
-                // Call game cleanup to stop all timers and reset state
-                currentGame.cleanup();
-                
-                // Clear the board grid
-                const fieldGrid = document.getElementById('fieldGrid');
-                if (fieldGrid) {
-                    while (fieldGrid.firstChild) {
-                        fieldGrid.removeChild(fieldGrid.firstChild);
-                    }
-                }
-                
-                // Reset game reference
-                currentGame = null;
-            }
-            
-            // Close any open modals
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.classList.remove('active');
-            });
-            
-            // Clear multiplayer colors
-            gameState.clearMultiplayerColors();
-            
             // Reset menu state
-            menuExpanded = false;
             backToMenuBtn.classList.add('collapsed');
             
-            showScreen('mainMenu');
+            // Go back to menu using shared function
+            await handleBackToMenu();
         }
     });
 
