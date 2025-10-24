@@ -126,7 +126,7 @@ Play against another person on the same device.
 Challenge the computer opponent with three difficulty levels.
 
 <p align="center">
-  <img src="screenshots/aidifficulty.jpg" alt="AI Difficulty" width="400"/>
+  <img src="screenshots/aidifficulty.png" alt="AI Difficulty" width="400"/>
 </p>
 
 #### AI Difficulty Levels
@@ -224,7 +224,7 @@ Play against another person over the network.
 - Synchronized in multiplayer games
 
 <p align="center">
-  <img src="screenshots/shirtselection.jpg" alt="Shirt selection" width="400"/>
+  <img src="screenshots/shirtselection.png" alt="Shirt selection" width="400"/>
 </p>
 
 #### Game Settings
