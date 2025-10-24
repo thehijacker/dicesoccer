@@ -3,5 +3,10 @@ services:
     image: ghcr.io/thehijacker/dicesoccer:latest
     container_name: dicesoccer
     ports:
-      - "8080:8000"
+      - "8080:80"
     restart: unless-stopped
+    volumes:
+      - dicesoccer-data:/var/www/html/multiplayer-data
+
+volumes:
+  dicesoccer-data:
