@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.10';
 
 // Track PHP availability
 let phpAvailable = true;
@@ -319,6 +319,9 @@ function initializeApp() {
     
     // Set Auto Dice toggle
     document.getElementById('autoDiceCheckbox').checked = gameState.autoDice;
+    
+    // Initialize custom language dropdown with current language
+    initializeLanguageDropdown();
 
     // Set two player mode toggle
     document.getElementById('twoPlayerCheckbox').checked = gameState.twoPlayerMode;
@@ -371,6 +374,87 @@ function initializeApp() {
 
     // Initialize shirt modal
     initializeShirtModal();
+}
+
+// Initialize custom language dropdown
+function initializeLanguageDropdown() {    
+    const dropdown = document.getElementById('languageDropdown');
+    const trigger = dropdown.querySelector('.custom-select-trigger');
+    const options = dropdown.querySelectorAll('.custom-option');
+    const currentLang = translationManager.getCurrentLanguage();
+    
+    // Set initial selected language
+    options.forEach(option => {
+        const value = option.getAttribute('data-value');
+        if (value === currentLang) {
+            const flag = option.getAttribute('data-flag');
+            const text = option.querySelector('span').textContent;
+            trigger.querySelector('.flag-icon').src = `images/${flag}`;
+            trigger.querySelector('span').textContent = text;
+            option.classList.add('selected');
+        } else {
+            option.classList.remove('selected');
+        }
+    });
+    
+    // Toggle dropdown on trigger click
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasOpen = dropdown.classList.contains('open');
+        dropdown.classList.toggle('open');
+        
+        // Determine if dropdown should open upward
+        if (!wasOpen) {
+            const optionsElement = dropdown.querySelector('.custom-select-options');
+            const triggerRect = trigger.getBoundingClientRect();
+            const modalRect = dropdown.closest('.submenu').getBoundingClientRect();
+            const spaceBelow = modalRect.bottom - triggerRect.bottom;
+            const spaceAbove = triggerRect.top - modalRect.top;
+            const dropdownHeight = Math.min(200, window.innerHeight * 0.3);
+            
+            // Open upward if not enough space below but more space above
+            if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+                dropdown.classList.add('open-upward');
+            } else {
+                dropdown.classList.remove('open-upward');
+            }
+        }
+    });
+    
+    // Handle option selection
+    options.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const value = option.getAttribute('data-value');
+            const flag = option.getAttribute('data-flag');
+            const text = option.querySelector('span').textContent;
+            
+            // Update trigger display
+            trigger.querySelector('.flag-icon').src = `images/${flag}`;
+            trigger.querySelector('span').textContent = text;
+            
+            // Update selected state
+            options.forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            
+            // Close dropdown
+            dropdown.classList.remove('open');
+            dropdown.classList.remove('open-upward');
+            
+            // Change language
+            translationManager.setLanguage(value);
+            updateOrientationDisplay(gameState.orientation);
+            updatePlayer2UI(gameState.twoPlayerMode);
+        });
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+            dropdown.classList.remove('open-upward');
+        }
+    });
 }
 
 function setupEventListeners() {
@@ -460,22 +544,11 @@ function setupEventListeners() {
         toggleSubmenu('settingsSubmenu');
     });
 
-    // Language options within settings
-    document.querySelectorAll('#settingsSubmenu .submenu-option').forEach(option => {
-        option.addEventListener('click', (e) => {
-            const lang = e.currentTarget.getAttribute('data-language');
-            translationManager.setLanguage(lang);
-            // Update orientation and AI difficulty labels after language change
-            updateOrientationDisplay(gameState.orientation);
-            updatePlayer2UI(gameState.twoPlayerMode);
-        });
-    });
-    
     // Close settings button
     document.getElementById('closeSettingsBtn').addEventListener('click', () => {
         toggleSubmenu('settingsSubmenu', false);
     });
-    
+        
     // Fast AI toggle
     document.getElementById('fastAICheckbox').addEventListener('change', (e) => {
         gameState.setFastAI(e.target.checked);
@@ -784,6 +857,27 @@ function initializeShirtModal() {
 
 function openShirtModal(player) {
     currentShirtPlayer = player;
+    
+    // Get the other player's shirt color
+    const otherPlayer = player === 1 ? 2 : 1;
+    const otherPlayerShirt = player === 1 ? gameState.player2Shirt : gameState.player1Shirt;
+    
+    // Update shirt options to disable the other player's color
+    document.querySelectorAll('.shirt-option').forEach(option => {
+        const color = option.getAttribute('data-color');
+        if (color === otherPlayerShirt) {
+            option.classList.add('disabled');
+            option.style.opacity = '0.3';
+            option.style.cursor = 'not-allowed';
+            option.style.pointerEvents = 'none';
+        } else {
+            option.classList.remove('disabled');
+            option.style.opacity = '1';
+            option.style.cursor = 'pointer';
+            option.style.pointerEvents = 'auto';
+        }
+    });
+    
     openModal('shirtModal');
 }
 
@@ -810,7 +904,6 @@ function handleHintsSelection(hintsEnabled) {
     if (hintsModalMode === 'new') {
         // Play start sound
         soundManager.play('whistle');
-
         // Start new game
         const mode = gameState.twoPlayerMode ? 'local' : 'ai';
         gameState.startGame(mode);
@@ -821,8 +914,27 @@ function handleHintsSelection(hintsEnabled) {
         // Host multiplayer game
         hostGame();
     }
-    
+
     hintsModalMode = null;
+}
+
+
+// Launch confetti animation
+async function launchConfetti() {
+    if (typeof confetti === 'function') {
+        const duration = 3000;
+        const end = Date.now() + duration;
+
+        while (Date.now() < end) {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: Math.random() - 0.2 },
+                zIndex: 1500
+            });
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
 }
 
 // Multiplayer functions

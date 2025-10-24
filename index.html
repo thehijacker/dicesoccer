@@ -11,7 +11,7 @@
     <title>Dice Soccer - Nogomet s kocko</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="icons/icon512_maskable.png">
-    <link rel="manifest" href="manifest.json?v=1.0.8">
+    <link rel="manifest" href="manifest.json?v=1.0.10">
     <link rel="apple-touch-icon" href="icons/icon512_maskable.png">
     
     <!-- Early orientation detection to prevent layout jump -->
@@ -119,13 +119,47 @@
                 <!-- Language submenu -->
                 <div class="submenu-section">
                     <div class="submenu-header" data-translate="language">Language</div>
-                    <div class="submenu-option" data-language="en">
-                        <img src="images/flagenglish64.png" alt="English">
-                        <span>English</span>
-                    </div>
-                    <div class="submenu-option" data-language="sl">
-                        <img src="images/flagslovenian64.png" alt="Slovenščina">
-                        <span>Slovenščina</span>
+                    <div class="language-selector-container">
+                        <div class="custom-select" id="languageDropdown">
+                            <div class="custom-select-trigger">
+                                <img src="images/flagenglish64.png" alt="" class="flag-icon">
+                                <span>English</span>
+                            </div>
+                            <div class="custom-select-options">
+                                <div class="custom-option" data-value="en" data-flag="flagenglish64.png">
+                                    <img src="images/flagenglish64.png" alt="English">
+                                    <span>English</span>
+                                </div>
+                                <div class="custom-option" data-value="sl" data-flag="flagslovenian64.png">
+                                    <img src="images/flagslovenian64.png" alt="Slovenščina">
+                                    <span>Slovenščina</span>
+                                </div>
+                                <div class="custom-option" data-value="de" data-flag="flaggerman64.png">
+                                    <img src="images/flaggerman64.png" alt="Deutsch">
+                                    <span>Deutsch</span>
+                                </div>
+                                <div class="custom-option" data-value="es" data-flag="flagspanish64.png">
+                                    <img src="images/flagspanish64.png" alt="Español">
+                                    <span>Español</span>
+                                </div>
+                                <div class="custom-option" data-value="fr" data-flag="flagfrench64.png">
+                                    <img src="images/flagfrench64.png" alt="Français">
+                                    <span>Français</span>
+                                </div>
+                                <div class="custom-option" data-value="hr" data-flag="flagcroatian64.png">
+                                    <img src="images/flagcroatian64.png" alt="Hrvatski">
+                                    <span>Hrvatski</span>
+                                </div>                                
+                                <div class="custom-option" data-value="it" data-flag="flagitalian64.png">
+                                    <img src="images/flagitalian64.png" alt="Italiano">
+                                    <span>Italiano</span>
+                                </div>
+                                <div class="custom-option" data-value="hu" data-flag="flaghungarian64.png">
+                                    <img src="images/flaghungarian64.png" alt="Magyar">
+                                    <span>Magyar</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -148,7 +182,8 @@
                             <label for="autoDiceCheckbox" class="toggle-label"></label>
                         </div>
                     </div>
-                </div>                
+                </div>
+                
                 <!-- Close Button -->
                 <button class="close-modal-btn" id="closeSettingsBtn" data-translate="close">Close</button>
             </div>
@@ -304,6 +339,7 @@
         </div>
     </div>
 
+    <script src="tsparticles.confetti.bundle.min.js"></script>
     <script src="translations.js"></script>
     <script src="game.js"></script>
     <script src="multiplayer.js"></script>

@@ -19,6 +19,10 @@ A digital adaptation of the classic board game **Torjäger** by [Kosmos](https:/
 
 This game is a web-based recreation of Torjäger, a beloved board game that combines dice rolling with tactical soccer gameplay. Originally designed by Kosmos in Germany, this digital version allows players to enjoy the same strategic gameplay on any device - whether it's a desktop computer, tablet, or smartphone.
 
+<p align="center">
+  <img src="screenshots/torjager.jpg" alt="Torjäger board game" width="400"/>
+</p>
+
 The inspiration for this project came from countless hours playing the physical board game at home with family. Now, the game can be enjoyed anywhere, with special features like a unique portrait mode where two players can sit opposite each other sharing a single phone, with each player's view properly oriented for comfortable play.
 
 ## 🛠️ Technology Stack
@@ -34,7 +38,7 @@ The inspiration for this project came from countless hours playing the physical 
 ## 📋 Game Rules
 
 ### Objective
-Be the first player to score **3 goals** by moving your soccer players across the field and into your opponent's goal.
+Be the first player to score **3 goals** by moving your soccer players across the field and into your opponent's goal or by preventing him to move any further.
 
 ### Gameplay Mechanics
 
@@ -121,6 +125,10 @@ Play against another person on the same device.
 ### 2. Play Against Computer (AI)
 Challenge the computer opponent with three difficulty levels.
 
+<p align="center">
+  <img src="screenshots/aidifficulty.jpg" alt="AI Difficulty" width="400"/>
+</p>
+
 #### AI Difficulty Levels
 
 **Easy**:
@@ -166,6 +174,11 @@ Challenge the computer opponent with three difficulty levels.
 ### 3. Multiplayer Network Game
 Play against another person over the network.
 
+<p align="center">
+  <img src="screenshots/hostgame.png" alt="Host Game" width="400"/>
+  <img src="screenshots/joingame.png" alt="Join Game" width="400"/>
+</p>
+
 **Hosting a Game**:
 - Click "Host Multiplayer Game"
 - System generates a unique Game ID
@@ -205,17 +218,31 @@ Play against another person over the network.
 - AI opponent shows as "AI (difficulty level)"
 
 #### Team Shirt Colors
-- Choose from 8 different shirt colors for each team
-- Colors: Green, Blue, Red, Yellow, White, Black, Orange, Purple
+- Choose from 10 different shirt colors for each team
+- Colors: Green, Blue, Red, Yellow, White, Black, Orange, Purple + some team based (Argentina, Barcelona and Slovenia)
 - Visual distinction helps identify pieces on the field
 - Synchronized in multiplayer games
 
+<p align="center">
+  <img src="screenshots/shirtselection.jpg" alt="Shirt selection" width="400"/>
+</p>
+
 #### Game Settings
+
+<p align="center">
+  <img src="screenshots/settings.png" alt="Settings Menu" width="400"/>
+</p>
 
 **Language Selection**:
 Available in the Settings menu:
-- **English** (default)
-- **Slovenian** (Slovenščina)
+- **English**
+- **Slovenščina**
+- **Deutsch** (AI generated)
+- **Español** (AI generated)
+- **Français** (AI generated)
+- **Hrvatski**  (AI generated)
+- **Italiano** (AI generated)
+- **Magyar** (AI generated)
 
 The game features complete internationalization:
 - All UI text and messages translate dynamically
@@ -228,7 +255,7 @@ Toggle to control AI animation speed:
 - **Disabled**: AI moves play at normal speed with full animations
 - Only affects AI opponent moves, not human player moves
 - Useful for faster gameplay when playing against computer
-- Great for experienced players who want quicker matches
+- Great for experienced players who want quicker matches against AI
 
 **Automated Dice Rolling**:
 Toggle to automatically roll dice at the start of each turn:
@@ -347,6 +374,7 @@ Settings persist across game sessions using localStorage.
   - Rolling dice sound
   - Jump/movement sound
   - Cheering/celebration sound
+  - Menu click sound
   
 - **Icons**: Downloaded from [Flaticon.com](https://flaticon.com) - Free icon resources
   - Dice icons

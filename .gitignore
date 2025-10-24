@@ -1,3 +1,6 @@
+# Misc folder
+misc/*
+
 # Multiplayer data files (temporary session data)
 multiplayer-data/*
 

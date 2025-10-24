@@ -205,6 +205,11 @@ class DiceSoccerGame {
         this.lastRoundLoser = null; // Track who lost the last round (starts next round)
         this.activeTimeouts = []; // Track all active timeouts
         this.activeIntervals = []; // Track all active intervals
+        
+        // AI strategic tracking (for hard difficulty)
+        this.aiScoutPlayer = null; // Track the forward scout player
+        this.aiScoutBlocked = false; // Is the scout blocked?
+        this.aiPhase = 'scout'; // 'scout' or 'defensive'
     }
     
     // Cleanup method to stop all running timers and reset state
@@ -495,7 +500,9 @@ class DiceSoccerGame {
         const animationDuration = isFastAI ? 100 : 1000;
         
         diceImg.classList.add('rolling');
-        soundManager.play('rollingDice');
+
+        // Do not play roll dice sound if fast AI as sound is longer than animation
+        if (!isFastAI) soundManager.play('rollingDice');
         
         // Animate dice rolling with random values
         const rollInterval = setInterval(() => {
@@ -911,16 +918,8 @@ class DiceSoccerGame {
                 `AI (${translationManager.get(gameState.difficulty)})` : 
                 (gameState.player2Name || translationManager.get('player2')));
         
-        // Get player names for score display
-        const player1Name = gameState.player1Name || translationManager.get('player1');
-        const player2Name = gameState.gameMode === 'ai' ? 
-            `AI (${translationManager.get(gameState.difficulty)})` :
-            (gameState.player2Name || translationManager.get('player2'));
-        
         // Show blocked message and current score
-        document.getElementById('goalMessage').textContent = `${blockedPlayerName} ${translationManager.get('noMovesAvailable')}!\n${scorerName} ${translationManager.get('scores')}!`;
-        const scoreDisplay = `${player1Name} ${this.player1Score}:${this.player2Score} ${player2Name}`;
-        document.getElementById('goalMessage').textContent += `\n${scoreDisplay}`;
+        document.getElementById('goalMessage').innerHTML = `${blockedPlayerName} ${translationManager.get('noMovesAvailable')}!<br>${scorerName} ${translationManager.get('scores')}!<br><strong style="font-size: 1.5em;">${this.player1Score} : ${this.player2Score}</strong>`;
         
         const goalModal = document.getElementById('goalModal');
         goalModal.classList.add('active');
@@ -1037,6 +1036,71 @@ class DiceSoccerGame {
             return 9500 + blockingScore; // Almost as good as scoring a goal!
         }
         
+        // === ADVANCED STRATEGY: Scout + Defensive Line Tactic ===
+        // Identify or track the forward scout
+        if (!this.aiScoutPlayer || this.board[this.aiScoutPlayer.row][this.aiScoutPlayer.col]?.player !== 2) {
+            // Scout doesn't exist or is no longer valid, identify the most forward player
+            this.aiScoutPlayer = this.identifyScoutPlayer();
+        }
+        
+        // Check if this is the scout player
+        const isScout = this.aiScoutPlayer && 
+                       playerPos.row === this.aiScoutPlayer.row && 
+                       playerPos.col === this.aiScoutPlayer.col;
+        
+        // Check if scout is blocked (can't move forward anymore)
+        if (isScout) {
+            const scoutCanAdvance = this.canPlayerAdvanceForward(playerPos.row, playerPos.col);
+            this.aiScoutBlocked = !scoutCanAdvance;
+        }
+        
+        // PHASE 1: Scout Phase - Push one player deep into opponent territory
+        if (!this.aiScoutBlocked && (isScout || playerPos.col <= this.cols - 5)) {
+            if (isScout) {
+                // HUGE bonus for scout moving forward toward goal
+                if (move.col < playerPos.col) {
+                    score += 800; // Massive priority for scout advancement
+                    
+                    // Extra bonus if moving toward middle row
+                    if (Math.abs(move.row - middleRow) < Math.abs(playerPos.row - middleRow)) {
+                        score += 100;
+                    }
+                }
+            } else {
+                // If no scout established yet, prioritize becoming the scout
+                if (move.col < playerPos.col && playerPos.col <= this.cols - 4) {
+                    score += 400; // High bonus for advancing as potential scout
+                }
+            }
+        }
+        
+        // PHASE 2: Once scout is blocked, focus on defensive line formation
+        if (this.aiScoutBlocked) {
+            // Check if this is a defensive player (not the scout)
+            if (!isScout) {
+                // Reward tight defensive formation
+                const defensiveLineScore = this.evaluateDefensiveLine(playerPos, move);
+                score += defensiveLineScore * 60;
+                
+                // Keep players close together in a line
+                const cohesionScore = this.evaluateDefensiveCohesion(move.row, move.col);
+                score += cohesionScore * 40;
+                
+                // Penalize moving forward when we should be defending
+                if (move.col < playerPos.col && move.col < this.cols - 3) {
+                    score -= 300; // Strong penalty for breaking defensive formation
+                }
+            } else {
+                // Scout stays put unless there's a clear scoring opportunity
+                if (move.col === opponentGoalCol || 
+                    (move.col < playerPos.col && this.hasOpponentMovedForward())) {
+                    score += 600; // Reward scout movement if opponent exposed themselves
+                } else {
+                    score -= 100; // Slight penalty for scout moving when defensive
+                }
+            }
+        }
+        
         // CRITICAL: Am I currently blocking an opponent? Don't move unless absolutely necessary!
         const currentlyBlocking = this.isBlockingOpponent(playerPos.row, playerPos.col);
         if (currentlyBlocking) {
@@ -1047,7 +1111,7 @@ class DiceSoccerGame {
         const threatScore = this.evaluateDefensiveThreat(playerPos, move);
         score += threatScore;
         
-        // OFFENSIVE STRATEGIES
+        // OFFENSIVE STRATEGIES (adjusted for strategy)
         
         // 1. Direct path to goal - heavily favor moves toward opponent goal
         const distanceToGoal = move.col - opponentGoalCol;
@@ -1063,45 +1127,151 @@ class DiceSoccerGame {
             score += pathToGoal * 30; // Reward clear paths
         }
         
-        // 4. Don't block opponent unnecessarily if we're far from their goal
-        // (avoid arriving too early when opponent has many blockers)
-        if (move.col <= 2) { // If we're entering opponent territory
-            const opponentBlockers = this.countOpponentPieces(0, 3);
-            if (opponentBlockers > 6) {
-                score -= 25; // Penalty for entering too early
-            }
-        }
-        
         // DEFENSIVE STRATEGIES
         
-        // 5. CRITICAL: Keep goalkeeper in goal unless absolutely necessary
+        // 4. CRITICAL: Keep goalkeeper in goal unless absolutely necessary
         if (piece.number === 1) { // Goalkeeper
             if (playerPos.col === myGoalCol && playerPos.row === middleRow) {
                 score -= 200; // Heavy penalty for moving goalkeeper out of goal
             }
         }
         
-        // 6. Protect area around goalkeeper
+        // 5. Protect area around goalkeeper
         const isNearMyGoal = playerPos.col >= this.cols - 3;
         if (isNearMyGoal) {
             const goalProtection = this.evaluateGoalProtection(move.row, move.col);
             score += goalProtection * 20;
         }
         
-        // 7. Block opponent's forward progress
+        // 6. Block opponent's forward progress
         const blockingValue = this.evaluateBlockingPosition(move.row, move.col);
         score += blockingValue * 25;
         
-        // 8. Try to push opponent pieces to edge corners
+        // 7. Try to push opponent pieces to edge corners
         const trapValue = this.evaluateTrapOpponent(move.row, move.col);
         score += trapValue * 30;
         
-        // 9. Avoid positions where opponent can trap us in edge corners
+        // 8. Avoid positions where opponent can trap us in edge corners
         if ((move.row === 0 || move.row === this.rows - 1) && move.col >= this.cols - 4) {
             score -= 40; // Heavy penalty for being in danger of corner trap
         }
         
         return score;
+    }
+
+    // Helper: Identify the most forward AI player to be the scout
+    identifyScoutPlayer() {
+        let scout = null;
+        let minCol = this.cols;
+        
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const piece = this.board[row][col];
+                if (piece && piece.player === 2 && piece.number !== 1) { // Not goalkeeper
+                    if (col < minCol) {
+                        minCol = col;
+                        scout = { row, col };
+                    }
+                }
+            }
+        }
+        return scout;
+    }
+
+    // Helper: Check if player can advance forward
+    canPlayerAdvanceForward(row, col) {
+        const piece = this.board[row][col];
+        if (!piece) return false;
+        
+        const direction = piece.player === 1 ? 1 : -1;
+        const forwardCol = col + direction;
+        
+        // Check forward moves
+        if (forwardCol >= 0 && forwardCol < this.cols) {
+            const middleRow = Math.floor(this.rows / 2);
+            const isEmptyCell = (forwardCol === 0 || forwardCol === this.cols - 1) && row !== middleRow;
+            
+            // Check straight forward
+            if (!isEmptyCell && !this.board[row][forwardCol]) {
+                return true;
+            }
+            
+            // Check diagonal forward-up
+            const upRow = row - 1;
+            if (upRow >= 0) {
+                const isEmptyCellUp = (forwardCol === 0 || forwardCol === this.cols - 1) && upRow !== middleRow;
+                if (!isEmptyCellUp && !this.board[upRow][forwardCol]) {
+                    return true;
+                }
+            }
+            
+            // Check diagonal forward-down
+            const downRow = row + 1;
+            if (downRow < this.rows) {
+                const isEmptyCellDown = (forwardCol === 0 || forwardCol === this.cols - 1) && downRow !== middleRow;
+                if (!isEmptyCellDown && !this.board[downRow][forwardCol]) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    // Helper: Evaluate defensive line formation
+    evaluateDefensiveLine(playerPos, move) {
+        // Reward staying in defensive zone (columns 6-8 for AI/player 2)
+        const isInDefensiveZone = move.col >= this.cols - 3;
+        if (!isInDefensiveZone) return -10;
+        
+        let score = 10; // Base score for being in defensive zone
+        
+        // Bonus for staying in a horizontal line with teammates
+        let teammatesInLine = 0;
+        for (let c = this.cols - 3; c < this.cols; c++) {
+            if (this.board[move.row][c] && this.board[move.row][c].player === 2) {
+                teammatesInLine++;
+            }
+        }
+        score += teammatesInLine * 5;
+        
+        return score;
+    }
+
+    // Helper: Evaluate defensive cohesion (keeping players together)
+    evaluateDefensiveCohesion(row, col) {
+        let nearbyTeammates = 0;
+        
+        // Check adjacent cells for teammates
+        for (let r = Math.max(0, row - 1); r <= Math.min(this.rows - 1, row + 1); r++) {
+            for (let c = Math.max(0, col - 1); c <= Math.min(this.cols - 1, col + 1); c++) {
+                if (r === row && c === col) continue;
+                
+                const piece = this.board[r][c];
+                if (piece && piece.player === 2) {
+                    nearbyTeammates++;
+                }
+            }
+        }
+        
+        return nearbyTeammates;
+    }
+
+    // Helper: Check if opponent has moved forward (creating space for scout)
+    hasOpponentMovedForward() {
+        // Count how many opponent pieces are in their attacking zone (columns 4-7 for player 1)
+        let forwardOpponents = 0;
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 4; col <= 7; col++) {
+                const piece = this.board[row][col];
+                if (piece && piece.player === 1) {
+                    forwardOpponents++;
+                }
+            }
+        }
+        
+        // If opponent has 3+ pieces forward, they've likely left gaps
+        return forwardOpponents >= 3;
     }
 
     evaluateCompleteBlockingWin(playerPos, move) {
@@ -1479,22 +1649,24 @@ class DiceSoccerGame {
         
         this.updateUI();
         
+        // Track who lost this round (for next round start)
+        this.lastRoundLoser = losingPlayer;
+        
+        // Check for winner - if game is over, go directly to endGame without showing goal modal
+        if (this.player1Score >= 3 || this.player2Score >= 3) {
+            const timeoutId = setTimeout(() => this.endGame(), 1000);
+            this.activeTimeouts.push(timeoutId);
+            return; // Skip showing goal modal
+        }
+        
         const scorer = this.currentPlayer === 1 ? 
             (gameState.player1Name || translationManager.get('player1')) : 
             (gameState.gameMode === 'ai' ? 
                 `AI (${translationManager.get(gameState.difficulty)})` :
                     (gameState.player2Name || translationManager.get('player2')));
         
-        // Get player names for score display
-        const player1Name = gameState.player1Name || translationManager.get('player1');
-        const player2Name = gameState.gameMode === 'ai' ? 
-            `AI (${translationManager.get(gameState.difficulty)})` :
-            (gameState.player2Name || translationManager.get('player2'));
-        
-        // Show goal message and current score
-        document.getElementById('goalMessage').textContent = `${scorer} ${translationManager.get('goal')}`;
-        const scoreDisplay = `${player1Name} ${this.player1Score}:${this.player2Score} ${player2Name}`;
-        document.getElementById('goalMessage').textContent += `\n${scoreDisplay}`;
+        // Show goal message with scorer name and score only
+        document.getElementById('goalMessage').innerHTML = `${scorer} ${translationManager.get('scores')}<br><strong style="font-size: 1.5em;">${this.player1Score} : ${this.player2Score}</strong>`;
         
         const goalModal = document.getElementById('goalModal');
         goalModal.classList.add('active');
@@ -1504,15 +1676,6 @@ class DiceSoccerGame {
             goalModal.style.transform = 'rotate(180deg)';
         } else {
             goalModal.style.transform = '';
-        }
-        
-        // Track who lost this round (for next round start)
-        this.lastRoundLoser = losingPlayer;
-        
-        // Check for winner
-        if (this.player1Score >= 3 || this.player2Score >= 3) {
-            const timeoutId = setTimeout(() => this.endGame(), 2000);
-            this.activeTimeouts.push(timeoutId);
         }
     }
 
@@ -1528,6 +1691,11 @@ class DiceSoccerGame {
         if (this.lastRoundLoser) {
             this.nextRoundStartPlayer = this.lastRoundLoser;
         }
+        
+        // Reset AI strategy state for new round
+        this.aiScoutPlayer = null;
+        this.aiScoutBlocked = false;
+        this.aiPhase = 'scout';
         
         this.initBoard();
         this.renderBoard();
@@ -1584,10 +1752,11 @@ class DiceSoccerGame {
         const totalMoves = this.player1Score >= 3 ? this.player1Moves : this.player2Moves;
         
         document.getElementById('winnerMessage').textContent = `${winner} ${translationManager.get('wins')}!`;
-        
+
         const statsHTML = `
-            <p><strong>${player1Name}:</strong> ${this.player1Score} ${translationManager.get('points')} - ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player1ThinkingTime)}</p>
-            <p><strong>${player2Name}:</strong> ${this.player2Score} ${translationManager.get('points')} - ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player2ThinkingTime)}</p>
+            <p style="font-size: 1.5em; margin: 10px 0; text-align: center;"><strong>${this.player1Score}:${this.player2Score}</strong></p>
+            <p><strong>${player1Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player1ThinkingTime)}</p>
+            <p><strong>${player2Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player2ThinkingTime)}</p>
             <p><strong>${translationManager.get('totalMoves')}:</strong> ${totalMoves}</p>
             <p><strong>${translationManager.get('totalTime')}:</strong> ${this.formatTime(this.totalGameTime)}</p>
         `;
@@ -1597,6 +1766,11 @@ class DiceSoccerGame {
         
         const winnerModal = document.getElementById('winnerModal');
         winnerModal.classList.add('active');
+
+        // Launch confetti animation
+        if (window.launchConfetti) {
+            window.launchConfetti();
+        }
         
         // Rotate winner modal for Player 2 in portrait 2-player mode
         const winningPlayer = this.player1Score >= 3 ? 1 : 2;
@@ -1673,6 +1847,11 @@ class DiceSoccerGame {
         this.isMoving = false;
         this.diceValue = 0;
         this.selectedPlayer = null;
+        
+        // Reset AI strategy state
+        this.aiScoutPlayer = null;
+        this.aiScoutBlocked = false;
+        this.aiPhase = 'scout';
         
         // Reset dice images to dice1
         document.getElementById('player1Dice').src = 'images/dice1.png';

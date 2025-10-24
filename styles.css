@@ -310,9 +310,9 @@ input:checked + .toggle-label::before {
     border-radius: 15px;
     padding: 20px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    max-width: 650px;
-    min-width: 400px;
-    max-height: 80vh;
+    max-width: min(650px, 95vw);
+    min-width: min(400px, 90vw);
+    max-height: min(90vh, calc(var(--vh, 1vh) * 90));
     overflow-y: auto;
     flex-direction: column;
     animation: modalPopIn 0.3s ease;
@@ -336,13 +336,16 @@ input:checked + .toggle-label::before {
 /* Settings submenu - two columns in landscape */
 #settingsSubmenu.submenu.active {
     flex-direction: column;
+    min-height: 300px;
 }
 
 @media (orientation: landscape) {
     #settingsSubmenu.submenu.active {
         flex-direction: row;
         flex-wrap: wrap;
-        max-width: 850px;
+        max-width: min(850px, 95vw);
+        width: min(650px, 90vw);
+        min-height: 350px;
         gap: 25px;
         padding: 20px;
     }
@@ -468,6 +471,121 @@ input:checked + .toggle-label::before {
     color: #333;
     flex: 1;
     margin-right: 15px;
+}
+
+/* Language selector dropdown */
+.language-selector-container {
+    padding: 8px 0;
+}
+
+.custom-select {
+    position: relative;
+    width: 100%;
+    user-select: none;
+}
+
+.custom-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 40px 12px 15px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.custom-select-trigger::after {
+    content: '';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #666;
+    transition: transform 0.3s ease;
+}
+
+.custom-select.open .custom-select-trigger::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.custom-select-trigger:hover {
+    border-color: #4CAF50;
+    background-color: #f9f9f9;
+}
+
+.custom-select-trigger .flag-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.custom-select-trigger span {
+    font-size: 16px;
+    color: #333;
+}
+
+.custom-select-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #4CAF50;
+    border-radius: 10px;
+    margin-top: 5px;
+    max-height: min(200px, 30vh);
+    overflow-y: auto;
+    z-index: 1001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: none;
+}
+
+/* Open upward when there's not enough space below */
+.custom-select.open-upward .custom-select-options {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.custom-select.open .custom-select-options {
+    display: block;
+}
+
+.custom-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.custom-option:hover {
+    background-color: #e8f5e9;
+}
+
+.custom-option.selected {
+    background-color: #c8e6c9;
+    font-weight: 600;
+}
+
+.custom-option img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.custom-option span {
+    font-size: 16px;
+    color: #333;
 }
 
 /* Close button in submenu */
@@ -1006,7 +1124,8 @@ input:checked + .toggle-label::before {
     padding: 5px;
     min-width: 0;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
+    max-height: 100%;
 }
 
 .field-grid {
@@ -1016,10 +1135,6 @@ input:checked + .toggle-label::before {
     padding: clamp(5px, 1vw, 10px);
     border-radius: 15px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
     position: relative; /* For absolute positioned animation clones */
 }
 
@@ -1027,14 +1142,16 @@ input:checked + .toggle-label::before {
 .vertical-game .field-grid {
     grid-template-columns: repeat(5, 1fr);
     grid-template-rows: repeat(9, 1fr);
-    aspect-ratio: 5 / 9;
+    width: min(calc((100vh - 140px) * 5 / 9), calc(100vw - 40px));
+    height: min(calc(100vh - 140px), calc((100vw - 40px) * 9 / 5));
 }
 
 /* Landscape mode: 9 columns × 5 rows (wide board) */
 .horizontal-game .field-grid {
     grid-template-columns: repeat(9, 1fr);
     grid-template-rows: repeat(5, 1fr);
-    aspect-ratio: 9 / 5;
+    width: min(calc((100vh - 40px) * 9 / 5), calc(100vw - 220px));
+    height: min(calc(100vh - 40px), calc((100vw - 220px) * 5 / 9));
 }
 
 .field-cell {
@@ -1263,6 +1380,11 @@ input:checked + .toggle-label::before {
 }
 
 /* Goal and Winner Modals */
+.goal-modal-content {
+    min-width: min(400px, 85vw);
+    max-width: min(500px, 90vw);
+}
+
 .goal-modal-content img,
 .winner-modal-content img {
     width: 100px;
