@@ -346,13 +346,18 @@ The easiest way to run Dice Soccer with full multiplayer support is using Docker
 1. **Using Docker Compose**:
    Create a `docker-compose.yml` file:
    ```yaml
-   services:
-     dicesoccer:
-       image: ghcr.io/thehijacker/dicesoccer:latest
-       container_name: dicesoccer
-       ports:
-         - "8080:8000"
-       restart: unless-stopped
+      services:
+        dicesoccer:
+          image: ghcr.io/thehijacker/dicesoccer:latest
+          container_name: dicesoccer
+          ports:
+            - "8080:80"
+          restart: unless-stopped
+          volumes:
+            - dicesoccer-data:/var/www/html/multiplayer-data
+
+      volumes:
+        dicesoccer-data:
    ```
 
 2. **Start the container**:
