@@ -1,0 +1,7 @@
+services:
+  dicesoccer:
+    image: ghcr.io/thehijacker/dicesoccer:latest
+    container_name: dicesoccer
+    ports:
+      - "8080:8000"
+    restart: unless-stopped

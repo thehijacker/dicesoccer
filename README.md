@@ -146,6 +146,17 @@ Challenge the computer opponent with three difficulty levels.
 
 **Hard**:
 - Fully strategic AI with advanced evaluation
+- **Two-Phase Strategy System**:
+  - **Phase 1 - Scout Rush**: AI identifies its most advanced player and aggressively pushes them forward
+    - Prioritizes advancing the "scout" player toward the goal (+800 bonus)
+    - Rewards positioning other players as potential future scouts (+400 bonus)
+    - Continues scout phase until the scout is blocked or cannot advance further
+  - **Phase 2 - Defensive Formation**: Once the scout is blocked, AI switches to defensive tactics
+    - Builds a strong defensive line by keeping players in defensive zones (+60 bonus)
+    - Maintains cohesive formation by keeping players close together (+40 bonus)
+    - Heavily penalizes breaking defensive formation (-300 penalty)
+    - Protects the defensive position while looking for scoring opportunities
+  - Dynamic phase switching based on game state and opponent positioning
 - **Offensive Strategy**:
   - Prioritizes direct paths to goal
   - Evaluates clear forward routes
@@ -328,6 +339,46 @@ Settings persist across game sessions using localStorage.
 
 ## 🚀 Installation & Usage
 
+### Option 1: Docker (Recommended)
+
+The easiest way to run Dice Soccer with full multiplayer support is using Docker:
+
+1. **Using Docker Compose**:
+   Create a `docker-compose.yml` file:
+   ```yaml
+   services:
+     dicesoccer:
+       image: ghcr.io/thehijacker/dicesoccer:latest
+       container_name: dicesoccer
+       ports:
+         - "8080:8000"
+       restart: unless-stopped
+   ```
+
+2. **Start the container**:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Access the game**:
+   - Open your browser and navigate to `http://localhost:8080`
+   - All features including multiplayer will be fully functional
+   - The container includes PHP and a web server pre-configured
+
+4. **Stop the container**:
+   ```bash
+   docker-compose down
+   ```
+
+**Advantages**:
+- ✅ No manual PHP or web server setup required
+- ✅ Consistent environment across all platforms (Windows, macOS, Linux)
+- ✅ Easy updates by pulling the latest image
+- ✅ Full multiplayer functionality out of the box
+- ✅ Isolated environment with no system dependencies
+
+### Option 2: Traditional Web Server
+
 1. **Web Server Setup**: 
    - Requires a web server with PHP support (for multiplayer features)
    - Can be played locally for single-player and local 2-player modes
@@ -338,7 +389,8 @@ Settings persist across game sessions using localStorage.
    - Or deploy to a web server for full multiplayer functionality
    - The game automatically detects PHP availability on startup
 
-3. **Install as PWA** (Progressive Web App):
+### Option 3: Install as PWA (Progressive Web App)
+
    - Visit the game in a supported browser
    - Use browser's "Add to Home Screen" or "Install" option
    - Game becomes available as a standalone app with offline capability
