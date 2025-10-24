@@ -5,6 +5,7 @@ RUN apk add --no-cache nginx \
 WORKDIR /var/www/html
 COPY . .
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY www.conf /usr/local/etc/php-fpm.d/www.conf
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 RUN chown -R www:www /var/www/html
