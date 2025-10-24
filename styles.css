@@ -1142,8 +1142,8 @@ input:checked + .toggle-label::before {
 .vertical-game .field-grid {
     grid-template-columns: repeat(5, 1fr);
     grid-template-rows: repeat(9, 1fr);
-    width: min(calc((100vh - 140px) * 5 / 9), calc(100vw - 40px));
-    height: min(calc(100vh - 140px), calc((100vw - 40px) * 9 / 5));
+    width: min(calc((100vh - 260px) * 5 / 9), calc(100vw - 40px));
+    height: min(calc(100vh - 260px), calc((100vw - 40px) * 9 / 5));
 }
 
 /* Landscape mode: 9 columns × 5 rows (wide board) */

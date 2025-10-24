@@ -1,5 +1,5 @@
 // Service Worker for Dice Soccer PWA
-const CACHE_NAME = 'dice-soccer-v1.0.10';
+const CACHE_NAME = 'dice-soccer-v1.0.11';
 const urlsToCache = [
   './',
   './index.html',
@@ -96,6 +96,8 @@ const urlsToCache = [
   './images/exit128.png',
   './images/hintson128.png',
   './images/hintsoff128.png',
+  './images/autodice128.png',
+  './images/settings128.png',
   
   // AI difficulty icons
   './images/difficultyeasy128.png',
@@ -105,6 +107,12 @@ const urlsToCache = [
   // Language flags
   './images/flagenglish64.png',
   './images/flagslovenian64.png',
+  './images/flaggerman64.png',
+  './images/flagfrench64.png',
+  './images/flagitalian64.png',
+  './images/flagspanish64.png',
+  './images/flagcroatian64.png',
+  './images/flaghungarian64.png',
   
   // Game state icons
   './images/goal128.png',
