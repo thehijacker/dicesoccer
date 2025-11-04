@@ -8,7 +8,7 @@ multiplayer-data/*
 !multiplayer-data/.gitkeep
 
 # Multiplayer log files
-multiplayer-logs/*
+logs/.gitkeep
 
 # Keep the log folder structure
 !multiplayer-logs/.gitkeep

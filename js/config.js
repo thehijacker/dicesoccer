@@ -27,11 +27,9 @@ class ConfigManager {
 
     setDefaultConfig() {
         this.config = {
-            'multiplayer-server': 'php',
-            'php-server': 'multiplayer-server.php',
-            'nodejs-server': '',
-            'python-server': '',
-            'log-enabled': false
+            'websocket-server': 'wss://localhost:3000',
+            'log-enabled': false,
+            'debug-mode': false
         };
         this.loaded = true;
     }
@@ -48,10 +46,12 @@ class ConfigManager {
         return this.loaded && this.config['log-enabled'] === true;
     }
 
-    getMultiplayerServerUrl() {
-        const serverType = this.config['multiplayer-server'];
-        const key = `${serverType}-server`;
-        return this.config[key] || 'multiplayer-server.php';
+    isDebugMode() {
+        return this.loaded && this.config['debug-mode'] === true;
+    }
+
+    getWebSocketServerUrl() {
+        return this.config['websocket-server'] || 'wss://localhost:3000';
     }
 
     getLoggerUrl() {

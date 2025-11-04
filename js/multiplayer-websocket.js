@@ -5,6 +5,13 @@
  * Provides the same interface as the PHP multiplayer manager for easy switching
  */
 
+// Debug logging helper (will use global appConfig if available)
+function wsDebugLog(...args) {
+    if (typeof appConfig !== 'undefined' && appConfig['debug-mode']) {
+        console.log(...args);
+    }
+}
+
 class WebSocketMultiplayerManager {
     constructor() {
         this.serverUrl = null; // Will be set from config
@@ -33,17 +40,23 @@ class WebSocketMultiplayerManager {
 
         // Load server URL from config
         if (!this.serverUrl) {
-            try {
-                const response = await fetch('config.json');
-                const config = await response.json();
-                this.serverUrl = config['nodejs-server'] || 'ws://localhost:3000';
-            } catch (error) {
-                console.error('Failed to load config:', error);
-                this.serverUrl = 'ws://localhost:3000'; // Fallback
+            // Use global appConfig if available
+            if (typeof appConfig !== 'undefined' && appConfig['websocket-server']) {
+                this.serverUrl = appConfig['websocket-server'];
+            } else {
+                // Fallback: load config ourselves
+                try {
+                    const response = await fetch('config.json');
+                    const config = await response.json();
+                    this.serverUrl = config['websocket-server'] || 'wss://localhost:3000';
+                } catch (error) {
+                    console.error('Failed to load config:', error);
+                    this.serverUrl = 'wss://localhost:3000'; // Fallback
+                }
             }
         }
 
-        console.log(`🔌 Connecting to WebSocket server: ${this.serverUrl}`);
+        wsDebugLog(`🔌 Connecting to WebSocket server: ${this.serverUrl}`);
 
         return new Promise((resolve, reject) => {
             try {
@@ -75,7 +88,7 @@ class WebSocketMultiplayerManager {
             });
 
             this.socket.on('connect', () => {
-                console.log('✅ Connected to WebSocket server');
+                wsDebugLog('✅ Connected to WebSocket server');
                 this.connected = true;
                 this.reconnectAttempts = 0;
 
@@ -86,7 +99,7 @@ class WebSocketMultiplayerManager {
                     playerName: playerName 
                 }, (response) => {
                     if (response.success) {
-                        console.log('👤 Player initialized on server');
+                        wsDebugLog('👤 Player initialized on server');
                         resolve();
                     } else {
                         reject(new Error(response.error));
@@ -95,7 +108,7 @@ class WebSocketMultiplayerManager {
             });
 
             this.socket.on('disconnect', () => {
-                console.log('❌ Disconnected from WebSocket server');
+                wsDebugLog('❌ Disconnected from WebSocket server');
                 this.connected = false;
             });
 
@@ -109,7 +122,7 @@ class WebSocketMultiplayerManager {
 
             // Event handlers
             this.socket.on('challenge', (data) => {
-                console.log('⚔️ Received challenge:', data);
+                wsDebugLog('⚔️ Received challenge:', data);
                 // Handle incoming challenge in app.js
                 if (window.handleIncomingChallenge) {
                     window.handleIncomingChallenge(data);
@@ -117,7 +130,7 @@ class WebSocketMultiplayerManager {
             });
 
             this.socket.on('challengeAccepted', (data) => {
-                console.log('🎮 Challenge accepted:', data);
+                wsDebugLog('🎮 Challenge accepted:', data);
                 this.gameId = data.gameId;
                 this.role = data.role;
                 this.isHost = (data.role === 'host');
@@ -134,14 +147,14 @@ class WebSocketMultiplayerManager {
             });
 
             this.socket.on('challengeDeclined', (data) => {
-                console.log('❌ Challenge declined:', data);
+                wsDebugLog('❌ Challenge declined:', data);
                 if (window.handleChallengeDeclined) {
                     window.handleChallengeDeclined(data);
                 }
             });
 
             this.socket.on('challengeCancelled', (data) => {
-                console.log('🚫 Challenge cancelled:', data);
+                wsDebugLog('🚫 Challenge cancelled:', data);
                 if (window.handleChallengeCancelled) {
                     window.handleChallengeCancelled(data);
                 }
@@ -155,7 +168,7 @@ class WebSocketMultiplayerManager {
             });
 
             this.socket.on('gameEvent', (event) => {
-                console.log('📨 Received game event:', event.type);
+                wsDebugLog('📨 Received game event:', event.type);
                 if (this.onEvent) {
                     this.onEvent(event);
                 }
@@ -188,7 +201,7 @@ class WebSocketMultiplayerManager {
 
             this.socket.emit('enterLobby', { playerName }, (response) => {
                 if (response.success) {
-                    console.log('🚪 Entered lobby');
+                    wsDebugLog('🚪 Entered lobby');
                     resolve(response);
                 } else {
                     reject(new Error(response.error));
@@ -221,7 +234,7 @@ class WebSocketMultiplayerManager {
 
             this.socket.emit('sendChallenge', { targetPlayerId, hintsEnabled }, (response) => {
                 if (response.success) {
-                    console.log('⚔️ Challenge sent');
+                    wsDebugLog('⚔️ Challenge sent');
                     resolve(response);
                 } else {
                     reject(new Error(response.error));
@@ -245,7 +258,7 @@ class WebSocketMultiplayerManager {
                     this.opponentInfo = response.opponent;
                     this.isInGame = true;
                     
-                    console.log('✅ Challenge accepted, starting game');
+                    wsDebugLog('✅ Challenge accepted, starting game');
                     resolve(response);
                 } else {
                     reject(new Error(response.error));
@@ -262,7 +275,7 @@ class WebSocketMultiplayerManager {
 
             this.socket.emit('declineChallenge', { challengeId }, (response) => {
                 if (response.success) {
-                    console.log('❌ Challenge declined');
+                    wsDebugLog('❌ Challenge declined');
                     resolve(response);
                 } else {
                     reject(new Error(response.error));
@@ -279,7 +292,7 @@ class WebSocketMultiplayerManager {
 
             this.socket.emit('leaveLobby', {}, (response) => {
                 if (response.success) {
-                    console.log('🚪 Left lobby');
+                    wsDebugLog('🚪 Left lobby');
                     resolve(response);
                 } else {
                     reject(new Error(response.error));
@@ -296,7 +309,7 @@ class WebSocketMultiplayerManager {
             return;
         }
 
-        console.log('📤 Sending event:', event.type);
+        wsDebugLog('📤 Sending event:', event.type);
         
         this.socket.emit('gameEvent', event, (response) => {
             if (response.success) {
@@ -321,7 +334,7 @@ class WebSocketMultiplayerManager {
                 this.opponentInfo = null;
                 this.isInGame = false;
                 
-                console.log('👋 Left game');
+                wsDebugLog('👋 Left game');
                 resolve(response);
             });
         });
@@ -348,7 +361,7 @@ class WebSocketMultiplayerManager {
 
     // These methods are for PHP polling compatibility - not needed for WebSocket
     startPolling() {
-        console.log('📡 WebSocket mode: polling not needed (real-time events)');
+        wsDebugLog('📡 WebSocket mode: polling not needed (real-time events)');
     }
 
     stopPolling() {
@@ -356,7 +369,7 @@ class WebSocketMultiplayerManager {
     }
 
     cleanup() {
-        console.log('🧹 Cleaning up WebSocket connection');
+        wsDebugLog('🧹 Cleaning up WebSocket connection');
         this.stopHeartbeat();
         
         if (this.socket) {

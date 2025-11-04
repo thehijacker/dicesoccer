@@ -1,7 +1,5 @@
 {
-  "multiplayer-server": "nodejs",
-  "php-server": "multiplayer-server.php",
-  "nodejs-server": "wss://ds.kralj.top",
-  "python-server": "",
-  "log-enabled": true
+  "websocket-server": "wss://ds.kralj.top",
+  "log-enabled": true,
+  "debug-mode": true
 }

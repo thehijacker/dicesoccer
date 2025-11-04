@@ -1,8 +1,47 @@
 // Main application logic and UI interactions
-const APP_VERSION = 'v2.0.0-beta-3';
+const APP_VERSION = '2.0.0-ws-only-3';
 
-// Track PHP availability
-let phpAvailable = true;
+// Global config
+let appConfig = {
+    'debug-mode': false,
+    'log-enabled': true
+};
+
+
+// Debug logging helper
+function debugLog(...args) {
+    if (appConfig['debug-mode']) {
+        console.log(...args);
+    }
+}
+
+// Initialize multiplayer manager
+let multiplayerManager = null;
+
+// Load config and initialize
+(async function initializeApp() {
+    try {
+        const response = await fetch('config.json');
+        appConfig = await response.json();
+        debugLog('🎮 App config loaded:', appConfig);
+        
+        // Initialize WebSocket multiplayer manager
+        if (typeof WebSocketMultiplayerManager !== 'undefined') {
+            multiplayerManager = new WebSocketMultiplayerManager();
+            window.multiplayerManager = multiplayerManager;
+            debugLog('✅ WebSocket multiplayer manager initialized');
+        } else {
+            console.error('❌ WebSocketMultiplayerManager not found!');
+        }
+    } catch (error) {
+        console.error('Failed to load config:', error);
+        // Use defaults
+        if (typeof WebSocketMultiplayerManager !== 'undefined') {
+            multiplayerManager = new WebSocketMultiplayerManager();
+            window.multiplayerManager = multiplayerManager;
+        }
+    }
+})();
 
 // Wake Lock API to prevent screen sleep
 let wakeLock = null;
@@ -18,7 +57,7 @@ if ('serviceWorker' in navigator) {
       const newWorker = reg.installing;
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('New version available, reloading in 1 second...');
+          debugLog('New version available, reloading in 1 second...');
           // Delay slightly to ensure service worker is fully activated
           setTimeout(() => {
             window.location.reload();
@@ -31,7 +70,7 @@ if ('serviceWorker' in navigator) {
   // Listen for messages from the service worker
   navigator.serviceWorker.addEventListener('message', event => {
     if (event.data && event.data.type === 'SW_UPDATED') {
-      console.log('Service Worker updated to version:', event.data.version);
+      debugLog('Service Worker updated to version:', event.data.version);
       // Reload the page to use the new version
       setTimeout(() => {
         window.location.reload();
@@ -44,14 +83,14 @@ async function requestWakeLock() {
     try {
         if ('wakeLock' in navigator) {
             wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Wake Lock acquired - screen will stay on');
+            debugLog('Wake Lock acquired - screen will stay on');
             
             wakeLock.addEventListener('release', () => {
-                console.log('Wake Lock released');
+                debugLog('Wake Lock released');
             });
         }
     } catch (err) {
-        console.log('Wake Lock request failed:', err);
+        debugLog('Wake Lock request failed:', err);
     }
 }
 
@@ -61,7 +100,7 @@ async function releaseWakeLock() {
             await wakeLock.release();
             wakeLock = null;
         } catch (err) {
-            console.log('Wake Lock release failed:', err);
+            debugLog('Wake Lock release failed:', err);
         }
     }
 }
@@ -298,7 +337,7 @@ async function checkPHPAvailability() {
             phpAvailable = false;
         }
     } catch (error) {
-        console.log('PHP not available on this server:', error);
+        debugLog('PHP not available on this server:', error);
         phpAvailable = false;
     }
 }
@@ -346,7 +385,7 @@ function handleAutoOrientationDetection() {
     const isLandscape = window.innerWidth > window.innerHeight;
     const newOrientation = isLandscape ? 'landscape' : 'portrait';
     
-    console.log('Auto-detect orientation:', {
+    debugLog('Auto-detect orientation:', {
         width: window.innerWidth,
         height: window.innerHeight,
         isLandscape: isLandscape,
@@ -367,10 +406,10 @@ function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./service-worker.js')
             .then(registration => {
-                console.log('Service Worker registered:', registration);
+                debugLog('Service Worker registered:', registration);
             })
             .catch(error => {
-                console.log('Service Worker registration failed:', error);
+                debugLog('Service Worker registration failed:', error);
             });
     }
 }
@@ -448,17 +487,17 @@ function initializeApp() {
             multiplayerBtn.title = 'PHP not available - Multiplayer requires PHP server support';
         }
         
-        console.log('Multiplayer options disabled - PHP not available');
+        debugLog('Multiplayer options disabled - PHP not available');
     }
 
     // Set up event listeners
-    console.log('Setting up event listeners...');
+    debugLog('Setting up event listeners...');
     setupEventListeners();
-    console.log('Event listeners set up successfully');
+    debugLog('Event listeners set up successfully');
 
     // Initialize shirt modal
     initializeShirtModal();
-    console.log('App initialized successfully');
+    debugLog('App initialized successfully');
 }
 
 // Initialize custom language dropdown
@@ -543,7 +582,7 @@ function initializeLanguageDropdown() {
 }
 
 function setupEventListeners() {
-    console.log('setupEventListeners called');
+    debugLog('setupEventListeners called');
     
     // New Game button
     document.getElementById('newGameBtn').addEventListener('click', () => {
@@ -1138,9 +1177,9 @@ async function hostGame() {
         
         // Set up callback for when player joins
         multiplayerManager.onEvent = (event) => {
-            console.log('Host received event:', event);
+            debugLog('Host received event:', event);
             if (event.type === 'gameStart') {
-                console.log('Player joined:', event.opponent);
+                debugLog('Player joined:', event.opponent);
                 closeModal('hostWaitingModal');
                 // Apply hints setting from event (host's preference)
                 if (event.hintsEnabled !== undefined) {
@@ -1212,18 +1251,20 @@ async function refreshLobby() {
         return;
     }
     
-    console.log('📋 Lobby refresh result:', result);
+    debugLog('📋 Lobby refresh result:', result);
     
     // Check if we've been challenged
     if (result.myStatus && result.myStatus.status === 'challenged' && !currentChallengeInfo) {
-        console.log('🎯 We have been challenged!', result.myStatus);
+        debugLog('🎯 We have been challenged!', result.myStatus);
         // We've been challenged! Show the challenge dialog
         const challengerId = result.myStatus.challengedBy;
         const challengerName = result.myStatus.challengerName;
         const hintsEnabled = result.myStatus.hintsEnabled;
+        const challengeId = result.myStatus.challengeId; // WebSocket servers provide challengeId
         
         currentChallengeInfo = {
             challengerId: challengerId,
+            challengeId: challengeId, // Store challengeId for WebSocket
             challengerName: challengerName,
             hintsEnabled: hintsEnabled,
             isChallenger: false
@@ -1369,7 +1410,7 @@ async function checkForChallenges() {
 }
 
 function handleLobbyEvent(event) {
-    console.log('Lobby event received:', event);
+    debugLog('Lobby event received:', event);
     
     if (event.type === 'challengeAccepted') {
         // Challenge was accepted, start the game
@@ -1398,7 +1439,9 @@ function handleLobbyEvent(event) {
 async function acceptChallenge() {
     if (!currentChallengeInfo) return;
     
-    const result = await multiplayerManager.acceptChallenge(currentChallengeInfo.challengerId);
+    // Use challengeId if available (WebSocket), otherwise fallback to challengerId (PHP)
+    const challengeParam = currentChallengeInfo.challengeId || currentChallengeInfo.challengerId;
+    const result = await multiplayerManager.acceptChallenge(challengeParam);
     
     if (!result.success) {
         alert(translationManager.get('failedToJoin') + ': ' + result.error);
@@ -1428,7 +1471,9 @@ async function acceptChallenge() {
 async function declineChallenge() {
     if (!currentChallengeInfo) return;
     
-    await multiplayerManager.declineChallenge(currentChallengeInfo.challengerId);
+    // Use challengeId if available (WebSocket), otherwise fallback to challengerId (PHP)
+    const challengeParam = currentChallengeInfo.challengeId || currentChallengeInfo.challengerId;
+    await multiplayerManager.declineChallenge(challengeParam);
     
     currentChallengeInfo = null;
     closeModal('challengeModal');
@@ -1504,7 +1549,7 @@ async function refreshGamesList() {
     
     const hosts = await multiplayerManager.getAvailableHosts();
     
-    console.log('Available hosts:', hosts);
+    debugLog('Available hosts:', hosts);
     
     if (hosts.length === 0) {
         hostsList.innerHTML = `
@@ -1540,7 +1585,7 @@ async function joinGame(hostId, hostName) {
     const result = await multiplayerManager.joinGame(hostId, playerName);
     
     if (result.success) {
-        console.log('Joined game:', result);
+        debugLog('Joined game:', result);
         closeModal('joinGameModal');
         // Apply hints setting from host
         if (result.hintsEnabled !== undefined) {
@@ -1557,7 +1602,7 @@ async function joinGame(hostId, hostName) {
 }
 
 function startMultiplayerGame(role, opponent) {
-    console.log(`Starting multiplayer game as ${role}`, opponent);
+    debugLog(`Starting multiplayer game as ${role}`, opponent);
     
     // Cleanup any existing game state
     if (currentGame) {
@@ -1577,7 +1622,7 @@ function startMultiplayerGame(role, opponent) {
         gameState.player2Name = opponent.playerName;
         multiplayerManager.isHost = true;
         multiplayerManager.localPlayer = 1;
-        console.log(`Host: I control Player 1 (${gameState.player1Name}), opponent controls Player 2 (${opponent.playerName})`);
+        debugLog(`Host: I control Player 1 (${gameState.player1Name}), opponent controls Player 2 (${opponent.playerName})`);
         
         // Start game log (host initiates)
         window.gameLogger.startGameLog(
@@ -1586,7 +1631,7 @@ function startMultiplayerGame(role, opponent) {
             opponent.playerIp || 'Unknown'
         ).then(logId => {
             if (logId) {
-                console.log('Game logging started with ID:', logId);
+                debugLog('Game logging started with ID:', logId);
             }
         });
     } else {
@@ -1595,7 +1640,7 @@ function startMultiplayerGame(role, opponent) {
         gameState.player2Name = opponent.playerName;
         multiplayerManager.isHost = false;
         multiplayerManager.localPlayer = 2;
-        console.log(`Guest: I control Player 2 (${gameState.player1Name}), opponent controls Player 1 (${opponent.playerName})`);
+        debugLog(`Guest: I control Player 2 (${gameState.player1Name}), opponent controls Player 1 (${opponent.playerName})`);
     }
     
     // Update displays - guest will see their own name, host name as opponent
@@ -1621,7 +1666,7 @@ function startMultiplayerGame(role, opponent) {
     soundManager.play('cheering');
     
     // Ensure polling is active for multiplayer game
-    console.log('🔄 Starting polling for multiplayer game');
+    debugLog('🔄 Starting polling for multiplayer game');
     multiplayerManager.startPolling();
     
     // Set up event handler for opponent moves
