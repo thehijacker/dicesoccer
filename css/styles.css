@@ -1511,6 +1511,11 @@ input:checked + .toggle-label::before {
     max-width: min(500px, 90vw);
 }
 
+.goal-modal-content button {
+    display: inline-block;
+    margin: 10px 5px;
+}
+
 .goal-modal-content img,
 .winner-modal-content img {
     width: 100px;

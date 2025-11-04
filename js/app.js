@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-disconnect-sync';
+const APP_VERSION = '2.0.0-goal-sync-v2';
 
 // Global config
 let appConfig = {
@@ -881,6 +881,28 @@ function setupEventListeners() {
     });
 
     // Winner modal buttons
+    document.getElementById('continueFromWinner').addEventListener('click', () => {
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager && currentGame) {
+            // Set local ready state
+            currentGame.localPlayerReady = true;
+            
+            // Send ready event to opponent
+            multiplayerManager.sendEvent({
+                type: 'winnerContinue'
+            });
+            
+            // Update button to show waiting state
+            const continueBtn = document.getElementById('continueFromWinner');
+            continueBtn.textContent = translationManager.get('waitingForOpponent') || 'Waiting for opponent...';
+            continueBtn.disabled = true;
+            
+            // If opponent is also ready, start new game
+            if (currentGame.opponentPlayerReady) {
+                currentGame.bothPlayersReadyFromWinner();
+            }
+        }
+    });
+    
     document.getElementById('newGameFromWinner').addEventListener('click', () => {
         closeModal('winnerModal');
         // stop all sounds (cheering))

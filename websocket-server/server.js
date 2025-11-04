@@ -137,6 +137,12 @@ io.on('connection', (socket) => {
                 return callback({ success: false, error: 'Player not found' });
             }
             
+            // Update player name if provided (player may have changed their name)
+            if (data.playerName && data.playerName !== player.playerName) {
+                console.log(`📝 Player name updated: ${player.playerName} -> ${data.playerName}`);
+                player.playerName = data.playerName;
+            }
+            
             player.inLobby = true;
             player.status = 'available';
             player.lastSeen = Date.now();

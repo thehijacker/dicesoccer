@@ -481,10 +481,17 @@ class DiceSoccerGame {
         const continueBtn = document.getElementById('continueGameBtn');
         const viewBoardBtn = document.getElementById('viewBoardFromGoal');
         
-        goalMessage.textContent = translationManager.get('opponentDisconnected');
+        // Hide goal-specific elements (image and "GOAL!" heading)
+        const goalImg = goalModal.querySelector('img');
+        const goalHeading = goalModal.querySelector('h2');
+        if (goalImg) goalImg.style.display = 'none';
+        if (goalHeading) goalHeading.style.display = 'none';
+        
+        // Show disconnect message
+        goalMessage.textContent = translationManager.get('waitingForOpponent') || 'Waiting for opponent to reconnect';
         goalModal.classList.add('active');
         
-        // Hide continue button, change view board to "Return to Lobby"
+        // Hide continue button, change view board to "Back to Lobby"
         continueBtn.style.display = 'none';
         viewBoardBtn.textContent = translationManager.get('backToLobby') || 'Back to Lobby';
         viewBoardBtn.style.display = 'block';
@@ -493,6 +500,10 @@ class DiceSoccerGame {
         const lobbyHandler = async () => {
             viewBoardBtn.removeEventListener('click', lobbyHandler);
             goalModal.classList.remove('active');
+            
+            // Restore goal modal elements
+            if (goalImg) goalImg.style.display = '';
+            if (goalHeading) goalHeading.style.display = '';
             
             // Log game end
             if (window.gameLogger && window.gameLogger.logId) {
@@ -540,6 +551,12 @@ class DiceSoccerGame {
         
         // Close the modal
         goalModal.classList.remove('active');
+        
+        // Restore goal modal elements
+        const goalImg = goalModal.querySelector('img');
+        const goalHeading = goalModal.querySelector('h2');
+        if (goalImg) goalImg.style.display = '';
+        if (goalHeading) goalHeading.style.display = '';
         
         // Restore original button states
         continueBtn.style.display = 'block';
@@ -2193,6 +2210,17 @@ class DiceSoccerGame {
         // Track who lost this round (for next round start)
         this.lastRoundLoser = losingPlayer;
         
+        // In multiplayer, send goal event to sync lastRoundLoser
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+            multiplayerManager.sendEvent({
+                type: 'goal',
+                scoringPlayer: scoringPlayer,
+                losingPlayer: losingPlayer,
+                score1: this.player1Score,
+                score2: this.player2Score
+            });
+        }
+        
         // Check for winner - if game is over, go directly to endGame without showing goal modal
         if (this.player1Score >= 3 || this.player2Score >= 3) {
             const timeoutId = setTimeout(() => this.endGame(), 1000);
@@ -2211,6 +2239,12 @@ class DiceSoccerGame {
         
         const goalModal = document.getElementById('goalModal');
         goalModal.classList.add('active');
+        
+        // Ensure buttons are visible (not hidden from previous states like disconnect dialog)
+        const viewBoardBtn = document.getElementById('viewBoardFromGoal');
+        const continueBtn = document.getElementById('continueGameBtn');
+        if (viewBoardBtn) viewBoardBtn.style.display = 'block';
+        if (continueBtn) continueBtn.style.display = 'block';
         
         // Rotate goal modal for Player 2 in portrait 2-player mode
         if (gameState.twoPlayerMode && gameState.orientation === 'portrait' && scoringPlayer === 2) {
@@ -2270,6 +2304,24 @@ class DiceSoccerGame {
         goalModal.classList.remove('minimized');
         goalModal.style.transform = '';
         this.resetRound();
+    }
+
+    bothPlayersReadyFromWinner() {
+        debugLog('Both players ready from winner screen, starting new game');
+        
+        // Reset ready states
+        this.localPlayerReady = false;
+        this.opponentPlayerReady = false;
+        
+        // Reset button state
+        const continueBtn = document.getElementById('continueFromWinner');
+        continueBtn.textContent = translationManager.get('continue') || 'Continue';
+        continueBtn.disabled = false;
+        
+        // Close modal and start new game
+        closeModal('winnerModal');
+        soundManager.stopAll();
+        startNewGame();
     }
 
     resetRound() {
@@ -2375,6 +2427,19 @@ class DiceSoccerGame {
         
         const winnerModal = document.getElementById('winnerModal');
         winnerModal.classList.add('active');
+        
+        // For multiplayer, show Continue button instead of New Game, and keep both players in sync
+        if (gameState.gameMode === 'multiplayer') {
+            document.getElementById('continueFromWinner').style.display = 'block';
+            document.getElementById('newGameFromWinner').style.display = 'none';
+            
+            // Reset ready states
+            this.localPlayerReady = false;
+            this.opponentPlayerReady = false;
+        } else {
+            document.getElementById('continueFromWinner').style.display = 'none';
+            document.getElementById('newGameFromWinner').style.display = 'block';
+        }
 
         // Launch confetti animation
         if (window.launchConfetti) {
@@ -2960,6 +3025,22 @@ class DiceSoccerGame {
                 if (this.localPlayerReady) {
                     this.bothPlayersReady();
                 }
+                break;
+            
+            case 'winnerContinue':
+                // Opponent pressed continue from winner screen
+                this.opponentPlayerReady = true;
+                
+                // If we're also ready, start new game
+                if (this.localPlayerReady) {
+                    this.bothPlayersReadyFromWinner();
+                }
+                break;
+            
+            case 'goal':
+                // Opponent scored or received goal - sync lastRoundLoser
+                debugLog('Received goal event from opponent:', event);
+                this.lastRoundLoser = event.losingPlayer;
                 break;
         }
     }
