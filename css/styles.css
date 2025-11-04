@@ -87,9 +87,9 @@ body::before {
         repeating-linear-gradient(
             0deg,
             rgba(76, 124, 31, 0.3) 0px,
-            rgba(76, 124, 31, 0.3) 20px,
-            rgba(62, 102, 25, 0.3) 20px,
-            rgba(62, 102, 25, 0.3) 40px
+            rgba(76, 124, 31, 0.3) 40px,
+            rgba(62, 102, 25, 0.3) 40px,
+            rgba(62, 102, 25, 0.3) 80px
         );
     pointer-events: none;
     z-index: 0;
@@ -101,9 +101,9 @@ body.landscape-stripes::before {
         repeating-linear-gradient(
             90deg,
             rgba(76, 124, 31, 0.3) 0px,
-            rgba(76, 124, 31, 0.3) 20px,
-            rgba(62, 102, 25, 0.3) 20px,
-            rgba(62, 102, 25, 0.3) 40px
+            rgba(76, 124, 31, 0.3) 40px,
+            rgba(62, 102, 25, 0.3) 40px,
+            rgba(62, 102, 25, 0.3) 80px
         );
 }
 
@@ -601,6 +601,32 @@ input:checked + .toggle-label::before {
     color: #999;
     opacity: 0.7;
     margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    transition: opacity 0.2s ease;
+    text-decoration: none;
+}
+
+.github-link:hover {
+    opacity: 1;
+}
+
+.github-icon {
+    width: 16px;
+    height: 16px;
+    fill: #999;
+    transition: fill 0.2s ease;
+}
+
+.github-link:hover .github-icon {
+    fill: #333;
 }
 
 /* Landscape Mode - Compact Menu */
@@ -725,6 +751,104 @@ input:checked + .toggle-label::before {
     animation: fadeIn 0.3s ease;
 }
 
+/* Minimized modal state - appears as small button in corner */
+.modal.minimized {
+    background-color: transparent;
+    backdrop-filter: none;
+    pointer-events: none;
+    transition: background-color 0.4s ease, backdrop-filter 0.4s ease;
+}
+
+.modal.minimized .modal-content {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    max-width: 200px;
+    max-height: 80px;
+    padding: 15px 20px;
+    cursor: pointer;
+    pointer-events: auto;
+    overflow: hidden;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.modal.minimized .modal-content:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.modal.minimized .modal-content > *:not(.modal-minimize-text) {
+    display: none !important;
+}
+
+.modal-minimize-text {
+    display: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    animation: fadeInText 0.5s ease 0.3s both;
+}
+
+.modal.minimized .modal-minimize-text {
+    display: block;
+}
+
+@keyframes fadeInText {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* View Board button styling */
+.view-board-btn {
+    background: #2196F3 !important;
+}
+
+.view-board-btn:hover {
+    background: #1976D2 !important;
+}
+
+/* Landscape: adjust minimized modal position */
+@media (orientation: landscape) {
+    .modal.minimized .modal-content {
+        bottom: 15px;
+        right: 15px;
+        max-width: 180px;
+        padding: 12px 16px;
+    }
+    
+    .modal-minimize-text {
+        font-size: 12px;
+    }
+}
+
+/* Portrait and small screens: make minimized modal more prominent */
+@media (orientation: portrait), (max-width: 600px) {
+    .modal.minimized .modal-content {
+        bottom: 15px;
+        right: 50%;
+        transform: translateX(50%);
+        max-width: 250px;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    .modal.minimized .modal-content:hover {
+        transform: translateX(50%) scale(1.1);
+    }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -740,6 +864,7 @@ input:checked + .toggle-label::before {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     animation: scaleIn 0.3s ease;
     text-align: center;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 @keyframes scaleIn {
@@ -916,7 +1041,8 @@ input:checked + .toggle-label::before {
     /* Make modal content more compact in landscape */
     .modal-content {
         padding: 20px;
-        max-height: 85vh;
+        max-height: 90vh; /* Allow more vertical space */
+        max-height: calc(var(--vh, 1vh) * 90);
     }
     
     .modal-content h2 {
@@ -1398,10 +1524,50 @@ input:checked + .toggle-label::before {
     margin-bottom: 15px;
 }
 
+.winner-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: min(500px, 90vw);
+    max-height: 90vh;
+    max-height: calc(var(--vh, 1vh) * 90);
+    overflow: hidden;
+}
+
 .winner-modal-content h2 {
     color: #FF9800;
-    font-size: 32px;
-    margin-bottom: 20px;
+    font-size: 28px;
+    margin: 0;
+}
+
+.winner-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.winner-header {
+    flex-shrink: 0;
+}
+
+.winner-stats {
+    flex: 1;
+    overflow-y: auto;
+    width: 100%;
+    min-height: 0;
+}
+
+.winner-actions {
+    flex-shrink: 0;
+    gap: 10px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.winner-actions .close-modal-btn {
+    margin: 0;
+    width: 100%;
 }
 
 #goalMessage {
@@ -1412,16 +1578,124 @@ input:checked + .toggle-label::before {
 
 #finalStatsContent {
     text-align: left;
-    margin: 20px 0;
-    padding: 20px;
+    padding: 15px 20px;
     background: #f5f5f5;
     border-radius: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 #finalStatsContent p {
-    margin: 8px 0;
-    font-size: 16px;
+    margin: 6px 0;
+    font-size: 15px;
     color: #333;
+}
+
+/* Landscape mode: 2-column or 3-column layout for winner modal */
+@media (orientation: landscape) {
+    .winner-modal-content {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        max-width: min(900px, 95vw);
+        max-height: min(600px, 92vh);
+        max-height: min(600px, calc(var(--vh, 1vh) * 92));
+        gap: 20px;
+        padding: 25px 30px;
+    }
+    
+    .winner-modal-content h2 {
+        font-size: 22px;
+    }
+    
+    .winner-modal-content img {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 12px;
+    }
+    
+    .winner-header {
+        flex: 0 0 auto;
+        width: 150px;
+        justify-content: flex-start;
+        align-items: center;
+    }
+    
+    .winner-stats {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .winner-actions {
+        flex: 0 0 auto;
+        width: 150px;
+        justify-content: center;
+        align-items: stretch;
+    }
+    
+    .winner-actions .close-modal-btn {
+        width: 100%;
+    }
+    
+    #finalStatsContent {
+        padding: 15px 18px;
+        max-height: none;
+        overflow-y: visible;
+        margin: 0;
+    }
+    
+    #finalStatsContent p {
+        margin: 6px 0;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+}
+
+/* Very short landscape screens: 3-column compact layout */
+@media (orientation: landscape) and (max-height: 550px) {
+    .winner-modal-content {
+        max-width: min(800px, 95vw);
+        max-height: min(500px, 95vh);
+        max-height: min(500px, calc(var(--vh, 1vh) * 95));
+        padding: 18px 22px;
+        gap: 15px;
+    }
+    
+    .winner-modal-content h2 {
+        font-size: 18px;
+    }
+    
+    .winner-modal-content img {
+        width: 55px;
+        height: 55px;
+        margin-bottom: 8px;
+    }
+    
+    .winner-header {
+        width: 120px;
+    }
+    
+    .winner-actions {
+        width: 130px;
+    }
+    
+    .winner-actions .close-modal-btn {
+        padding: 9px 14px;
+        font-size: 13px;
+    }
+    
+    #finalStatsContent {
+        padding: 10px 14px;
+    }
+    
+    #finalStatsContent p {
+        margin: 4px 0;
+        font-size: 12px;
+        line-height: 1.3;
+    }
 }
 
 /* AI Difficulty Label */
@@ -1549,6 +1823,228 @@ input:checked + .toggle-label::before {
     max-width: 300px;
     margin: 0 auto;
     line-height: 1.5;
+}
+
+/* Lobby Modal Styles */
+.lobby-modal-content {
+    max-width: 700px;
+    width: 90vw;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.lobby-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 12px;
+}
+
+.lobby-section h3 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.lobby-players-list,
+.active-games-list {
+    min-height: 80px;
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.lobby-players-list::-webkit-scrollbar,
+.active-games-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.lobby-players-list::-webkit-scrollbar-track,
+.active-games-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.lobby-players-list::-webkit-scrollbar-thumb,
+.active-games-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.lobby-players-list::-webkit-scrollbar-thumb:hover,
+.active-games-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.lobby-player-item,
+.game-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    margin: 8px 0;
+    background: white;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.lobby-player-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+}
+
+.lobby-player-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.lobby-player-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.lobby-player-status {
+    font-size: 13px;
+    color: #666;
+    margin-top: 3px;
+}
+
+.lobby-player-status.available {
+    color: #4CAF50;
+}
+
+.lobby-player-status.busy {
+    color: #FF9800;
+}
+
+.challenge-btn {
+    padding: 8px 16px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.challenge-btn:hover {
+    background: #1976D2;
+    transform: scale(1.05);
+}
+
+.challenge-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.game-item {
+    cursor: default;
+}
+
+.game-item:hover {
+    transform: none;
+}
+
+.game-players {
+    font-size: 15px;
+    color: #333;
+    font-weight: 500;
+}
+
+.game-time {
+    font-size: 13px;
+    color: #666;
+}
+
+.no-players-message,
+.no-games-message {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 14px;
+}
+
+.lobby-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.lobby-buttons .close-modal-btn {
+    margin: 0;
+    flex: 1;
+    max-width: 200px;
+}
+
+/* Challenge Modal */
+.challenge-modal-content {
+    max-width: 500px;
+    text-align: center;
+}
+
+.challenge-modal-content h2 {
+    color: #2196F3;
+    margin-bottom: 15px;
+}
+
+.challenge-modal-content p {
+    font-size: 16px;
+    color: #666;
+    margin: 15px 0;
+}
+
+.hints-selection {
+    display: flex;
+    gap: 15px;
+    margin: 20px 0;
+    justify-content: center;
+}
+
+.hints-selection .hints-option-btn {
+    flex: 1;
+    max-width: 200px;
+    padding: 15px;
+}
+
+.challenge-buttons {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    justify-content: center;
+}
+
+.challenge-buttons .close-modal-btn {
+    margin: 0;
+    flex: 1;
+}
+
+#challengeWaiting {
+    margin: 20px 0;
+}
+
+#challengeWaiting p {
+    margin-top: 10px;
+    color: #666;
+}
+
+/* Landscape adjustments for lobby */
+@media (orientation: landscape) and (max-height: 700px) {
+    .lobby-modal-content {
+        max-height: 90vh;
+    }
+    
+    .lobby-players-list,
+    .active-games-list {
+        max-height: 180px;
+    }
 }
 
 /* Landscape Mode - Horizontal Modal Layout */

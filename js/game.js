@@ -380,6 +380,8 @@ class DiceSoccerGame {
     }
 
     handleCellClick(row, col) {
+        console.log(`🖱️ handleCellClick(${row}, ${col}) - isRolling: ${this.isRolling}, isMoving: ${this.isMoving}, currentPlayer: ${this.currentPlayer}, localPlayer: ${multiplayerManager?.localPlayer}, waitingForMove: ${this.waitingForMove}`);
+        
         if (this.isRolling || this.isMoving) return; // Prevent clicks during dice roll or move animation
         
         // Prevent interaction when it's AI's turn
@@ -392,11 +394,13 @@ class DiceSoccerGame {
         
         // In multiplayer, only allow clicks when it's local player's turn
         if (gameState.gameMode === 'multiplayer' && multiplayerManager.localPlayer !== this.currentPlayer) {
+            console.log(`❌ Not local player's turn. localPlayer=${multiplayerManager.localPlayer}, currentPlayer=${this.currentPlayer}`);
             return; // Not local player's turn
         }
         
         // Check if dice has been rolled
         if (!this.waitingForMove) {
+            console.log(`❌ Dice not rolled yet (waitingForMove=${this.waitingForMove})`);
             this.showMessage(translationManager.get('rollDiceFirst'));
             return;
         }
@@ -526,6 +530,14 @@ class DiceSoccerGame {
     handleDiceRolled() {
         this.waitingForMove = true;
         this.moveStartTime = Date.now(); // Start tracking thinking time
+        
+        // Log dice roll event
+        if (window.gameLogger && window.gameLogger.logId) {
+            const playerName = this.currentPlayer === 1 ? 
+                (gameState.player1Name || 'Player 1') : 
+                (gameState.gameMode === 'ai' ? `AI (${gameState.difficulty})` : (gameState.player2Name || 'Player 2'));
+            window.gameLogger.logEvent('DICE_ROLL', `${playerName} rolled ${this.diceValue}`);
+        }
                 
         // Find players with this number
         const movablePlayers = this.getMovablePlayers(this.diceValue);
@@ -643,6 +655,258 @@ class DiceSoccerGame {
         return moves;
     }
 
+    // --- START MINIMAX & AI STRATEGY FUNCTIONS ---
+
+    /**
+     * Creates a new copy of the board and applies a move to it for simulation.
+     * @param {Array} currentBoard - The board state to simulate on.
+     * @param {object} move - The move to apply { fromRow, fromCol, toRow, toCol }.
+     * @returns {Array} A new board state with the move applied.
+     */
+    applyMove(currentBoard, move) {
+        // Deep copy the board to avoid modifying the original
+        const newBoard = JSON.parse(JSON.stringify(currentBoard));
+        const piece = newBoard[move.fromRow][move.fromCol];
+        
+        if (piece) {
+            newBoard[move.toRow][move.toCol] = piece;
+            newBoard[move.fromRow][move.fromCol] = null;
+        }
+        
+        return newBoard;
+    }
+
+    /**
+     * Finds valid moves for a piece on a simulated board.
+     * @param {Array} board - The simulated board state.
+     * @param {object} piecePosition - The position of the piece { row, col }.
+     * @returns {Array} An array of valid move objects { row, col }.
+     */
+    getValidMovesSim(board, piecePosition) {
+        const moves = [];
+        const { row, col } = piecePosition;
+        const piece = board[row][col];
+        if (!piece) return moves;
+
+        const direction = piece.player === 1 ? 1 : -1;
+        const middleRow = Math.floor(this.rows / 2);
+
+        // Forward
+        const forwardCol = col + direction;
+        if (forwardCol >= 0 && forwardCol < this.cols) {
+            const isEmptyCell = (forwardCol === 0 || forwardCol === this.cols - 1) && row !== middleRow;
+            if (!isEmptyCell && !board[row][forwardCol]) {
+                moves.push({ row, col: forwardCol });
+            }
+        }
+
+        // Diagonal forward-up
+        const upRow = row - 1;
+        if (upRow >= 0 && forwardCol >= 0 && forwardCol < this.cols) {
+            const isEmptyCell = (forwardCol === 0 || forwardCol === this.cols - 1) && upRow !== middleRow;
+            if (!isEmptyCell && !board[upRow][forwardCol]) {
+                moves.push({ row: upRow, col: forwardCol });
+            }
+        }
+
+        // Diagonal forward-down
+        const downRow = row + 1;
+        if (downRow < this.rows && forwardCol >= 0 && forwardCol < this.cols) {
+            const isEmptyCell = (forwardCol === 0 || forwardCol === this.cols - 1) && downRow !== middleRow;
+            if (!isEmptyCell && !board[downRow][forwardCol]) {
+                moves.push({ row: downRow, col: forwardCol });
+            }
+        }
+
+        return moves;
+    }
+
+    /**
+     * Generates all possible moves for a player on a simulated board.
+     * @param {number} player - The player to get moves for (1 or 2).
+     * @param {Array} board - The simulated board state.
+     * @param {number|null} diceValue - The dice value to filter by. If null, gets all movable players.
+     * @returns {Array} An array of all possible moves [{ fromRow, fromCol, toRow, toCol }].
+     */
+    getAllValidMovesSim(player, board, diceValue = null) {
+        const allMoves = [];
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const piece = board[r][c];
+                if (piece && piece.player === player) {
+                    // If a dice value is specified, only consider pieces with that number
+                    if (diceValue && piece.number !== diceValue) {
+                        continue;
+                    }
+                    
+                    const validMoves = this.getValidMovesSim(board, { row: r, col: c });
+                    if (validMoves.length > 0) {
+                        validMoves.forEach(move => {
+                            allMoves.push({ fromRow: r, fromCol: c, toRow: move.row, toCol: move.col });
+                        });
+                    }
+                }
+            }
+        }
+        
+        // If a dice value was provided and no moves were found, check for the "any piece can move" rule
+        if (diceValue && allMoves.length === 0) {
+            return this.getAllValidMovesSim(player, board, null); // Re-run without dice constraint
+        }
+        
+        return allMoves;
+    }
+
+    /**
+     * Checks if a player has any possible moves on a simulated board.
+     * @param {number} player - The player to check.
+     * @param {Array} board - The simulated board state.
+     * @returns {boolean} True if the player has at least one move, false otherwise.
+     */
+    checkAnyPossibleMovesSim(player, board) {
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const piece = board[r][c];
+                if (piece && piece.player === player) {
+                    const validMoves = this.getValidMovesSim(board, { row: r, col: c });
+                    if (validMoves.length > 0) {
+                        return true; // Found at least one possible move
+                    }
+                }
+            }
+        }
+        return false; // No moves available for this player
+    }
+
+    /**
+     * This is the static heuristic evaluation for Minimax. It assigns a score
+     * to a board position from the perspective of the AI (Player 2).
+     * @param {Array} board - The board state to evaluate.
+     * @returns {number} The heuristic score. Higher is better for the AI.
+     */
+    evaluateBoardState(board, player1Score, player2Score) {
+        let score = 0;
+        const aiPlayer = 2;
+        const humanPlayer = 1;
+        const middleRow = Math.floor(this.rows / 2);
+
+        // --- Endgame Logic ---
+        const isEndgame = player1Score === 2 || player2Score === 2;
+        const goalProximityWeight = isEndgame ? 20 : 10; // Double the importance of getting to goal in endgame
+
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const piece = board[r][c];
+                if (!piece) continue;
+
+                if (piece.player === aiPlayer) {
+                    // AI's score
+                    // 1. Proximity to human's goal (col 0)
+                    score += (this.cols - 1 - c) * goalProximityWeight;
+                    // 2. Bonus for being on the middle row
+                    if (r === middleRow) score += 5;
+                    // 3. Goalkeeper safety (massive penalty for moving it)
+                    if (piece.number === 1 && (c !== this.cols - 1 || r !== middleRow)) {
+                        score -= 50000;
+                    }
+                    // 4. NEW: Control of the Center
+                    if (c >= 3 && c <= 5) {
+                        score += 15; // Bonus for occupying central columns
+                    }
+                } else {
+                    // Human's score (subtracted from AI's score)
+                    // 1. Proximity to AI's goal (col 8)
+                    score -= c * goalProximityWeight;
+                    // 2. Bonus for being on the middle row
+                    if (r === middleRow) score -= 5;
+                    // 3. Goalkeeper safety (if human moves GK, it's good for AI)
+                    if (piece.number === 1 && (c !== 0 || r !== middleRow)) {
+                        score += 1000;
+                    }
+                    // 4. NEW: Control of the Center (penalize human for it)
+                    if (c >= 3 && c <= 5) {
+                        score -= 15;
+                    }
+                }
+            }
+        }
+        
+        // --- Mobility Score ---
+        const aiMoves = this.getAllValidMovesSim(aiPlayer, board, null).length;
+        const humanMoves = this.getAllValidMovesSim(humanPlayer, board, null).length;
+        score += (aiMoves - humanMoves) * 10; // Reward having more moves than the opponent
+
+        // Check for win/loss states
+        if (board[middleRow][0]?.player === aiPlayer) return 100000; // AI wins
+        if (board[middleRow][this.cols - 1]?.player === humanPlayer) return -100000; // Human wins
+        
+        // Check for "no moves available" (block win/loss)
+        if (humanMoves === 0) return 90000; // AI forces a block win
+        if (aiMoves === 0) return -90000; // AI is blocked
+
+        return score;
+    }
+
+    /**
+     * The recursive Minimax search algorithm with Alpha-Beta Pruning.
+     * @param {Array} board - The current board state.
+     * @param {number} depth - The current depth in the search tree.
+     * @param {boolean} isMaximizingPlayer - True if it's the AI's turn (maximizer), false for human (minimizer).
+     * @param {number} alpha - The best score found so far for the maximizer.
+     * @param {number} beta - The best score found so far for the minimizer.
+     * @returns {number} The best possible score from this board state.
+     */
+    minimax(board, depth, isMaximizingPlayer, alpha, beta) {
+        // Base case: if we've reached max depth or it's a terminal state (win/loss/draw)
+        if (depth === 0 || board[Math.floor(this.rows / 2)][0] || board[Math.floor(this.rows / 2)][this.cols - 1]) {
+            return this.evaluateBoardState(board);
+        }
+
+        if (isMaximizingPlayer) { // AI's turn (Maximizer)
+            let maxEval = -Infinity;
+            // We don't know the human's dice roll, so we must assume they can move ANY piece.
+            // This is a conservative assumption for the AI's move.
+            const moves = this.getAllValidMovesSim(2, board, null);
+            
+            if (moves.length === 0) {
+                return this.evaluateBoardState(board); // No moves, evaluate current board
+            }
+
+            for (const move of moves) {
+                const newBoard = this.applyMove(board, move);
+                const evaluation = this.minimax(newBoard, depth - 1, false, alpha, beta);
+                maxEval = Math.max(maxEval, evaluation);
+                alpha = Math.max(alpha, evaluation);
+                if (beta <= alpha) {
+                    break; // Beta cutoff
+                }
+            }
+            return maxEval;
+        } else { // Opponent's turn (Minimizer)
+            let minEval = Infinity;
+            // The AI knows its own dice roll, so it simulates the opponent's response to moves made with that dice roll.
+            // However, for the lookahead, we assume the opponent can use ANY piece to counter.
+            const moves = this.getAllValidMovesSim(1, board, null);
+
+            if (moves.length === 0) {
+                return this.evaluateBoardState(board); // No moves, evaluate current board
+            }
+
+            for (const move of moves) {
+                const newBoard = this.applyMove(board, move);
+                const evaluation = this.minimax(newBoard, depth - 1, true, alpha, beta);
+                minEval = Math.min(minEval, evaluation);
+                beta = Math.min(beta, evaluation);
+                if (beta <= alpha) {
+                    break; // Alpha cutoff
+                }
+            }
+            return minEval;
+        }
+    }
+
+    // --- END MINIMAX & AI STRATEGY FUNCTIONS ---
+
     isValidMove(fromRow, fromCol, toRow, toCol) {
         const validMoves = this.getValidMoves(fromRow, fromCol);
         return validMoves.some(move => move.row === toRow && move.col === toCol);
@@ -650,6 +914,14 @@ class DiceSoccerGame {
 
     movePlayer(fromRow, fromCol, toRow, toCol) {
         const piece = this.board[fromRow][fromCol];
+        
+        // Log move event
+        if (window.gameLogger && window.gameLogger.logId && piece) {
+            const playerName = piece.player === 1 ? 
+                (gameState.player1Name || 'Player 1') : 
+                (gameState.gameMode === 'ai' ? `AI (${gameState.difficulty})` : (gameState.player2Name || 'Player 2'));
+            window.gameLogger.logEvent('MOVE', `${playerName} moved player #${piece.number} from (${fromRow},${fromCol}) to (${toRow},${toCol})`);
+        }
         
         // Set moving flag to prevent multiple simultaneous moves
         this.isMoving = true;
@@ -672,6 +944,7 @@ class DiceSoccerGame {
         
         // Send multiplayer event if in multiplayer mode
         if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+            console.log(`📤 Sending playerMoved event: from (${fromRow},${fromCol}) to (${toRow},${toCol}), current player: ${this.currentPlayer}`);
             multiplayerManager.sendEvent({
                 type: 'playerMoved',
                 fromRow,
@@ -830,7 +1103,9 @@ class DiceSoccerGame {
     }
 
     switchPlayer() {
+        console.log(`🔄 switchPlayer() called. Current player before switch: ${this.currentPlayer}`);
         this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+        console.log(`🔄 switchPlayer() - New current player: ${this.currentPlayer}, Local player: ${multiplayerManager?.localPlayer}`);
         this.waitingForMove = false;
         this.isMoving = false; // Reset moving flag
         this.diceValue = 0;
@@ -954,17 +1229,109 @@ class DiceSoccerGame {
         let bestScore = -Infinity;
         
         if (gameState.difficulty === 'hard') {
-            // Hard AI: Evaluate ALL possible player+move combinations
-            for (const player of allMovable) {
-                const validMoves = this.getValidMoves(player.row, player.col);
-                for (const move of validMoves) {
-                    const score = this.evaluateMoveScore(player, move);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestPlayerMove = { player, move };
+            // Hard AI: Use Minimax to find the best move
+            const depth = 2; // 2-ply lookahead (AI's move, Opponent's response)
+            
+            // Get all possible moves for the current dice value (or any piece if none match)
+            const possibleMoves = this.getAllValidMovesSim(this.currentPlayer, this.board, this.diceValue);
+
+            // CRITICAL: Check for immediate goal scoring opportunity FIRST
+            const middleRow = Math.floor(this.rows / 2);
+            const opponentGoalCol = 0; // AI is player 2, attacking column 0
+            
+            for (const move of possibleMoves) {
+                if (move.toCol === opponentGoalCol && move.toRow === middleRow) {
+                    // IMMEDIATE GOAL! Take it without any further analysis
+                    bestPlayerMove = { 
+                        player: { row: move.fromRow, col: move.fromCol }, 
+                        move: { row: move.toRow, col: move.toCol }
+                    };
+                    console.log('Hard AI: Found immediate goal opportunity!');
+                    break;
+                }
+            }
+            
+            // CRITICAL: Check for near-goal opportunities (1-2 moves away from goal)
+            if (!bestPlayerMove) {
+                for (const move of possibleMoves) {
+                    // If we're very close to goal (within 3 columns) and on middle row or can reach it
+                    if (move.toCol <= 3) {
+                        const distanceToMiddle = Math.abs(move.toRow - middleRow);
+                        // Piece is close to goal and close to middle row
+                        if (move.toCol <= 2 && distanceToMiddle <= 1) {
+                            console.log(`Hard AI: Found near-goal opportunity at (${move.fromRow},${move.fromCol}) -> (${move.toRow},${move.toCol})`);
+                            if (!bestPlayerMove || move.toCol < bestPlayerMove.move.col) {
+                                bestPlayerMove = { 
+                                    player: { row: move.fromRow, col: move.fromCol }, 
+                                    move: { row: move.toRow, col: move.toCol }
+                                };
+                            }
+                        }
                     }
                 }
             }
+            
+            // If no immediate goal or near-goal found, use Minimax
+            if (!bestPlayerMove) {
+                console.log('Hard AI: Evaluating moves for dice value:', this.diceValue);
+                
+                for (const move of possibleMoves) {
+                    // 1. Simulate AI's move
+                    const boardAfterAIMove = this.applyMove(this.board, move);
+                    
+                    // 2. Run Minimax to find the score assuming opponent plays optimally
+                    // We are in the minimizer's turn now (depth - 1)
+                    const score = this.minimax(boardAfterAIMove, depth - 1, false, -Infinity, Infinity);
+
+                    // Add bonuses for strategic positioning
+                    let finalScore = score;
+                    
+                    // CRITICAL: Heavily favor pieces that START closer to the goal
+                    // This ensures we move already-advanced pieces rather than pieces in the back
+                    const startDistanceToGoal = move.fromCol; // Lower is better for AI (goal at col 0)
+                    const pieceAdvancementBonus = (this.cols - startDistanceToGoal) * 800; // HUGE bonus for starting position
+                    finalScore += pieceAdvancementBonus;
+                    
+                    // CRITICAL: Also favor the destination being closer to goal
+                    const endDistanceToGoal = move.toCol;
+                    const destinationBonus = (this.cols - endDistanceToGoal) * 300; // Secondary bonus for ending position
+                    finalScore += destinationBonus;
+                    
+                    // Extra bonus if moving TOWARD the goal (reducing distance)
+                    const movingForward = move.toCol < move.fromCol;
+                    if (movingForward) {
+                        finalScore += 400; // Increased from 200
+                    }
+                    
+                    // Add a bonus for blocking threats
+                    const isBlocking = this.isBlockingOpponent(move.toRow, move.toCol);
+                    if (isBlocking) {
+                        finalScore += 15000;
+                    }
+
+                    console.log(`  Move from (${move.fromRow},${move.fromCol}) to (${move.toRow},${move.toCol}): minimax=${score}, pieceBonus=${pieceAdvancementBonus}, destBonus=${destinationBonus}, forward=${movingForward?400:0}, blocking=${isBlocking?15000:0}, TOTAL=${finalScore}`);
+
+                    if (finalScore > bestScore) {
+                        bestScore = finalScore;
+                        bestPlayerMove = { 
+                            player: { row: move.fromRow, col: move.fromCol }, 
+                            move: { row: move.toRow, col: move.toCol }
+                        };
+                    }
+                }
+                
+                console.log(`Hard AI: Selected move from (${bestPlayerMove.player.row},${bestPlayerMove.player.col}) to (${bestPlayerMove.move.row},${bestPlayerMove.move.col}) with score ${bestScore}`);
+            }
+
+            // If no move was found (should be rare), fall back to the old method
+            if (!bestPlayerMove && possibleMoves.length > 0) {
+                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                 bestPlayerMove = { 
+                    player: { row: randomMove.fromRow, col: randomMove.fromCol }, 
+                    move: { row: randomMove.toRow, col: randomMove.toCol }
+                };
+            }
+
         } else if (gameState.difficulty === 'normal') {
             // Normal AI: 70% strategic, 30% random
             if (Math.random() < 0.7) {
@@ -1030,6 +1397,12 @@ class DiceSoccerGame {
             return 10000; // Immediately score!
         }
         
+        // NEW: Check if this move blocks a major threat
+        const isBlocking = this.isBlockingOpponent(move.row, move.col);
+        if (isBlocking) {
+            score += 15000;
+        }
+
         // CRITICAL: Check if this move would block ALL opponent moves (instant win!)
         const blockingScore = this.evaluateCompleteBlockingWin(playerPos, move);
         if (blockingScore > 0) {
@@ -1132,7 +1505,7 @@ class DiceSoccerGame {
         // 4. CRITICAL: Keep goalkeeper in goal unless absolutely necessary
         if (piece.number === 1) { // Goalkeeper
             if (playerPos.col === myGoalCol && playerPos.row === middleRow) {
-                score -= 200; // Heavy penalty for moving goalkeeper out of goal
+                score -= 50000; // Heavy penalty for moving goalkeeper out of goal
             }
         }
         
@@ -1161,15 +1534,40 @@ class DiceSoccerGame {
 
     // Helper: Identify the most forward AI player to be the scout
     identifyScoutPlayer() {
+        // Find the best offensive player to be the scout
+        // Prioritize: 1) Closest to opponent goal, 2) Near middle row, 3) Has forward path
         let scout = null;
-        let minCol = this.cols;
+        let bestScore = -Infinity;
+        const middleRow = Math.floor(this.rows / 2);
+        const opponentGoalCol = 0; // AI is player 2, opponent goal is at col 0
         
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 const piece = this.board[row][col];
                 if (piece && piece.player === 2 && piece.number !== 1) { // Not goalkeeper
-                    if (col < minCol) {
-                        minCol = col;
+                    // Calculate offensive score for this player
+                    let score = 0;
+                    
+                    // 1. Distance to goal (lower col = closer to opponent goal)
+                    const distanceToGoal = col - opponentGoalCol;
+                    score += (this.cols - distanceToGoal) * 100; // Heavy weight on proximity
+                    
+                    // 2. Distance from middle row (prefer center positioning)
+                    const distanceFromMiddle = Math.abs(row - middleRow);
+                    score += (3 - distanceFromMiddle) * 30;
+                    
+                    // 3. Has clear forward path
+                    if (this.canPlayerAdvanceForward(row, col)) {
+                        score += 50;
+                    }
+                    
+                    // 4. Check if player is already advanced into opponent territory (col < 5)
+                    if (col < 5) {
+                        score += 80; // Bonus for already being forward
+                    }
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
                         scout = { row, col };
                     }
                 }
@@ -1330,7 +1728,9 @@ class DiceSoccerGame {
         const opponent = this.currentPlayer === 1 ? 2 : 1;
         const opponentDirection = opponent === 1 ? 1 : -1;
         
-        // Check the column behind us (from opponent's perspective)
+        // Check BOTH behind us (opponent trying to advance) AND ahead of us (we're in their path)
+        
+        // 1. Check the column behind us (from opponent's perspective) - original logic
         const behindCol = col - opponentDirection;
         
         if (behindCol >= 0 && behindCol < this.cols) {
@@ -1356,7 +1756,63 @@ class DiceSoccerGame {
             }
         }
         
+        // 2. NEW: Check if we're blocking an opponent's clear path to goal (forward check)
+        // Look for opponents in columns closer to our goal that would have clear path if we're not here
+        const myGoalCol = this.currentPlayer === 1 ? 0 : this.cols - 1;
+        const middleRow = Math.floor(this.rows / 2);
+        
+        // Check opponents that could advance toward our goal if we weren't blocking
+        for (let checkCol = 0; checkCol < this.cols; checkCol++) {
+            // For AI (player 2), check columns to the left (0 to current col)
+            // For Player 1, check columns to the right (current col to end)
+            const isInOpponentPath = (this.currentPlayer === 2 && checkCol < col) || 
+                                    (this.currentPlayer === 1 && checkCol > col);
+            
+            if (!isInOpponentPath) continue;
+            
+            for (let checkRow = Math.max(0, row - 1); checkRow <= Math.min(this.rows - 1, row + 1); checkRow++) {
+                const piece = this.board[checkRow][checkCol];
+                if (piece && piece.player === opponent) {
+                    // Found an opponent - check if they have a clear forward path that goes through our position
+                    const canReachGoalRow = Math.abs(checkRow - middleRow) <= Math.abs(checkCol - myGoalCol);
+                    
+                    if (canReachGoalRow) {
+                        // Check if our position is blocking their path
+                        const pathBlockedByUs = this.isInOpponentPath(checkRow, checkCol, row, col, opponent);
+                        
+                        if (pathBlockedByUs) {
+                            const opponentDanger = this.evaluateThreatDanger(checkRow, checkCol, opponent);
+                            if (opponentDanger > 5) {
+                                // We're blocking a dangerous opponent's path
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         return false;
+    }
+    
+    // Helper: Check if position (blockRow, blockCol) is in the path of opponent at (oppRow, oppCol)
+    isInOpponentPath(oppRow, oppCol, blockRow, blockCol, opponent) {
+        const direction = opponent === 1 ? 1 : -1;
+        const goalCol = opponent === 1 ? this.cols - 1 : 0;
+        const middleRow = Math.floor(this.rows / 2);
+        
+        // Check if block position is between opponent and goal
+        const isInColumnPath = (opponent === 1 && blockCol > oppCol && blockCol < goalCol) ||
+                              (opponent === 2 && blockCol < oppCol && blockCol > goalCol);
+        
+        if (!isInColumnPath) return false;
+        
+        // Check if the row difference is reachable (diagonal movement)
+        const colDiff = Math.abs(blockCol - oppCol);
+        const rowDiff = Math.abs(blockRow - oppRow);
+        
+        // Opponent can reach this position with diagonal moves if rowDiff <= colDiff
+        return rowDiff <= colDiff;
     }
 
     evaluateDefensiveThreat(playerPos, move) {
@@ -1647,6 +2103,14 @@ class DiceSoccerGame {
             this.player2Score++;
         }
         
+        // Log goal event
+        if (window.gameLogger && window.gameLogger.logId) {
+            const scorer = this.currentPlayer === 1 ? 
+                (gameState.player1Name || 'Player 1') : 
+                (gameState.gameMode === 'ai' ? `AI (${gameState.difficulty})` : (gameState.player2Name || 'Player 2'));
+            window.gameLogger.logEvent('GOAL', `${scorer} scored! Score: ${this.player1Score} - ${this.player2Score}`);
+        }
+        
         this.updateUI();
         
         // Track who lost this round (for next round start)
@@ -1682,6 +2146,7 @@ class DiceSoccerGame {
     continueAfterGoal() {
         const goalModal = document.getElementById('goalModal');
         goalModal.classList.remove('active');
+        goalModal.classList.remove('minimized'); // Reset minimized state
         goalModal.style.transform = ''; // Reset rotation
         this.resetRound();
     }
@@ -1702,6 +2167,14 @@ class DiceSoccerGame {
         this.currentPlayer = this.nextRoundStartPlayer; // Losing player starts next round
         this.waitingForMove = false;
         this.currentGameStartTime = Date.now();
+        
+        // Log new round start
+        if (window.gameLogger && window.gameLogger.logId) {
+            const roundStarter = this.currentPlayer === 1 ? 
+                (gameState.player1Name || 'Player 1') : 
+                (gameState.gameMode === 'ai' ? `AI (${gameState.difficulty})` : (gameState.player2Name || 'Player 2'));
+            window.gameLogger.logEvent('ROUND_START', `New round started. ${roundStarter} starts. Score: ${this.player1Score} - ${this.player2Score}`);
+        }
         
         // Update UI to reflect current player (scores and active player highlight)
         this.updateUI();
@@ -1750,6 +2223,21 @@ class DiceSoccerGame {
         
         const winner = this.player1Score >= 3 ? player1Name : player2Name;
         const totalMoves = this.player1Score >= 3 ? this.player1Moves : this.player2Moves;
+        
+        // Log game end for all game modes
+        if (window.gameLogger && window.gameLogger.logId) {
+            window.gameLogger.endGameLog(
+                winner,
+                this.player1Score,
+                this.player2Score,
+                this.player1Moves,
+                this.player2Moves,
+                this.player1ThinkingTime,
+                this.player2ThinkingTime,
+                this.totalGameTime,
+                'Completed'
+            );
+        }
         
         document.getElementById('winnerMessage').textContent = `${winner} ${translationManager.get('wins')}!`;
 
@@ -1840,6 +2328,24 @@ class DiceSoccerGame {
         this.nextRoundStartPlayer = 1; // First round starts with Player 1
         this.gameStartTime = Date.now();
         this.currentGameStartTime = Date.now();
+        
+        console.log('DiceSoccerGame.start() - gameState.gameMode:', gameState.gameMode);
+        console.log('DiceSoccerGame.start() - window.gameLogger exists:', !!window.gameLogger);
+        
+        // Start logging for local and AI games (multiplayer is logged in startMultiplayerGame)
+        if (window.gameLogger && (gameState.gameMode === 'local' || gameState.gameMode === 'ai')) {
+            const player1Name = gameState.player1Name;
+            let player2Name = gameState.player2Name;
+            
+            if (gameState.gameMode === 'ai') {
+                // Include AI difficulty in the name
+                const difficulty = gameState.difficulty || 'easy';
+                player2Name = `AI (${difficulty})`;
+            }
+            
+            console.log('Starting game log:', gameState.gameMode, player1Name, player2Name);
+            window.gameLogger.startGameLog(player1Name, player2Name, null, gameState.gameMode);
+        }
         
         // Reset game state variables
         this.isRolling = false;
@@ -2138,7 +2644,6 @@ class DiceSoccerGame {
                 
                 if (!fromCell || !toCell) {
                     console.error(`Could not find cells for animation. fromCell=${fromCell}, toCell=${toCell}`);
-                    console.error(`Tried IDs: ${fromCellId}, ${toCellId}`);
                     // Update board immediately without animation
                     this.board[event.toRow][event.toCol] = piece;
                     this.board[event.fromRow][event.fromCol] = null;
@@ -2228,7 +2733,7 @@ class DiceSoccerGame {
                 clone.style.top = fromTop + 'px';
                 clone.style.width = fromRect.width * 0.8 + 'px';
                 clone.style.height = fromRect.height * 0.8 + 'px';
-                                
+                                                
                 fieldGrid.appendChild(clone);
                 
                 // Start animation after a brief delay
@@ -2236,7 +2741,7 @@ class DiceSoccerGame {
                     const toRect = toCell.getBoundingClientRect();
                     const toLeft = toRect.left - boardRect.left + toRect.width * 0.1;
                     const toTop = toRect.top - boardRect.top + toRect.height * 0.1;
-                                        
+                                            
                     clone.style.transition = 'all 0.3s ease-in-out';
                     clone.style.left = toLeft + 'px';
                     clone.style.top = toTop + 'px';
@@ -2255,24 +2760,48 @@ class DiceSoccerGame {
                     this.waitingForMove = false;
                     this.diceValue = 0;
                     
+                    console.log(`📍 playerMoved completed. Checking for goal: toCol=${event.toCol}, piece.player=${piece.player}`);
+                    
                     // Check for goal
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
-                        console.log('Goal detected from opponent move!');
+                        console.log('⚽ Goal detected from opponent move!');
                         setTimeout(() => this.handleGoal(), 300);
                 } else {
                     // Switch to local player's turn
+                    console.log('🔄 No goal, switching player after opponent move');
                     setTimeout(() => this.switchPlayer(), 200);
                 }
                 }, 300);
                 break;
                 
             case 'gameEnded':
-                // Game ended (opponent left or disconnected)                
+                // Game ended (opponent left or disconnected)
+                const disconnectReason = event.reason === 'opponent_disconnected' ? 'Opponent Disconnected' : 'Opponent Left';
+                
                 if (event.reason === 'opponent_disconnected') {
                     this.showMessage(translationManager.get('opponentDisconnected') || 'Opponent disconnected');
                 } else {
                     this.showMessage(translationManager.get('opponentLeft'));
+                }
+                
+                // Log game end due to disconnect/leave
+                if (window.gameLogger && window.gameLogger.logId) {
+                    const player1Name = gameState.player1Name || 'Player 1';
+                    const player2Name = gameState.player2Name || 'Player 2';
+                    const winner = event.reason === 'opponent_disconnected' ? player1Name : 'None';
+                    
+                    window.gameLogger.endGameLog(
+                        winner,
+                        this.player1Score,
+                        this.player2Score,
+                        this.player1Moves,
+                        this.player2Moves,
+                        this.player1ThinkingTime,
+                        this.player2ThinkingTime,
+                        Date.now() - this.gameStartTime,
+                        disconnectReason
+                    );
                 }
                 
                 // Stop polling and clean up

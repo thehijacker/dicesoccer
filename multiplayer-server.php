@@ -42,6 +42,24 @@ if (empty($action) && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 switch ($action) {
+    case 'enterLobby':
+        handleEnterLobby();
+        break;
+    case 'getLobbyPlayers':
+        handleGetLobbyPlayers();
+        break;
+    case 'sendChallenge':
+        handleSendChallenge();
+        break;
+    case 'acceptChallenge':
+        handleAcceptChallenge();
+        break;
+    case 'declineChallenge':
+        handleDeclineChallenge();
+        break;
+    case 'leaveLobby':
+        handleLeaveLobby();
+        break;
     case 'host':
         handleHostGame();
         break;
@@ -69,6 +87,317 @@ switch ($action) {
     default:
         sendError('Invalid action');
 }
+
+// === LOBBY SYSTEM HANDLERS ===
+
+// Enter lobby (make player available for challenges)
+function handleEnterLobby() {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$data) {
+            sendError('Invalid request data');
+            return;
+        }
+        
+        $playerId = $data['playerId'] ?? generateId();
+        $playerName = $data['playerName'] ?? 'Player';
+        $playerIp = $_SERVER['REMOTE_ADDR'];
+        
+        // Clean up any old lobby entries or games for this player
+        cleanupPlayerFiles($playerId);
+        
+        $lobbyData = [
+            'playerId' => $playerId,
+            'playerName' => $playerName,
+            'playerIp' => $playerIp,
+            'timestamp' => time(),
+            'status' => 'available', // available, challenging, challenged, in-game
+            'gameId' => null,
+            'challengedBy' => null,
+            'challengingPlayer' => null
+        ];
+        
+        $result = @file_put_contents(
+            GAME_DATA_DIR . "/lobby_{$playerId}.json",
+            json_encode($lobbyData)
+        );
+        
+        if ($result === false) {
+            sendError('Failed to save lobby data. Check directory permissions.');
+            return;
+        }
+        
+        sendSuccess([
+            'playerId' => $playerId,
+            'status' => 'in_lobby'
+        ]);
+    } catch (Exception $e) {
+        sendError('Server error: ' . $e->getMessage());
+    }
+}
+
+// Get list of lobby players and active games
+function handleGetLobbyPlayers() {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $requestingPlayerId = $data['playerId'] ?? '';
+    
+    $availablePlayers = [];
+    $challengingPlayers = [];
+    $activeGames = [];
+    $myStatus = null;
+    
+    // Get lobby players
+    $lobbyFiles = glob(GAME_DATA_DIR . '/lobby_*.json');
+    foreach ($lobbyFiles as $file) {
+        $playerData = json_decode(file_get_contents($file), true);
+        if ($playerData) {
+            $playerInfo = [
+                'playerId' => $playerData['playerId'],
+                'playerName' => $playerData['playerName'],
+                'playerIp' => $playerData['playerIp'],
+                'status' => $playerData['status']
+            ];
+            
+            // If this is the requesting player, save their full data
+            if ($playerData['playerId'] === $requestingPlayerId) {
+                $myStatus = $playerData;
+            }
+            
+            if ($playerData['status'] === 'available') {
+                $availablePlayers[] = $playerInfo;
+            } elseif ($playerData['status'] === 'challenging' || $playerData['status'] === 'challenged') {
+                $challengingPlayers[] = $playerInfo;
+            }
+        }
+    }
+    
+    // Get active games
+    $gameFiles = glob(GAME_DATA_DIR . '/game_*.json');
+    foreach ($gameFiles as $file) {
+        $gameData = json_decode(file_get_contents($file), true);
+        if ($gameData && $gameData['status'] === 'active') {
+            $activeGames[] = [
+                'gameId' => $gameData['gameId'],
+                'player1' => $gameData['host']['playerName'],
+                'player2' => $gameData['guest']['playerName'],
+                'timestamp' => $gameData['timestamp']
+            ];
+        }
+    }
+    
+    sendSuccess([
+        'availablePlayers' => $availablePlayers,
+        'challengingPlayers' => $challengingPlayers,
+        'activeGames' => $activeGames,
+        'myStatus' => $myStatus
+    ]);
+}
+
+// Send challenge to another player
+function handleSendChallenge() {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        $playerId = $data['playerId'] ?? '';
+        $targetPlayerId = $data['targetPlayerId'] ?? '';
+        $hintsEnabled = $data['hintsEnabled'] ?? true;
+        
+        // Validate both players exist in lobby
+        $playerFile = GAME_DATA_DIR . "/lobby_{$playerId}.json";
+        $targetFile = GAME_DATA_DIR . "/lobby_{$targetPlayerId}.json";
+        
+        if (!file_exists($playerFile) || !file_exists($targetFile)) {
+            sendError('Player not found in lobby');
+            return;
+        }
+        
+        $playerData = json_decode(file_get_contents($playerFile), true);
+        $targetData = json_decode(file_get_contents($targetFile), true);
+        
+        if ($targetData['status'] !== 'available') {
+            sendError('Player is not available');
+            return;
+        }
+        
+        // Update challenger status
+        $playerData['status'] = 'challenging';
+        $playerData['challengingPlayer'] = $targetPlayerId;
+        $playerData['hintsEnabled'] = $hintsEnabled;
+        $playerData['timestamp'] = time();
+        file_put_contents($playerFile, json_encode($playerData));
+        
+        // Update target status
+        $targetData['status'] = 'challenged';
+        $targetData['challengedBy'] = $playerId;
+        $targetData['challengerName'] = $playerData['playerName'];
+        $targetData['hintsEnabled'] = $hintsEnabled;
+        $targetData['timestamp'] = time();
+        file_put_contents($targetFile, json_encode($targetData));
+        
+        sendSuccess(['status' => 'challenge_sent']);
+    } catch (Exception $e) {
+        sendError('Server error: ' . $e->getMessage());
+    }
+}
+
+// Accept a challenge
+function handleAcceptChallenge() {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        $playerId = $data['playerId'] ?? '';
+        $challengerId = $data['challengerId'] ?? '';
+        
+        $playerFile = GAME_DATA_DIR . "/lobby_{$playerId}.json";
+        $challengerFile = GAME_DATA_DIR . "/lobby_{$challengerId}.json";
+        
+        if (!file_exists($playerFile) || !file_exists($challengerFile)) {
+            sendError('Player not found');
+            return;
+        }
+        
+        $playerData = json_decode(file_get_contents($playerFile), true);
+        $challengerData = json_decode(file_get_contents($challengerFile), true);
+        
+        // Create game session
+        $gameId = generateId();
+        
+        $gameData = [
+            'gameId' => $gameId,
+            'host' => [
+                'playerId' => $challengerData['playerId'],
+                'playerName' => $challengerData['playerName']
+            ],
+            'guest' => [
+                'playerId' => $playerData['playerId'],
+                'playerName' => $playerData['playerName']
+            ],
+            'status' => 'active',
+            'currentTurn' => $challengerData['playerId'],
+            'events' => [],
+            'timestamp' => time(),
+            'lastActivity' => time(),
+            'hintsEnabled' => $challengerData['hintsEnabled'] ?? true
+        ];
+        
+        file_put_contents(
+            GAME_DATA_DIR . "/game_{$gameId}.json",
+            json_encode($gameData)
+        );
+        
+        // Update both players' lobby status
+        $playerData['status'] = 'in-game';
+        $playerData['gameId'] = $gameId;
+        file_put_contents($playerFile, json_encode($playerData));
+        
+        $challengerData['status'] = 'in-game';
+        $challengerData['gameId'] = $gameId;
+        file_put_contents($challengerFile, json_encode($challengerData));
+        
+        // Notify challenger that challenge was accepted
+        addGameEvent($gameId, [
+            'type' => 'challengeAccepted',
+            'gameId' => $gameId,
+            'hintsEnabled' => $gameData['hintsEnabled'],
+            'opponent' => [
+                'playerId' => $playerData['playerId'],
+                'playerName' => $playerData['playerName']
+            ]
+        ], $challengerId);
+        
+        sendSuccess([
+            'gameId' => $gameId,
+            'role' => 'guest',
+            'hintsEnabled' => $gameData['hintsEnabled'],
+            'opponent' => [
+                'playerId' => $challengerData['playerId'],
+                'playerName' => $challengerData['playerName']
+            ]
+        ]);
+    } catch (Exception $e) {
+        sendError('Server error: ' . $e->getMessage());
+    }
+}
+
+// Decline a challenge
+function handleDeclineChallenge() {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        $playerId = $data['playerId'] ?? '';
+        $challengerId = $data['challengerId'] ?? '';
+        
+        $playerFile = GAME_DATA_DIR . "/lobby_{$playerId}.json";
+        $challengerFile = GAME_DATA_DIR . "/lobby_{$challengerId}.json";
+        
+        if (file_exists($playerFile)) {
+            $playerData = json_decode(file_get_contents($playerFile), true);
+            $playerData['status'] = 'available';
+            $playerData['challengedBy'] = null;
+            $playerData['challengerName'] = null;
+            $playerData['timestamp'] = time();
+            file_put_contents($playerFile, json_encode($playerData));
+        }
+        
+        if (file_exists($challengerFile)) {
+            $challengerData = json_decode(file_get_contents($challengerFile), true);
+            $challengerData['status'] = 'available';
+            $challengerData['challengingPlayer'] = null;
+            $challengerData['timestamp'] = time();
+            file_put_contents($challengerFile, json_encode($challengerData));
+        }
+        
+        sendSuccess(['status' => 'challenge_declined']);
+    } catch (Exception $e) {
+        sendError('Server error: ' . $e->getMessage());
+    }
+}
+
+// Leave lobby
+function handleLeaveLobby() {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $playerId = $data['playerId'] ?? '';
+        
+        $playerFile = GAME_DATA_DIR . "/lobby_{$playerId}.json";
+        
+        if (file_exists($playerFile)) {
+            $playerData = json_decode(file_get_contents($playerFile), true);
+            
+            // If player was challenging someone, reset that person's status
+            if (isset($playerData['challengingPlayer'])) {
+                $targetFile = GAME_DATA_DIR . "/lobby_{$playerData['challengingPlayer']}.json";
+                if (file_exists($targetFile)) {
+                    $targetData = json_decode(file_get_contents($targetFile), true);
+                    $targetData['status'] = 'available';
+                    $targetData['challengedBy'] = null;
+                    $targetData['challengerName'] = null;
+                    file_put_contents($targetFile, json_encode($targetData));
+                }
+            }
+            
+            // If player was challenged, reset challenger's status
+            if (isset($playerData['challengedBy'])) {
+                $challengerFile = GAME_DATA_DIR . "/lobby_{$playerData['challengedBy']}.json";
+                if (file_exists($challengerFile)) {
+                    $challengerData = json_decode(file_get_contents($challengerFile), true);
+                    $challengerData['status'] = 'available';
+                    $challengerData['challengingPlayer'] = null;
+                    file_put_contents($challengerFile, json_encode($challengerData));
+                }
+            }
+            
+            unlink($playerFile);
+        }
+        
+        sendSuccess(['status' => 'left_lobby']);
+    } catch (Exception $e) {
+        sendError('Server error: ' . $e->getMessage());
+    }
+}
+
+// === LEGACY HANDLERS (kept for backwards compatibility) ===
 
 // Host a new game
 function handleHostGame() {
@@ -344,6 +673,46 @@ function handlePollEvents() {
         return;
     }
     
+    // If gameId is 'challenge_<playerId>', check if challenger's challenge was accepted
+    if (strpos($gameId, 'challenge_') === 0) {
+        $challengerPlayerId = substr($gameId, 10); // Remove 'challenge_' prefix
+        
+        while (time() - $startTime < POLL_TIMEOUT) {
+            $challengerFile = GAME_DATA_DIR . "/lobby_{$challengerPlayerId}.json";
+            
+            if (file_exists($challengerFile)) {
+                $challengerData = json_decode(file_get_contents($challengerFile), true);
+                
+                // Check if challenge was accepted (status changed to 'in-game')
+                if ($challengerData['status'] === 'in-game' && !empty($challengerData['gameId'])) {
+                    $actualGameId = $challengerData['gameId'];
+                    $events = getPlayerEvents($actualGameId, $playerId, $lastEventId);
+                    
+                    if (!empty($events)) {
+                        sendSuccess(['events' => $events]);
+                        return;
+                    }
+                }
+                
+                // Check if challenge was declined (status back to 'available')
+                if ($challengerData['status'] === 'available') {
+                    sendSuccess(['events' => [['type' => 'challengeDeclined']]]);
+                    return;
+                }
+            } else {
+                // Challenger file deleted
+                sendSuccess(['events' => []]);
+                return;
+            }
+            
+            usleep(500000); // Wait 0.5 seconds before checking again
+        }
+        
+        // Timeout - return empty
+        sendSuccess(['events' => []]);
+        return;
+    }
+    
     // Normal polling for active games
     while (time() - $startTime < POLL_TIMEOUT) {
         $events = getPlayerEvents($gameId, $playerId, $lastEventId);
@@ -464,6 +833,43 @@ function handleHeartbeat() {
 }
 
 // Helper functions
+function cleanupPlayerFiles($playerId) {
+    // Remove lobby file
+    $lobbyFile = GAME_DATA_DIR . "/lobby_{$playerId}.json";
+    if (file_exists($lobbyFile)) {
+        unlink($lobbyFile);
+    }
+    
+    // Remove old host file
+    $hostFile = GAME_DATA_DIR . "/host_{$playerId}.json";
+    if (file_exists($hostFile)) {
+        unlink($hostFile);
+    }
+    
+    // Remove heartbeat file
+    $heartbeatFile = GAME_DATA_DIR . "/heartbeat_{$playerId}.json";
+    if (file_exists($heartbeatFile)) {
+        unlink($heartbeatFile);
+    }
+    
+    // Remove event files
+    $eventFiles = glob(GAME_DATA_DIR . "/events_*_{$playerId}.json");
+    foreach ($eventFiles as $file) {
+        unlink($file);
+    }
+    
+    // Clean up game files where this player was host or guest
+    $gameFiles = glob(GAME_DATA_DIR . "/game_*.json");
+    foreach ($gameFiles as $gameFile) {
+        $gameData = json_decode(file_get_contents($gameFile), true);
+        if (isset($gameData['host']['playerId']) && $gameData['host']['playerId'] === $playerId) {
+            unlink($gameFile);
+        } elseif (isset($gameData['guest']['playerId']) && $gameData['guest']['playerId'] === $playerId) {
+            unlink($gameFile);
+        }
+    }
+}
+
 function addGameEvent($gameId, $event, $recipientId) {
     $eventFile = GAME_DATA_DIR . "/events_{$gameId}_{$recipientId}.json";
     $events = [];
@@ -568,6 +974,13 @@ function cleanupOldSessions() {
         if (strpos($basename, 'host_') === 0) {
             if (isset($data['timestamp']) && ($now - $data['timestamp']) > 600) {
                 $shouldDelete = true; // Delete host entries older than 10 minutes
+            }
+        }
+        
+        // Clean up lobby files that are too old
+        if (strpos($basename, 'lobby_') === 0) {
+            if (isset($data['timestamp']) && ($now - $data['timestamp']) > 900) {
+                $shouldDelete = true; // Delete lobby entries older than 15 minutes
             }
         }
         

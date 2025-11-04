@@ -1,11 +1,44 @@
 // Main application logic and UI interactions
-const APP_VERSION = '1.0.11';
+const APP_VERSION = '2.0.0 Beta 1';
 
 // Track PHP availability
 let phpAvailable = true;
 
 // Wake Lock API to prevent screen sleep
 let wakeLock = null;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js').then(reg => {
+    // Check for updates every 60 seconds
+    setInterval(() => {
+      reg.update();
+    }, 60000);
+    
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          console.log('New version available, reloading in 1 second...');
+          // Delay slightly to ensure service worker is fully activated
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      });
+    });
+  });
+  
+  // Listen for messages from the service worker
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SW_UPDATED') {
+      console.log('Service Worker updated to version:', event.data.version);
+      // Reload the page to use the new version
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
+  });
+}
 
 async function requestWakeLock() {
     try {
@@ -55,6 +88,23 @@ function handleGameplayOrientationChange() {
         // Re-render the board with current game state if game is active
         if (currentGame) {
             currentGame.renderBoard();
+            
+            // Redraw hints if dice was rolled and hints are enabled
+            if (currentGame.waitingForMove && gameState.hintsEnabled && currentGame.diceValue > 0) {
+                // If a player is selected, show their valid moves
+                if (currentGame.selectedPlayer) {
+                    currentGame.highlightValidMoves(currentGame.selectedPlayer.row, currentGame.selectedPlayer.col);
+                } else {
+                    // Show all movable players
+                    const movablePlayers = currentGame.getMovablePlayers(currentGame.diceValue);
+                    if (movablePlayers.length === 0) {
+                        const allMovable = currentGame.getAllMovablePlayers();
+                        allMovable.forEach(pos => currentGame.highlightCell(pos.row, pos.col, 'movable'));
+                    } else {
+                        movablePlayers.forEach(pos => currentGame.highlightCell(pos.row, pos.col, 'movable'));
+                    }
+                }
+            }
         }
     }
 }
@@ -67,9 +117,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     setViewportHeight();
-    checkPHPAvailability().then(() => {
-        initializeApp();
+    
+    // Load configuration first, then initialize
+    window.configManager.loadConfig().then(() => {
+        checkPHPAvailability().then(() => {
+            window.gameLogger.initialize().then(() => {
+                initializeApp();
+            });
+        });
     });
+    
     registerServiceWorker();
     
     // Request wake lock to keep screen on
@@ -148,6 +205,35 @@ function setupBackButtonHandler() {
 
 // Helper function to handle returning to menu (shared by button click and back press)
 async function handleBackToMenu() {
+    // Log abandoned game if there's an active log
+    if (window.gameLogger && window.gameLogger.logId && currentGame) {
+        // Only log if game hasn't completed yet (check if winner modal is not active)
+        const winnerModal = document.getElementById('winnerModal');
+        const isGameCompleted = winnerModal && winnerModal.classList.contains('active');
+        
+        if (!isGameCompleted) {
+            const player1Name = gameState.player1Name || 'Player 1';
+            let player2Name = gameState.player2Name || 'Player 2';
+            
+            if (gameState.gameMode === 'ai') {
+                const difficulty = gameState.aiDifficulty || 'Medium';
+                player2Name = `AI (${difficulty})`;
+            }
+            
+            await window.gameLogger.endGameLog(
+                'None',
+                currentGame.player1Score || 0,
+                currentGame.player2Score || 0,
+                currentGame.player1Moves || 0,
+                currentGame.player2Moves || 0,
+                currentGame.player1ThinkingTime || 0,
+                currentGame.player2ThinkingTime || 0,
+                Date.now() - currentGame.gameStartTime,
+                'Abandoned (Returned to Menu)'
+            );
+        }
+    }
+    
     // Leave multiplayer game if active
     if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
         await multiplayerManager.leaveGame();
@@ -307,9 +393,6 @@ function initializeApp() {
     updateShirtIcon(1, gameState.player1Shirt);
     updateShirtIcon(2, gameState.player2Shirt);
 
-    // Set initial difficulty
-    updateDifficultyDisplay(gameState.difficulty);
-
     // Set sound toggle
     document.getElementById('soundCheckbox').checked = gameState.soundEnabled;
     updateSoundIcon(gameState.soundEnabled);
@@ -326,6 +409,11 @@ function initializeApp() {
     // Set two player mode toggle
     document.getElementById('twoPlayerCheckbox').checked = gameState.twoPlayerMode;
     updatePlayer2UI(gameState.twoPlayerMode);
+    
+    // Set initial difficulty selection in submenu
+    document.querySelectorAll('#difficultySubmenu .submenu-option').forEach(option => {
+        option.classList.toggle('selected', option.getAttribute('data-difficulty') === gameState.difficulty);
+    });
 
     // Use early detected orientation from sessionStorage (set in head script)
     const initialOrientation = sessionStorage.getItem('initialOrientation');
@@ -353,27 +441,24 @@ function initializeApp() {
 
     // Disable multiplayer options if PHP is not available
     if (!phpAvailable) {
-        const hostBtn = document.getElementById('hostGameBtn');
-        const joinBtn = document.getElementById('joinGameBtn');
+        const multiplayerBtn = document.getElementById('multiplayerBtn');
         
-        if (hostBtn) {
-            hostBtn.classList.add('disabled');
-            hostBtn.title = 'PHP not available - Multiplayer requires PHP server support';
-        }
-        
-        if (joinBtn) {
-            joinBtn.classList.add('disabled');
-            joinBtn.title = 'PHP not available - Multiplayer requires PHP server support';
+        if (multiplayerBtn) {
+            multiplayerBtn.classList.add('disabled');
+            multiplayerBtn.title = 'PHP not available - Multiplayer requires PHP server support';
         }
         
         console.log('Multiplayer options disabled - PHP not available');
     }
 
     // Set up event listeners
+    console.log('Setting up event listeners...');
     setupEventListeners();
+    console.log('Event listeners set up successfully');
 
     // Initialize shirt modal
     initializeShirtModal();
+    console.log('App initialized successfully');
 }
 
 // Initialize custom language dropdown
@@ -458,6 +543,8 @@ function initializeLanguageDropdown() {
 }
 
 function setupEventListeners() {
+    console.log('setupEventListeners called');
+    
     // New Game button
     document.getElementById('newGameBtn').addEventListener('click', () => {
         // Show hints selection modal
@@ -467,9 +554,24 @@ function setupEventListeners() {
     // Two Player toggle
     document.getElementById('twoPlayerCheckbox').addEventListener('change', (e) => {
         gameState.setTwoPlayerMode(e.target.checked);
-        toggleAIDifficulty(!e.target.checked);
         updatePlayer2UI(e.target.checked);
     });
+
+    // Player 2 Container - shows difficulty submenu when in AI mode
+    try {
+        document.getElementById('player2Container').addEventListener('click', (e) => {
+            // Only open submenu if in AI mode (not two-player mode)
+            if (!gameState.twoPlayerMode) {
+                // Don't open if clicking directly on the shirt icon (for color selection)
+                const target = e.target;
+                if (target && target.classList && !target.classList.contains('shirt-icon')) {
+                    toggleSubmenu('difficultySubmenu');
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error setting up player2Container listener:', error);
+    }
 
     // Orientation
     document.getElementById('orientationItem').addEventListener('click', () => {
@@ -495,17 +597,18 @@ function setupEventListeners() {
         handleHintsSelection(false);
     });
 
-    // AI Difficulty
-    document.getElementById('aiDifficultyItem').addEventListener('click', () => {
-        toggleSubmenu('difficultySubmenu');
-    });
-
+    // Difficulty options (for AI)
     document.querySelectorAll('#difficultySubmenu .submenu-option').forEach(option => {
         option.addEventListener('click', (e) => {
             const difficulty = e.currentTarget.getAttribute('data-difficulty');
             gameState.setDifficulty(difficulty);
-            updateDifficultyDisplay(difficulty);
             updatePlayer2UI(gameState.twoPlayerMode); // Update AI difficulty label
+            
+            // Update selected state in submenu
+            document.querySelectorAll('#difficultySubmenu .submenu-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.getAttribute('data-difficulty') === difficulty);
+            });
+            
             toggleSubmenu('difficultySubmenu', false);
         });
     });
@@ -528,15 +631,9 @@ function setupEventListeners() {
         openShirtModal(2);
     });
 
-    // Host game
-    document.getElementById('hostGameBtn').addEventListener('click', () => {
-        // Show hints selection modal for multiplayer host
-        showHintsModal('host');
-    });
-
-    // Join game
-    document.getElementById('joinGameBtn').addEventListener('click', () => {
-        openJoinModal();
+    // Multiplayer lobby
+    document.getElementById('multiplayerBtn').addEventListener('click', () => {
+        openLobby();
     });
 
     // Settings menu
@@ -577,13 +674,26 @@ function setupEventListeners() {
         closeModal('joinGameModal');
     });
     
-    document.getElementById('refreshHostsBtn')?.addEventListener('click', async () => {
-        await refreshGamesList();
+    // Lobby modal handlers
+    document.getElementById('refreshLobbyBtn')?.addEventListener('click', async () => {
+        await refreshLobby();
     });
 
-    document.getElementById('cancelHosting')?.addEventListener('click', () => {
-        multiplayerManager.cancelHosting();
-        closeModal('waitingModal');
+    document.getElementById('closeLobbyBtn')?.addEventListener('click', () => {
+        closeLobby();
+    });
+
+    // Challenge modal handlers
+    document.getElementById('cancelChallengeBtn')?.addEventListener('click', () => {
+        cancelChallenge();
+    });
+
+    document.getElementById('acceptChallengeBtn')?.addEventListener('click', () => {
+        acceptChallenge();
+    });
+
+    document.getElementById('declineChallengeBtn')?.addEventListener('click', () => {
+        declineChallenge();
     });
 
     // Back to menu - expandable square
@@ -644,6 +754,78 @@ function setupEventListeners() {
             // stop all sounds (cheering))
             soundManager.stopAll();
             currentGame.continueAfterGoal();
+        }
+    });
+
+    // View Board buttons - minimize/maximize modals
+    document.getElementById('viewBoardFromGoal').addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent event bubbling
+        const modal = document.getElementById('goalModal');
+        const button = e.target;
+        
+        if (modal.classList.contains('minimized')) {
+            // Restore modal
+            modal.classList.remove('minimized');
+            button.textContent = translationManager.get('viewBoard');
+        } else {
+            // Minimize modal
+            modal.classList.add('minimized');
+            // Add text indicator for minimized state
+            const modalContent = modal.querySelector('.modal-content');
+            let minimizeText = modalContent.querySelector('.modal-minimize-text');
+            if (!minimizeText) {
+                minimizeText = document.createElement('div');
+                minimizeText.className = 'modal-minimize-text';
+                modalContent.appendChild(minimizeText);
+            }
+            minimizeText.textContent = translationManager.get('goal') + ' - ' + translationManager.get('continue');
+        }
+    });
+
+    document.getElementById('viewBoardFromWinner').addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent event bubbling
+        const modal = document.getElementById('winnerModal');
+        const button = e.target;
+        
+        if (modal.classList.contains('minimized')) {
+            // Restore modal
+            modal.classList.remove('minimized');
+            button.textContent = translationManager.get('viewBoard');
+        } else {
+            // Minimize modal
+            modal.classList.add('minimized');
+            // Add text indicator for minimized state
+            const modalContent = modal.querySelector('.modal-content');
+            let minimizeText = modalContent.querySelector('.modal-minimize-text');
+            if (!minimizeText) {
+                minimizeText = document.createElement('div');
+                minimizeText.className = 'modal-minimize-text';
+                modalContent.appendChild(minimizeText);
+            }
+            minimizeText.textContent = translationManager.get('statistics');
+        }
+    });
+
+    // Click on minimized modal to restore it
+    document.getElementById('goalModal').addEventListener('click', (e) => {
+        const modal = e.currentTarget;
+        if (modal.classList.contains('minimized')) {
+            modal.classList.remove('minimized');
+            const button = document.getElementById('viewBoardFromGoal');
+            if (button) {
+                button.textContent = translationManager.get('viewBoard');
+            }
+        }
+    });
+
+    document.getElementById('winnerModal').addEventListener('click', (e) => {
+        const modal = e.currentTarget;
+        if (modal.classList.contains('minimized')) {
+            modal.classList.remove('minimized');
+            const button = document.getElementById('viewBoardFromWinner');
+            if (button) {
+                button.textContent = translationManager.get('viewBoard');
+            }
         }
     });
 
@@ -712,13 +894,23 @@ function setupEventListeners() {
 function updatePlayer2UI(twoPlayerMode) {
     const player2Name = document.getElementById('player2Name');
     const aiLabel = document.getElementById('aiDifficultyLabel');
+    const player2Container = document.getElementById('player2Container');
+    
     if (twoPlayerMode) {
+        // Two-player mode: show editable name input
         player2Name.classList.remove('hidden');
+        player2Name.readOnly = false;
+        player2Name.style.cursor = 'text';
         aiLabel.classList.add('hidden');
+        player2Container.classList.remove('expandable');
     } else {
+        // AI mode: show AI label and make clickable
         player2Name.classList.add('hidden');
+        player2Name.readOnly = true;
         aiLabel.classList.remove('hidden');
-        aiLabel.textContent = `AI (${translationManager.get(gameState.difficulty)} ${translationManager.get('difficulty')})`;
+        aiLabel.textContent = `AI (${translationManager.get(gameState.difficulty)})`;
+        player2Container.classList.add('expandable');
+        player2Container.style.cursor = 'pointer';
     }
 }
 
@@ -789,29 +981,6 @@ function toggleSubmenu(submenuId, show = null) {
             document.addEventListener('click', closeOnClickOutside);
         }, 10);
     }
-}
-
-function toggleAIDifficulty(show) {
-    const aiItem = document.getElementById('aiDifficultyItem');
-    const difficultySubmenu = document.getElementById('difficultySubmenu');
-    
-    if (show) {
-        aiItem.classList.remove('disabled');
-    } else {
-        aiItem.classList.add('disabled');
-        difficultySubmenu.classList.remove('active');
-    }
-}
-
-function updateDifficultyDisplay(difficulty) {
-    const difficultyValue = document.getElementById('difficultyValue');
-    difficultyValue.setAttribute('data-translate-value', difficulty);
-    difficultyValue.textContent = translationManager.get(difficulty);
-    
-    // Update selected state
-    document.querySelectorAll('#difficultySubmenu .submenu-option').forEach(option => {
-        option.classList.toggle('selected', option.getAttribute('data-difficulty') === difficulty);
-    });
 }
 
 function updateSoundIcon(enabled) {
@@ -995,6 +1164,324 @@ document.getElementById('cancelHostBtn')?.addEventListener('click', async () => 
     closeModal('hostWaitingModal');
 });
 
+// === LOBBY SYSTEM FUNCTIONS ===
+
+let lobbyRefreshInterval = null;
+let currentChallengeInfo = null;
+
+async function openLobby() {
+    // Initialize multiplayer if not done
+    if (!multiplayerManager.playerId) {
+        multiplayerManager.init();
+    }
+    
+    const playerName = gameState.player1Name || translationManager.get('player1');
+    
+    // Enter lobby
+    const result = await multiplayerManager.enterLobby(playerName);
+    
+    if (!result.success) {
+        alert(translationManager.get('failedToJoin') + ': ' + result.error);
+        return;
+    }
+    
+    // Open lobby modal
+    openModal('lobbyModal');
+    
+    // Initial refresh
+    await refreshLobby();
+    
+    // Set up periodic refresh (every 3 seconds)
+    lobbyRefreshInterval = setInterval(async () => {
+        await refreshLobby();
+        await checkForChallenges();
+    }, 3000);
+}
+
+async function refreshLobby() {
+    const result = await multiplayerManager.getLobbyPlayers();
+    
+    if (!result.success) {
+        console.error('Failed to refresh lobby:', result.error);
+        return;
+    }
+    
+    console.log('📋 Lobby refresh result:', result);
+    
+    // Check if we've been challenged
+    if (result.myStatus && result.myStatus.status === 'challenged' && !currentChallengeInfo) {
+        console.log('🎯 We have been challenged!', result.myStatus);
+        // We've been challenged! Show the challenge dialog
+        const challengerId = result.myStatus.challengedBy;
+        const challengerName = result.myStatus.challengerName;
+        const hintsEnabled = result.myStatus.hintsEnabled;
+        
+        currentChallengeInfo = {
+            challengerId: challengerId,
+            challengerName: challengerName,
+            hintsEnabled: hintsEnabled,
+            isChallenger: false
+        };
+        
+        // Close lobby modal and show challenge modal
+        closeModal('lobbyModal');
+        openModal('challengeModal');
+        
+        document.getElementById('challengeTitle').textContent = translationManager.get('challengePlayer');
+        document.getElementById('challengeMessage').textContent = `${challengerName} ${translationManager.get('challenging')}`;
+        
+        // Show accept/decline buttons, hide other elements
+        document.getElementById('challengeHintsSelection').classList.add('hidden');
+        document.getElementById('challengeResponseButtons').classList.remove('hidden');
+        document.getElementById('challengeWaiting').classList.add('hidden');
+        document.getElementById('cancelChallengeBtn').classList.add('hidden');
+        
+        return; // Don't update lobby UI while showing challenge
+    }
+    
+    // Update available players list
+    const playersList = document.getElementById('lobbyPlayersList');
+    const availablePlayers = result.availablePlayers.filter(p => p.playerId !== multiplayerManager.playerId);
+    
+    if (availablePlayers.length === 0) {
+        playersList.innerHTML = `<p class="no-players-message" data-translate="noPlayersInLobby">${translationManager.get('noPlayersInLobby')}</p>`;
+    } else {
+        playersList.innerHTML = '';
+        availablePlayers.forEach(player => {
+            const playerItem = document.createElement('div');
+            playerItem.className = 'lobby-player-item';
+            playerItem.innerHTML = `
+                <div class="lobby-player-info">
+                    <div class="lobby-player-name">${escapeHtml(player.playerName)}</div>
+                    <div class="lobby-player-status available">${translationManager.get('available')}</div>
+                </div>
+                <button class="challenge-btn">${translationManager.get('challenge')}</button>
+            `;
+            
+            playerItem.querySelector('.challenge-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await challengePlayer(player);
+            });
+            
+            playersList.appendChild(playerItem);
+        });
+    }
+    
+    // Update active games list
+    const gamesList = document.getElementById('activeGamesList');
+    const activeGames = result.activeGames;
+    
+    if (activeGames.length === 0) {
+        gamesList.innerHTML = `<p class="no-games-message" data-translate="noActiveGames">${translationManager.get('noActiveGames')}</p>`;
+    } else {
+        gamesList.innerHTML = '';
+        activeGames.forEach(game => {
+            const gameItem = document.createElement('div');
+            gameItem.className = 'game-item';
+            
+            const timeAgo = getTimeAgo(game.timestamp);
+            
+            gameItem.innerHTML = `
+                <div>
+                    <div class="game-players">${escapeHtml(game.player1)} vs ${escapeHtml(game.player2)}</div>
+                    <div class="game-time">${timeAgo}</div>
+                </div>
+            `;
+            
+            gamesList.appendChild(gameItem);
+        });
+    }
+}
+
+async function challengePlayer(player) {
+    currentChallengeInfo = {
+        targetPlayerId: player.playerId,
+        targetPlayerName: player.playerName,
+        isChallenger: true
+    };
+    
+    // Close lobby modal
+    closeModal('lobbyModal');
+    
+    // Show challenge modal with hints selection
+    openModal('challengeModal');
+    document.getElementById('challengeTitle').textContent = translationManager.get('challengePlayer');
+    document.getElementById('challengeMessage').textContent = `${translationManager.get('challenging')} ${player.playerName}`;
+    
+    document.getElementById('challengeHintsSelection').classList.remove('hidden');
+    document.getElementById('challengeResponseButtons').classList.add('hidden');
+    document.getElementById('challengeWaiting').classList.add('hidden');
+    document.getElementById('cancelChallengeBtn').classList.remove('hidden');
+    
+    // Set up hints selection buttons
+    const hintsButtons = document.querySelectorAll('.hints-option-btn');
+    hintsButtons.forEach(btn => {
+        btn.onclick = async () => {
+            const hintsEnabled = btn.dataset.hints === 'true';
+            await sendChallenge(hintsEnabled);
+        };
+    });
+}
+
+async function sendChallenge(hintsEnabled) {
+    // Hide hints selection, show waiting
+    document.getElementById('challengeHintsSelection').classList.add('hidden');
+    document.getElementById('challengeWaiting').classList.remove('hidden');
+    
+    const result = await multiplayerManager.challengePlayer(
+        currentChallengeInfo.targetPlayerId,
+        hintsEnabled
+    );
+    
+    if (!result.success) {
+        alert(translationManager.get('failedToJoin') + ': ' + result.error);
+        closeModal('challengeModal');
+        openModal('lobbyModal');
+        return;
+    }
+    
+    // Start polling for challenge response
+    multiplayerManager.onEvent = handleLobbyEvent;
+    multiplayerManager.startPolling();
+}
+
+async function checkForChallenges() {
+    // This would require a new endpoint to check if we've been challenged
+    // For now, we'll rely on the getLobbyPlayers call which updates our status
+    const result = await multiplayerManager.getLobbyPlayers();
+    
+    if (result.success) {
+        // Check if we're in the challenging/challenged list
+        const allPlayers = [...result.availablePlayers, ...result.challengingPlayers];
+        const myInfo = allPlayers.find(p => p.playerId === multiplayerManager.playerId);
+        
+        if (myInfo && myInfo.status === 'challenged' && !currentChallengeInfo) {
+            // We've been challenged! - Note: We need to enhance the server to return challenger info
+            // For now, this is a placeholder
+        }
+    }
+}
+
+function handleLobbyEvent(event) {
+    console.log('Lobby event received:', event);
+    
+    if (event.type === 'challengeAccepted') {
+        // Challenge was accepted, start the game
+        multiplayerManager.stopPolling();
+        closeModal('challengeModal');
+        
+        // Close lobby interval if still running
+        if (lobbyRefreshInterval) {
+            clearInterval(lobbyRefreshInterval);
+            lobbyRefreshInterval = null;
+        }
+        
+        // Apply hints setting from event
+        if (event.hintsEnabled !== undefined) {
+            gameState.hintsEnabled = event.hintsEnabled;
+        }
+        
+        // Play start sound
+        soundManager.play('whistle');
+        
+        // Start multiplayer game (challenger is host/player1)
+        startMultiplayerGame('host', event.opponent);
+    }
+}
+
+async function acceptChallenge() {
+    if (!currentChallengeInfo) return;
+    
+    const result = await multiplayerManager.acceptChallenge(currentChallengeInfo.challengerId);
+    
+    if (!result.success) {
+        alert(translationManager.get('failedToJoin') + ': ' + result.error);
+        return;
+    }
+    
+    closeModal('challengeModal');
+    
+    // Close lobby interval if still running
+    if (lobbyRefreshInterval) {
+        clearInterval(lobbyRefreshInterval);
+        lobbyRefreshInterval = null;
+    }
+    
+    // Apply hints setting from result
+    if (result.hintsEnabled !== undefined) {
+        gameState.hintsEnabled = result.hintsEnabled;
+    }
+    
+    // Play start sound
+    soundManager.play('whistle');
+    
+    // Start multiplayer game (accepter is guest/player2)
+    startMultiplayerGame('guest', result.opponent);
+}
+
+async function declineChallenge() {
+    if (!currentChallengeInfo) return;
+    
+    await multiplayerManager.declineChallenge(currentChallengeInfo.challengerId);
+    
+    currentChallengeInfo = null;
+    closeModal('challengeModal');
+    
+    // Return to lobby
+    openModal('lobbyModal');
+    refreshLobby();
+}
+
+async function cancelChallenge() {
+    multiplayerManager.stopPolling();
+    
+    // Clean up challenge state on server
+    if (currentChallengeInfo && currentChallengeInfo.isChallenger && currentChallengeInfo.targetPlayerId) {
+        // When challenger cancels, we decline using target as the declining player
+        // This will reset both players to 'available'
+        await fetch('multiplayer-server.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'declineChallenge',
+                playerId: currentChallengeInfo.targetPlayerId,
+                challengerId: multiplayerManager.playerId
+            })
+        });
+    }
+    
+    currentChallengeInfo = null;
+    closeModal('challengeModal');
+    
+    // Return to lobby
+    openModal('lobbyModal');
+    refreshLobby();
+}
+
+async function closeLobby() {
+    // Stop refresh interval
+    if (lobbyRefreshInterval) {
+        clearInterval(lobbyRefreshInterval);
+        lobbyRefreshInterval = null;
+    }
+    
+    // Leave lobby
+    await multiplayerManager.leaveLobby();
+    
+    closeModal('lobbyModal');
+}
+
+function getTimeAgo(timestamp) {
+    const now = Date.now() / 1000;
+    const diff = Math.floor(now - timestamp);
+    
+    if (diff < 60) return translationManager.get('justNow');
+    if (diff < 3600) return `${Math.floor(diff / 60)}${translationManager.get('minutesAgo')}`;
+    return `${Math.floor(diff / 3600)}${translationManager.get('hoursAgo')}`;
+}
+
+// === LEGACY MULTIPLAYER FUNCTIONS ===
+
 async function openJoinModal() {
     // Initialize multiplayer if not done
     if (!multiplayerManager.playerId) {
@@ -1085,6 +1572,17 @@ function startMultiplayerGame(role, opponent) {
         multiplayerManager.isHost = true;
         multiplayerManager.localPlayer = 1;
         console.log(`Host: I control Player 1 (${gameState.player1Name}), opponent controls Player 2 (${opponent.playerName})`);
+        
+        // Start game log (host initiates)
+        window.gameLogger.startGameLog(
+            gameState.player1Name,
+            opponent.playerName,
+            opponent.playerIp || 'Unknown'
+        ).then(logId => {
+            if (logId) {
+                console.log('Game logging started with ID:', logId);
+            }
+        });
     } else {
         // Guest controls Player 2, but sees themselves as "Player 1" on their screen
         // We'll flip the display perspective in rendering
@@ -1116,6 +1614,10 @@ function startMultiplayerGame(role, opponent) {
     startNewGame();
     soundManager.play('cheering');
     
+    // Ensure polling is active for multiplayer game
+    console.log('🔄 Starting polling for multiplayer game');
+    multiplayerManager.startPolling();
+    
     // Set up event handler for opponent moves
     multiplayerManager.onEvent = (event) => {
         if (currentGame && event.type !== 'gameStart') {
@@ -1141,6 +1643,7 @@ function openModal(modalId) {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     modal.classList.remove('active');
+    modal.classList.remove('minimized'); // Reset minimized state
     // Reset any rotation transforms
     modal.style.transform = '';
 }

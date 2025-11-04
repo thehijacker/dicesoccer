@@ -1,0 +1,7 @@
+{
+  "multiplayer-server": "php",
+  "php-server": "multiplayer-server.php",
+  "nodejs-server": "",
+  "python-server": "",
+  "log-enabled": true
+}
