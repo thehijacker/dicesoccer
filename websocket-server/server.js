@@ -11,6 +11,7 @@
 const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
+const crypto = require('crypto');
 
 // Configuration
 const PORT = process.env.PORT || 3000;

@@ -51,7 +51,6 @@ class WebSocketMultiplayerManager {
                 if (typeof io === 'undefined') {
                     const script = document.createElement('script');
                     script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
-                    script.integrity = 'sha384-mZLF4UVrpi/QTWPA7BjNPEnkIfRFn4ZEO3Cf/HRrkXR+r1IyNjqwuX9AAAD8OzOP';
                     script.crossOrigin = 'anonymous';
                     script.onload = () => this.connect(resolve, reject);
                     script.onerror = () => reject(new Error('Failed to load Socket.IO client'));

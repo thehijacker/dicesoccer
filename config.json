@@ -1,7 +1,7 @@
 {
-  "multiplayer-server": "php",
+  "multiplayer-server": "nodejs",
   "php-server": "multiplayer-server.php",
-  "nodejs-server": "ws://localhost:3000",
+  "nodejs-server": "wss://ds.kralj.top",
   "python-server": "",
   "log-enabled": true
 }

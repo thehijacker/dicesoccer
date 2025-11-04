@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0 Beta 1';
+const APP_VERSION = 'v2.0.0-beta-3';
 
 // Track PHP availability
 let phpAvailable = true;
@@ -1172,7 +1172,13 @@ let currentChallengeInfo = null;
 async function openLobby() {
     // Initialize multiplayer if not done
     if (!multiplayerManager.playerId) {
-        multiplayerManager.init();
+        try {
+            await multiplayerManager.init();
+        } catch (error) {
+            console.error('Failed to initialize multiplayer:', error);
+            alert(translationManager.get('failedToJoin') + ': ' + error.message);
+            return;
+        }
     }
     
     const playerName = gameState.player1Name || translationManager.get('player1');
