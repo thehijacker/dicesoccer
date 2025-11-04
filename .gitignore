@@ -7,8 +7,11 @@ multiplayer-data/*
 # Keep the folder but not its contents
 !multiplayer-data/.gitkeep
 
-# Multiplayer log files
-logs/.gitkeep
+# Log files
+logs/*
+
+# Log files
+!logs/.gitkeep
 
 # Keep the log folder structure
 !multiplayer-logs/.gitkeep

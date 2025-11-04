@@ -550,10 +550,18 @@ function getLobbyPlayersList(requestingPlayerId) {
                 playerId: player.playerId,
                 playerName: player.playerName
             });
-        } else if (player.status === 'in-game') {
+        }
+    }
+    
+    // Collect active games
+    for (const [gameId, game] of games.entries()) {
+        if (game.status === 'active') {
             activeGames.push({
-                playerId: player.playerId,
-                playerName: player.playerName
+                gameId: gameId,
+                player1: game.host.playerName,
+                player2: game.guest.playerName,
+                hintsEnabled: game.hintsEnabled,
+                timestamp: game.createdAt
             });
         }
     }
