@@ -28,12 +28,36 @@ The inspiration for this project came from countless hours playing the physical 
 ## 🛠️ Technology Stack
 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Backend**: PHP (for multiplayer functionality)
-- **Storage**: JSON file-based storage for multiplayer game state
+- **Multiplayer Backends** (switchable via config.json):
+  - **PHP** (default): Long-polling implementation, runs on any PHP server
+  - **Node.js WebSocket**: Real-time Socket.IO server for low-latency multiplayer
+- **Storage**: JSON file-based storage for game state
 - **Audio**: Web Audio API for sound effects
 - **Graphics**: CSS animations and transforms
 - **Progressive Web App**: Service Worker for offline capability and installability
-- **Architecture**: Long-polling for real-time multiplayer communication
+
+## 🌐 Multiplayer Options
+
+Two multiplayer backend options are available:
+
+### PHP Long-Polling (Default)
+- ✅ Runs on any PHP server (no additional services needed)
+- ✅ Easy to deploy
+- 📊 ~500ms latency
+
+### Node.js WebSocket Server (Recommended for Production)
+- ✅ Real-time communication with <10ms latency
+- ✅ Lower server load, more scalable
+- ✅ Docker deployment with pre-built images
+- 📦 See `websocket-server/README.md` for full documentation
+
+**Switch between backends** by editing `config.json`:
+```json
+{
+  "multiplayer-server": "nodejs",
+  "nodejs-server": "ws://your-server:3000"
+}
+```
 
 ## 📋 Game Rules
 

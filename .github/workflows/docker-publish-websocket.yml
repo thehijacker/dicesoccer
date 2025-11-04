@@ -1,0 +1,54 @@
+name: Build WebSocket Server Docker Image
+
+on:
+  push:
+    branches: 
+      - "main"
+      - "dev"
+    paths:
+      - 'websocket-server/**'
+      - '.github/workflows/docker-publish-websocket.yml'
+  release:
+    types: [ published ]
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}-websocket
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push WebSocket Server Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./websocket-server
+          file: ./websocket-server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

@@ -1,5 +1,5 @@
 // Service Worker for Dice Soccer PWA
-const CACHE_VERSION = 'v2.0.0-beta1';
+const CACHE_VERSION = 'v2.0.0-websocket';
 const CACHE_NAME = `dice-soccer-${CACHE_VERSION}`;
 const urlsToCache = [
   './',
@@ -9,6 +9,8 @@ const urlsToCache = [
   './js/config.js',
   './js/game.js',
   './js/multiplayer.js',
+  './js/multiplayer-websocket.js',
+  './js/multiplayer-loader.js',
   './js/translations.js',
   './js/tsparticles.confetti.bundle.min.js',
   './manifest.json',

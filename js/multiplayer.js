@@ -575,5 +575,4 @@ class MultiplayerManager {
     }
 }
 
-// Create global multiplayer manager instance
-const multiplayerManager = new MultiplayerManager();
+// Global multiplayer manager instance will be created by multiplayer-loader.js
