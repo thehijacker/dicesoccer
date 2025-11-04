@@ -64,6 +64,44 @@ io.on('connection', (socket) => {
                 return callback({ success: false, error: 'Missing playerId or playerName' });
             }
             
+            // Check if player already exists (reconnection scenario)
+            const existingPlayer = players.get(playerId);
+            if (existingPlayer) {
+                console.log(`🔄 Player reconnecting: ${playerName} (${playerId})`);
+                
+                // Update socket ID
+                existingPlayer.socketId = socket.id;
+                existingPlayer.status = existingPlayer.inGame ? 'in-game' : 'online';
+                existingPlayer.lastSeen = Date.now();
+                delete existingPlayer.disconnectedAt; // Clear disconnect timestamp
+                
+                lobbySockets.set(socket.id, playerId);
+                
+                // If player was in a game, notify opponent of reconnection
+                const gameId = playerGames.get(playerId);
+                if (gameId) {
+                    const game = games.get(gameId);
+                    if (game) {
+                        const opponentId = game.host.playerId === playerId ? game.guest.playerId : game.host.playerId;
+                        const opponent = players.get(opponentId);
+                        
+                        if (opponent) {
+                            const opponentSocket = io.sockets.sockets.get(opponent.socketId);
+                            if (opponentSocket) {
+                                console.log(`✅ Notifying opponent that ${playerName} reconnected`);
+                                opponentSocket.emit('gameEvent', {
+                                    type: 'playerReconnected',
+                                    reconnectedPlayerId: playerId,
+                                    timestamp: Date.now()
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return callback({ success: true, playerId, reconnected: true });
+            }
+            
             // Store player info
             players.set(playerId, {
                 playerId,
@@ -587,12 +625,16 @@ function handlePlayerDisconnect(playerId) {
     
     console.log(`🔌 Handling disconnect: ${player.playerName}`);
     
-    // If player was in a game, end it
+    // If player was in a game, mark as disconnected with grace period
     const gameId = playerGames.get(playerId);
     if (gameId) {
         const game = games.get(gameId);
         if (game) {
-            // Notify opponent
+            // Mark player as disconnected
+            player.status = 'disconnected';
+            player.disconnectedAt = Date.now();
+            
+            // Notify opponent that player disconnected (not ended)
             const opponentId = game.host.playerId === playerId ? game.guest.playerId : game.host.playerId;
             const opponent = players.get(opponentId);
             
@@ -600,21 +642,52 @@ function handlePlayerDisconnect(playerId) {
                 const opponentSocket = io.sockets.sockets.get(opponent.socketId);
                 if (opponentSocket) {
                     opponentSocket.emit('gameEvent', {
-                        type: 'gameEnded',
-                        reason: 'opponent_disconnected',
+                        type: 'playerDisconnected',
+                        disconnectedPlayerId: playerId,
                         timestamp: Date.now()
                     });
                 }
-                
-                opponent.status = 'available';
-                opponent.inGame = false;
-                playerGames.delete(opponentId);
             }
             
-            games.delete(gameId);
+            // Set timeout to end game if player doesn't reconnect
+            setTimeout(() => {
+                // Check if player is still disconnected
+                const currentPlayer = players.get(playerId);
+                if (!currentPlayer || currentPlayer.status === 'disconnected') {
+                    console.log(`⏰ Grace period expired for ${player.playerName}, ending game`);
+                    
+                    // End the game now
+                    const currentGame = games.get(gameId);
+                    if (currentGame) {
+                        const currentOpponent = players.get(opponentId);
+                        if (currentOpponent) {
+                            const currentOpponentSocket = io.sockets.sockets.get(currentOpponent.socketId);
+                            if (currentOpponentSocket) {
+                                currentOpponentSocket.emit('gameEvent', {
+                                    type: 'gameEnded',
+                                    reason: 'opponent_disconnected',
+                                    timestamp: Date.now()
+                                });
+                            }
+                            
+                            currentOpponent.status = 'available';
+                            currentOpponent.inGame = false;
+                            playerGames.delete(opponentId);
+                        }
+                        
+                        games.delete(gameId);
+                    }
+                    
+                    // Remove disconnected player
+                    if (currentPlayer && currentPlayer.status === 'disconnected') {
+                        players.delete(playerId);
+                        playerGames.delete(playerId);
+                    }
+                }
+            }, 60000); // 60 second grace period
+            
+            return; // Don't delete player yet, keep them for reconnection
         }
-        
-        playerGames.delete(playerId);
     }
     
     // Clean up challenges
@@ -637,7 +710,7 @@ function handlePlayerDisconnect(playerId) {
         }
     }
     
-    // Remove player
+    // Remove player (only if not in game)
     players.delete(playerId);
     
     broadcastLobbyUpdate();

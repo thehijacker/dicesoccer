@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-ws-only-3';
+const APP_VERSION = '2.0.0-disconnect-sync';
 
 // Global config
 let appConfig = {
@@ -273,8 +273,11 @@ async function handleBackToMenu() {
         }
     }
     
+    // Track if this was a multiplayer game
+    const wasMultiplayer = gameState.gameMode === 'multiplayer';
+    
     // Leave multiplayer game if active
-    if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+    if (wasMultiplayer && multiplayerManager) {
         await multiplayerManager.leaveGame();
     }
     
@@ -312,7 +315,16 @@ async function handleBackToMenu() {
     // Clear multiplayer colors
     gameState.clearMultiplayerColors();
     
-    showScreen('mainMenu');
+    // Return to lobby if this was a multiplayer game, otherwise main menu
+    if (wasMultiplayer) {
+        showScreen('mainMenu');
+        // Open lobby after a short delay
+        setTimeout(() => {
+            openLobby();
+        }, 100);
+    } else {
+        showScreen('mainMenu');
+    }
 }
 
 // Re-acquire wake lock when page becomes visible again (e.g., after switching tabs)
@@ -882,8 +894,11 @@ function setupEventListeners() {
 
         closeModal('winnerModal');
         
+        // Track if this was multiplayer
+        const wasMultiplayer = gameState.gameMode === 'multiplayer';
+        
         // Leave multiplayer game if active
-        if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+        if (wasMultiplayer && multiplayerManager) {
             await multiplayerManager.leaveGame();
         }
         
@@ -917,6 +932,13 @@ function setupEventListeners() {
         }
         
         showScreen('mainMenu');
+        
+        // Return to lobby if this was multiplayer
+        if (wasMultiplayer) {
+            setTimeout(() => {
+                openLobby();
+            }, 100);
+        }
     });
 
     // Close modals on outside click
@@ -1209,8 +1231,8 @@ let lobbyRefreshInterval = null;
 let currentChallengeInfo = null;
 
 async function openLobby() {
-    // Initialize multiplayer if not done
-    if (!multiplayerManager.playerId) {
+    // Check if we need to initialize or reconnect
+    if (!multiplayerManager.playerId || !multiplayerManager.connected) {
         try {
             await multiplayerManager.init();
         } catch (error) {
@@ -1222,25 +1244,30 @@ async function openLobby() {
     
     const playerName = gameState.player1Name || translationManager.get('player1');
     
-    // Enter lobby
-    const result = await multiplayerManager.enterLobby(playerName);
-    
-    if (!result.success) {
-        alert(translationManager.get('failedToJoin') + ': ' + result.error);
-        return;
-    }
-    
-    // Open lobby modal
-    openModal('lobbyModal');
-    
-    // Initial refresh
-    await refreshLobby();
-    
-    // Set up periodic refresh (every 3 seconds)
-    lobbyRefreshInterval = setInterval(async () => {
+    try {
+        // Enter lobby
+        const result = await multiplayerManager.enterLobby(playerName);
+        
+        if (!result.success) {
+            alert(translationManager.get('failedToJoin') + ': ' + result.error);
+            return;
+        }
+        
+        // Open lobby modal
+        openModal('lobbyModal');
+        
+        // Initial refresh
         await refreshLobby();
-        await checkForChallenges();
-    }, 3000);
+        
+        // Set up periodic refresh (every 3 seconds)
+        lobbyRefreshInterval = setInterval(async () => {
+            await refreshLobby();
+            await checkForChallenges();
+        }, 3000);
+    } catch (error) {
+        console.error('Failed to enter lobby:', error);
+        alert(translationManager.get('failedToJoin') + ': ' + error.message);
+    }
 }
 
 async function refreshLobby() {
@@ -1433,8 +1460,90 @@ function handleLobbyEvent(event) {
         
         // Start multiplayer game (challenger is host/player1)
         startMultiplayerGame('host', event.opponent);
+    } else if (event.type === 'challengeDeclined') {
+        // Challenge was declined
+        handleChallengeDeclined(event);
+    } else if (event.type === 'challengeCancelled') {
+        // Challenge was cancelled
+        handleChallengeCancelled(event);
     }
 }
+
+// Global handler for incoming challenges
+window.handleIncomingChallenge = function(data) {
+    debugLog('🎯 Incoming challenge from:', data.challengerName);
+    
+    currentChallengeInfo = {
+        challengeId: data.challengeId,
+        challengerId: data.challengerId,
+        challengerName: data.challengerName,
+        hintsEnabled: data.hintsEnabled,
+        isChallenger: false
+    };
+    
+    // Close lobby modal and show challenge modal
+    closeModal('lobbyModal');
+    openModal('challengeModal');
+    
+    document.getElementById('challengeTitle').textContent = translationManager.get('challengePlayer');
+    document.getElementById('challengeMessage').textContent = 
+        `${data.challengerName} ${translationManager.get('challengedYou')}`;
+    
+    // Show accept/decline buttons, hide other elements
+    document.getElementById('challengeHintsSelection').classList.add('hidden');
+    document.getElementById('challengeResponseButtons').classList.remove('hidden');
+    document.getElementById('challengeWaiting').classList.add('hidden');
+    document.getElementById('cancelChallengeBtn').classList.add('hidden');
+    
+    soundManager.play('challenge');
+};
+
+// Global handler for challenge declined
+window.handleChallengeDeclined = function(data) {
+    debugLog('❌ Challenge declined by:', data.declinedBy || 'opponent');
+    
+    currentChallengeInfo = null;
+    multiplayerManager.stopPolling();
+    
+    // Show notification in challenge modal
+    document.getElementById('challengeTitle').textContent = translationManager.get('challengePlayer');
+    document.getElementById('challengeMessage').textContent = translationManager.get('challengeDeclined');
+    
+    // Hide all buttons and show only a close button
+    document.getElementById('challengeHintsSelection').classList.add('hidden');
+    document.getElementById('challengeResponseButtons').classList.add('hidden');
+    document.getElementById('challengeWaiting').classList.add('hidden');
+    document.getElementById('cancelChallengeBtn').classList.remove('hidden');
+    document.getElementById('cancelChallengeBtn').textContent = translationManager.get('close');
+    document.getElementById('cancelChallengeBtn').onclick = () => {
+        closeModal('challengeModal');
+        openModal('lobbyModal');
+        refreshLobby();
+    };
+};
+
+// Global handler for challenge cancelled
+window.handleChallengeCancelled = function(data) {
+    debugLog('🚫 Challenge cancelled by:', data.cancelledBy || 'opponent');
+    
+    currentChallengeInfo = null;
+    
+    // Show notification in challenge modal
+    document.getElementById('challengeTitle').textContent = translationManager.get('challengePlayer');
+    document.getElementById('challengeMessage').textContent = translationManager.get('challengeCancelled');
+    
+    // Hide all buttons and show only a close button
+    document.getElementById('challengeHintsSelection').classList.add('hidden');
+    document.getElementById('challengeResponseButtons').classList.add('hidden');
+    document.getElementById('challengeWaiting').classList.add('hidden');
+    document.getElementById('cancelChallengeBtn').classList.remove('hidden');
+    document.getElementById('cancelChallengeBtn').textContent = translationManager.get('close');
+    document.getElementById('cancelChallengeBtn').onclick = () => {
+        closeModal('challengeModal');
+        openModal('lobbyModal');
+        refreshLobby();
+    };
+};
 
 async function acceptChallenge() {
     if (!currentChallengeInfo) return;

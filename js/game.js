@@ -205,6 +205,8 @@ class DiceSoccerGame {
         this.lastRoundLoser = null; // Track who lost the last round (starts next round)
         this.activeTimeouts = []; // Track all active timeouts
         this.activeIntervals = []; // Track all active intervals
+        this.localPlayerReady = false; // For goal continue synchronization
+        this.opponentPlayerReady = false; // For goal continue synchronization
         
         // AI strategic tracking (for hard difficulty)
         this.aiScoutPlayer = null; // Track the forward scout player
@@ -471,6 +473,81 @@ class DiceSoccerGame {
             messageEl.classList.add('hidden');
         }, duration);
         this.activeTimeouts.push(timeoutId);
+    }
+
+    showOpponentDisconnectedDialog() {
+        const goalModal = document.getElementById('goalModal');
+        const goalMessage = document.getElementById('goalMessage');
+        const continueBtn = document.getElementById('continueGameBtn');
+        const viewBoardBtn = document.getElementById('viewBoardFromGoal');
+        
+        goalMessage.textContent = translationManager.get('opponentDisconnected');
+        goalModal.classList.add('active');
+        
+        // Hide continue button, change view board to "Return to Lobby"
+        continueBtn.style.display = 'none';
+        viewBoardBtn.textContent = translationManager.get('backToLobby') || 'Back to Lobby';
+        viewBoardBtn.style.display = 'block';
+        
+        // Add click handler to return to lobby
+        const lobbyHandler = async () => {
+            viewBoardBtn.removeEventListener('click', lobbyHandler);
+            goalModal.classList.remove('active');
+            
+            // Log game end
+            if (window.gameLogger && window.gameLogger.logId) {
+                const player1Name = gameState.player1Name || 'Player 1';
+                const player2Name = gameState.player2Name || 'Player 2';
+                
+                await window.gameLogger.endGameLog(
+                    'None',
+                    this.player1Score,
+                    this.player2Score,
+                    this.player1Moves,
+                    this.player2Moves,
+                    this.player1ThinkingTime,
+                    this.player2ThinkingTime,
+                    Date.now() - this.gameStartTime,
+                    'Opponent Disconnected'
+                );
+            }
+            
+            // Leave game and return to lobby
+            if (multiplayerManager) {
+                multiplayerManager.stopPolling();
+                await multiplayerManager.leaveGame();
+            }
+            
+            // Restore original player 2 name
+            if (gameState.originalPlayer2Name) {
+                gameState.player2Name = gameState.originalPlayer2Name;
+                gameState.originalPlayer2Name = null;
+            }
+            
+            showScreen('mainMenu');
+            setTimeout(() => {
+                openLobby();
+            }, 100);
+        };
+        
+        viewBoardBtn.addEventListener('click', lobbyHandler);
+    }
+
+    hideOpponentDisconnectedDialog() {
+        const goalModal = document.getElementById('goalModal');
+        const continueBtn = document.getElementById('continueGameBtn');
+        const viewBoardBtn = document.getElementById('viewBoardFromGoal');
+        
+        // Close the modal
+        goalModal.classList.remove('active');
+        
+        // Restore original button states
+        continueBtn.style.display = 'block';
+        viewBoardBtn.style.display = 'none';
+        viewBoardBtn.textContent = translationManager.get('viewBoard') || 'View Board';
+        
+        // Show a brief message that opponent reconnected
+        this.showMessage(translationManager.get('opponentReconnected') || 'Opponent reconnected!', 2000);
     }
 
     rollDice() {
@@ -2145,9 +2222,53 @@ class DiceSoccerGame {
 
     continueAfterGoal() {
         const goalModal = document.getElementById('goalModal');
+        
+        // In multiplayer, need both players to press continue
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+            // Send event that we're ready
+            multiplayerManager.sendEvent({
+                type: 'playerReady',
+                playerId: multiplayerManager.playerId
+            });
+            
+            // Mark ourselves as ready
+            this.localPlayerReady = true;
+            
+            // Update button text to show waiting
+            const continueBtn = document.getElementById('continueGameBtn');
+            continueBtn.textContent = translationManager.get('waitingForOpponent') || 'Waiting for opponent...';
+            continueBtn.disabled = true;
+            
+            // Check if opponent is already ready
+            if (this.opponentPlayerReady) {
+                // Both ready, continue
+                this.bothPlayersReady();
+            }
+            // Otherwise wait for opponent's ready event
+        } else {
+            // Single player or local multiplayer - continue immediately
+            goalModal.classList.remove('active');
+            goalModal.classList.remove('minimized');
+            goalModal.style.transform = '';
+            this.resetRound();
+        }
+    }
+
+    bothPlayersReady() {
+        // Reset ready states
+        this.localPlayerReady = false;
+        this.opponentPlayerReady = false;
+        
+        // Reset button
+        const continueBtn = document.getElementById('continueGameBtn');
+        continueBtn.textContent = translationManager.get('continue');
+        continueBtn.disabled = false;
+        
+        // Close modal and continue
+        const goalModal = document.getElementById('goalModal');
         goalModal.classList.remove('active');
-        goalModal.classList.remove('minimized'); // Reset minimized state
-        goalModal.style.transform = ''; // Reset rotation
+        goalModal.classList.remove('minimized');
+        goalModal.style.transform = '';
         this.resetRound();
     }
 
@@ -2667,8 +2788,8 @@ class DiceSoccerGame {
                 }
                 
                 // Find the player shirt element in the source cell
-                const playerElement = fromCell.querySelector('.player-shirt');
-                if (!playerElement) {
+                const shirtImg = fromCell.querySelector('.player-shirt');
+                if (!shirtImg) {
                     console.error('Could not find player shirt element in cell');
                     // Fallback: update immediately without animation
                     this.board[event.toRow][event.toCol] = piece;
@@ -2692,69 +2813,65 @@ class DiceSoccerGame {
                     return;
                 }
                 
-                // Create clone for animation
-                const clone = playerElement.cloneNode(true);
-                clone.classList.add('animating');
-                clone.style.position = 'absolute';
-                clone.style.zIndex = '1000';
-                
-                // Position clone at source
+                // Get positions for animation
                 const fromRect = fromCell.getBoundingClientRect();
-                const fieldGrid = document.getElementById('fieldGrid');
-                if (!fieldGrid) {
-                    console.error('Could not find fieldGrid container');
-                    // Fallback: update immediately without animation
-                    this.board[event.toRow][event.toCol] = piece;
-                    this.board[event.fromRow][event.fromCol] = null;
-                    this.renderBoard();
-                    soundManager.play('walk');
-                    
-                    // Reset waiting state
-                    this.waitingForMove = false;
-                    this.diceValue = 0;
-                    
-                    // Check for goal
-                    const middleRow = Math.floor(this.rows / 2);
-                    if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
-                        console.log('Goal detected from opponent move!');
-                        setTimeout(() => this.handleGoal(), 300);
-                    } else {
-                        // Switch to local player's turn
-                        this.switchPlayer();
-                    }
-                    return;
+                const toRect = toCell.getBoundingClientRect();
+                
+                // Calculate movement direction
+                const deltaX = toRect.left - fromRect.left;
+                const deltaY = toRect.top - fromRect.top;
+                
+                const isMovingLeft = deltaX < 0;
+                const isPlayer2 = piece.player === 2;
+                const isPortrait = gameState.orientation === 'portrait';
+                
+                // For portrait mode Player 2 in LOCAL 2-player mode, pieces are already rotated 180deg
+                // In multiplayer, guest sees themselves at bottom with no rotation
+                const needsFlippedAnimation = isPortrait && isPlayer2 && gameState.twoPlayerMode && gameState.gameMode !== 'multiplayer';
+                
+                // Create clone for animation
+                const clone = shirtImg.cloneNode(true);
+                clone.style.position = 'fixed';
+                clone.style.left = fromRect.left + 'px';
+                clone.style.top = fromRect.top + 'px';
+                clone.style.width = fromRect.width + 'px';
+                clone.style.height = fromRect.height + 'px';
+                clone.style.zIndex = '1000';
+                clone.style.pointerEvents = 'none';
+                
+                // Choose animation based on movement direction and player
+                if (needsFlippedAnimation) {
+                    clone.classList.add('jumping-animation-player2-portrait');
+                } else if (isMovingLeft) {
+                    clone.classList.add('jumping-animation-left');
+                } else {
+                    clone.classList.add('jumping-animation-right');
                 }
-                const boardRect = fieldGrid.getBoundingClientRect();
                 
-                const fromLeft = fromRect.left - boardRect.left + fromRect.width * 0.1;
-                const fromTop = fromRect.top - boardRect.top + fromRect.height * 0.1;
+                // Set CSS variables for animation
+                clone.style.setProperty('--deltaX', deltaX + 'px');
+                clone.style.setProperty('--deltaY', deltaY + 'px');
                 
-                clone.style.left = fromLeft + 'px';
-                clone.style.top = fromTop + 'px';
-                clone.style.width = fromRect.width * 0.8 + 'px';
-                clone.style.height = fromRect.height * 0.8 + 'px';
-                                                
-                fieldGrid.appendChild(clone);
+                document.body.appendChild(clone);
                 
-                // Start animation after a brief delay
+                // Hide original immediately and update board state
+                shirtImg.style.opacity = '0';
+                shirtImg.style.pointerEvents = 'none';
+                fromCell.style.pointerEvents = 'none';
+                this.board[event.toRow][event.toCol] = piece;
+                this.board[event.fromRow][event.fromCol] = null;
+                
+                soundManager.play('walk');
+                
+                // Wait for animation to complete (0.5s)
                 setTimeout(() => {
-                    const toRect = toCell.getBoundingClientRect();
-                    const toLeft = toRect.left - boardRect.left + toRect.width * 0.1;
-                    const toTop = toRect.top - boardRect.top + toRect.height * 0.1;
-                                            
-                    clone.style.transition = 'all 0.3s ease-in-out';
-                    clone.style.left = toLeft + 'px';
-                    clone.style.top = toTop + 'px';
-                    
-                    soundManager.play('walk');
-                }, 10);
-                
-                // After animation completes, update board state
-                setTimeout(() => {
-                    this.board[event.toRow][event.toCol] = piece;
-                    this.board[event.fromRow][event.fromCol] = null;
-                    this.renderBoard();
+                    // Remove clone
                     clone.remove();
+                    
+                    // Render the board to show piece at new position
+                    this.clearHighlights();
+                    this.selectedPlayer = null;
+                    this.renderBoard();
                     
                     // Reset waiting state
                     this.waitingForMove = false;
@@ -2767,32 +2884,41 @@ class DiceSoccerGame {
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
                         console.log('⚽ Goal detected from opponent move!');
                         setTimeout(() => this.handleGoal(), 300);
-                } else {
-                    // Switch to local player's turn
-                    console.log('🔄 No goal, switching player after opponent move');
-                    setTimeout(() => this.switchPlayer(), 200);
-                }
-                }, 300);
+                    } else {
+                        // Switch to local player's turn
+                        console.log('🔄 No goal, switching player after opponent move');
+                        setTimeout(() => this.switchPlayer(), 200);
+                    }
+                }, 500); // Match the 0.5s animation duration
+                break;
+            
+            case 'playerDisconnected':
+                // Opponent temporarily disconnected (grace period active)
+                debugLog('Opponent disconnected, showing waiting dialog');
+                this.showOpponentDisconnectedDialog();
+                break;
+            
+            case 'playerReconnected':
+                // Opponent reconnected within grace period
+                debugLog('Opponent reconnected');
+                this.hideOpponentDisconnectedDialog();
                 break;
                 
             case 'gameEnded':
-                // Game ended (opponent left or disconnected)
-                const disconnectReason = event.reason === 'opponent_disconnected' ? 'Opponent Disconnected' : 'Opponent Left';
+                // Game ended (opponent left or grace period expired)
+                const isDisconnect = event.reason === 'opponent_disconnected';
+                const disconnectReason = isDisconnect ? 'Opponent Disconnected' : 'Opponent Left';
                 
-                if (event.reason === 'opponent_disconnected') {
-                    this.showMessage(translationManager.get('opponentDisconnected') || 'Opponent disconnected');
-                } else {
-                    this.showMessage(translationManager.get('opponentLeft'));
-                }
+                // Opponent intentionally left or never reconnected - end game
+                this.showMessage(translationManager.get(isDisconnect ? 'opponentDisconnected' : 'opponentLeft'));
                 
-                // Log game end due to disconnect/leave
+                // Log game end
                 if (window.gameLogger && window.gameLogger.logId) {
                     const player1Name = gameState.player1Name || 'Player 1';
                     const player2Name = gameState.player2Name || 'Player 2';
-                    const winner = event.reason === 'opponent_disconnected' ? player1Name : 'None';
                     
                     window.gameLogger.endGameLog(
-                        winner,
+                        'None',
                         this.player1Score,
                         this.player2Score,
                         this.player1Moves,
@@ -2804,13 +2930,13 @@ class DiceSoccerGame {
                     );
                 }
                 
-                // Stop polling and clean up
+                // Leave game and return to lobby
                 if (multiplayerManager) {
                     multiplayerManager.stopPolling();
-                    multiplayerManager.cleanup();
+                    multiplayerManager.leaveGame();
                 }
                 
-                // Restore original player 2 name if it was changed for multiplayer
+                // Restore original player 2 name
                 if (gameState.originalPlayer2Name) {
                     gameState.player2Name = gameState.originalPlayer2Name;
                     gameState.originalPlayer2Name = null;
@@ -2818,7 +2944,22 @@ class DiceSoccerGame {
                 
                 setTimeout(() => {
                     showScreen('mainMenu');
+                    setTimeout(() => {
+                        if (typeof openLobby === 'function') {
+                            openLobby();
+                        }
+                    }, 100);
                 }, 3000);
+                break;
+            
+            case 'playerReady':
+                // Opponent pressed continue after goal
+                this.opponentPlayerReady = true;
+                
+                // If we're also ready, proceed
+                if (this.localPlayerReady) {
+                    this.bothPlayersReady();
+                }
                 break;
         }
     }

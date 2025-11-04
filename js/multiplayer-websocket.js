@@ -23,10 +23,13 @@ class WebSocketMultiplayerManager {
         this.localPlayer = 1; // Which player number is controlled locally (1 or 2)
         this.opponentInfo = null;
         this.isInGame = false;
+        this.isInLobby = false;
+        this.wasInLobby = false;
         this.onEvent = null; // Callback for game events
         this.connected = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
+        this.heartbeatInterval = null;
     }
 
     // Initialize connection
@@ -92,6 +95,9 @@ class WebSocketMultiplayerManager {
                 this.connected = true;
                 this.reconnectAttempts = 0;
 
+                // Start heartbeat to prevent timeout
+                this.startHeartbeat();
+
                 // Initialize player on server
                 const playerName = gameState?.player1Name || 'Player';
                 this.socket.emit('init', { 
@@ -100,6 +106,30 @@ class WebSocketMultiplayerManager {
                 }, (response) => {
                     if (response.success) {
                         wsDebugLog('👤 Player initialized on server');
+                        
+                        // Check if we reconnected to an existing game
+                        if (response.reconnected) {
+                            wsDebugLog('🔄 Reconnected to existing session');
+                            
+                            // If we have a current game, re-establish the event handler
+                            if (window.currentGame && document.getElementById('gameScreen')?.classList.contains('active')) {
+                                wsDebugLog('✅ Game state preserved, re-establishing event handler');
+                                
+                                // Reconnect the event handler
+                                this.onEvent = (event) => {
+                                    if (window.currentGame && event.type !== 'gameStart') {
+                                        if (typeof window.currentGame.handleMultiplayerEvent === 'function') {
+                                            window.currentGame.handleMultiplayerEvent(event);
+                                        }
+                                    }
+                                };
+                            }
+                        } else if (this.wasInLobby && typeof window.refreshLobby === 'function') {
+                            // New connection, was in lobby before - refresh lobby
+                            wsDebugLog('🔄 Reconnected - refreshing lobby');
+                            setTimeout(() => window.refreshLobby(), 500);
+                        }
+                        
                         resolve();
                     } else {
                         reject(new Error(response.error));
@@ -107,9 +137,23 @@ class WebSocketMultiplayerManager {
                 });
             });
 
-            this.socket.on('disconnect', () => {
-                wsDebugLog('❌ Disconnected from WebSocket server');
+            this.socket.on('disconnect', (reason) => {
+                wsDebugLog('❌ Disconnected from WebSocket server:', reason);
                 this.connected = false;
+                this.stopHeartbeat();
+                
+                // Remember state for reconnection
+                if (this.isInLobby) {
+                    this.wasInLobby = true;
+                }
+                
+                // Notify user if disconnected unexpectedly
+                if (reason === 'io server disconnect' || reason === 'transport close') {
+                    // Server disconnected us or connection lost
+                    if (typeof window.showConnectionLost === 'function') {
+                        window.showConnectionLost();
+                    }
+                }
             });
 
             this.socket.on('connect_error', (error) => {
@@ -201,6 +245,8 @@ class WebSocketMultiplayerManager {
 
             this.socket.emit('enterLobby', { playerName }, (response) => {
                 if (response.success) {
+                    this.isInLobby = true;
+                    this.wasInLobby = false;
                     wsDebugLog('🚪 Entered lobby');
                     resolve(response);
                 } else {
@@ -333,6 +379,8 @@ class WebSocketMultiplayerManager {
                 this.localPlayer = 1;
                 this.opponentInfo = null;
                 this.isInGame = false;
+                this.isInLobby = false;
+                this.wasInLobby = false;
                 
                 wsDebugLog('👋 Left game');
                 resolve(response);
