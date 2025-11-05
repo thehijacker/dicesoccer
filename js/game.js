@@ -2210,10 +2210,23 @@ class DiceSoccerGame {
         const scoringPlayer = this.currentPlayer;
         const losingPlayer = this.currentPlayer === 1 ? 2 : 1;
         
-        if (this.currentPlayer === 1) {
-            this.player1Score++;
+        // Update scores - account for guest perspective
+        const isGuestPlayer = gameState.gameMode === 'multiplayer' && multiplayerManager && !multiplayerManager.isHost;
+        if (isGuestPlayer) {
+            // Guest: currentPlayer is true game (1=host, 2=guest), but display is flipped
+            // So if currentPlayer=2 (guest scored), increment player1Score (guest's display score)
+            if (this.currentPlayer === 2) {
+                this.player1Score++; // Guest scored (their display = player1)
+            } else {
+                this.player2Score++; // Host scored (their display = player2)
+            }
         } else {
-            this.player2Score++;
+            // Host or local mode: normal increment
+            if (this.currentPlayer === 1) {
+                this.player1Score++;
+            } else {
+                this.player2Score++;
+            }
         }
         
         // Log goal event
@@ -2231,12 +2244,16 @@ class DiceSoccerGame {
         
         // In multiplayer, send goal event to sync lastRoundLoser
         if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+            // Send TRUE scores (not display scores)
+            const trueScore1 = isGuestPlayer ? this.player2Score : this.player1Score;
+            const trueScore2 = isGuestPlayer ? this.player1Score : this.player2Score;
+            
             multiplayerManager.sendEvent({
                 type: 'goal',
                 scoringPlayer: scoringPlayer,
                 losingPlayer: losingPlayer,
-                score1: this.player1Score,
-                score2: this.player2Score
+                score1: trueScore1,
+                score2: trueScore2
             });
         }
         

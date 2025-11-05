@@ -642,13 +642,16 @@ io.on('connection', (socket) => {
                 player.status = 'spectating';
                 player.spectatingGame = gameId;
                 player.inLobby = false;
+                player.inGame = false; // Spectators are NOT in the game as players
+                // Ensure spectator is not in playerGames map
+                playerGames.delete(playerId);
             }
             
             // Join game room as spectator
             socket.join(gameId);
             socket.leave('lobby');
             
-            console.log(`👁️ Player ${playerId} joined as spectator of game ${gameId} (${game.spectators.size} spectators total)`);
+            console.log(`👁️ Player ${player?.playerName || playerId} (ID: ${playerId}) joined as spectator of game ${gameId} (${game.spectators.size} spectators total)`);
             
             // Notify both players about spectator count
             const spectatorCount = game.spectators.size;
@@ -711,7 +714,9 @@ io.on('connection', (socket) => {
             }
             
             const gameId = player.spectatingGame || data.gameId;
-            console.log(`🎮 Player was spectating game: ${gameId} (from player: ${player.spectatingGame}, from data: ${data.gameId})`);
+            console.log(`🎮 Player ${player.playerName} (ID: ${playerId}) was spectating game: ${gameId} (from player: ${player.spectatingGame}, from data: ${data.gameId})`);
+            console.log(`   Status before leave: inGame=${player.inGame}, inLobby=${player.inLobby}, status=${player.status}`);
+            console.log(`   Is in playerGames map: ${playerGames.has(playerId)}`);
             
             if (gameId) {
                 const game = games.get(gameId);
@@ -750,9 +755,17 @@ io.on('connection', (socket) => {
             player.inLobby = true;
             delete player.spectatingGame;
             
+            // Ensure spectator is NOT marked as in a game
+            // This prevents confusion between spectators and actual players
+            player.inGame = false;
+            playerGames.delete(playerId);
+            
             socket.join('lobby');
             
             console.log(`🚪 Player ${playerId} left spectator mode successfully`);
+            
+            // Broadcast lobby update so they appear in the lobby list
+            broadcastLobbyUpdate();
             
             if (callback) callback({ success: true });
         } catch (error) {
