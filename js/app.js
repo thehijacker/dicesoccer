@@ -1478,6 +1478,16 @@ async function startSpectating(game) {
             gameState.soundsEnabled
         );
         
+        // Set player shirt colors if provided by server
+        if (result.player1Color) {
+            gameState.setPlayerShirtColor(result.player1Color, 1);
+            debugLog(`🎨 Set player 1 color to: ${result.player1Color}`);
+        }
+        if (result.player2Color) {
+            gameState.setPlayerShirtColor(result.player2Color, 2);
+            debugLog(`🎨 Set player 2 color to: ${result.player2Color}`);
+        }
+        
         // If server provided board state, apply it
         if (result.boardState) {
             currentGame.board = result.boardState;
@@ -1521,6 +1531,12 @@ function handleSpectatorEvent(event) {
 function exitSpectatorMode() {
     debugLog('🚪 Exiting spectator mode');
     
+    // Stop lobby refresh if running
+    if (lobbyRefreshInterval) {
+        clearInterval(lobbyRefreshInterval);
+        lobbyRefreshInterval = null;
+    }
+    
     // Notify server we're leaving
     if (multiplayerManager) {
         multiplayerManager.leaveSpectator();
@@ -1547,13 +1563,9 @@ function exitSpectatorMode() {
         networkIcon.style.display = 'none';
     }
     
-    // Return to main menu
+    // Return to lobby directly
     showScreen('mainMenu');
-    
-    // Reopen lobby
-    setTimeout(() => {
-        openLobby();
-    }, 100);
+    openLobby();
 }
 
 function updateSpectatorCount(count) {

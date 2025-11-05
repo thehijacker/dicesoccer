@@ -352,9 +352,12 @@ class WebSocketMultiplayerManager {
     }
 
     leaveSpectator() {
+        console.log('🚪 leaveSpectator() called - isSpectator:', this.isSpectator, 'gameId:', this.gameId);
         if (this.socket && this.connected && this.isSpectator) {
             const gameId = this.gameId; // Save before clearing
+            console.log('📤 Sending leaveSpectator event for game:', gameId);
             this.socket.emit('leaveSpectator', { gameId: gameId }, (response) => {
+                console.log('📥 leaveSpectator response:', response);
                 if (response && response.success) {
                     wsDebugLog('🚪 Successfully left spectator mode');
                 } else {
@@ -364,6 +367,8 @@ class WebSocketMultiplayerManager {
             this.isSpectator = false;
             this.gameId = null;
             wsDebugLog('🚪 Leaving spectator mode');
+        } else {
+            console.log('❌ Cannot leave spectator - socket:', !!this.socket, 'connected:', this.connected, 'isSpectator:', this.isSpectator);
         }
     }
 

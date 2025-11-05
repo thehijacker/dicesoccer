@@ -2253,11 +2253,22 @@ class DiceSoccerGame {
             return;
         }
         
-        const scorer = this.currentPlayer === 1 ? 
-            (gameState.player1Name || translationManager.get('player1')) : 
-            (gameState.gameMode === 'ai' ? 
-                `AI (${translationManager.get(gameState.difficulty)})` :
-                    (gameState.player2Name || translationManager.get('player2')));
+        // Determine scorer name - account for guest perspective
+        let scorer;
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager && !multiplayerManager.isHost) {
+            // Guest perspective: currentPlayer is from true game (1=host, 2=guest)
+            // But display is flipped (player1Name=guest's name, player2Name=host's name)
+            scorer = this.currentPlayer === 1 ? 
+                (gameState.player2Name || translationManager.get('player2')) : // Current=1 (host) → show player2Name (host's name for guest)
+                (gameState.player1Name || translationManager.get('player1'));  // Current=2 (guest) → show player1Name (guest's own name)
+        } else {
+            // Host or AI mode: normal mapping
+            scorer = this.currentPlayer === 1 ? 
+                (gameState.player1Name || translationManager.get('player1')) : 
+                (gameState.gameMode === 'ai' ? 
+                    `AI (${translationManager.get(gameState.difficulty)})` :
+                        (gameState.player2Name || translationManager.get('player2')));
+        }
         
         // Show goal message with scorer name and score only
         document.getElementById('goalMessage').innerHTML = `${scorer} ${translationManager.get('scores')}<br><strong style="font-size: 1.5em;">${this.player1Score} : ${this.player2Score}</strong>`;
@@ -2897,7 +2908,7 @@ class DiceSoccerGame {
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
                         console.log('Goal detected from opponent move!');
-                        setTimeout(() => this.handleGoal(), 300);
+                        // Don't call handleGoal - opponent already sent goal event
                     } else if (gameState.gameMode !== 'spectator') {
                         // Switch to local player's turn (not for spectators)
                         this.waitingForMove = false;
@@ -2919,7 +2930,7 @@ class DiceSoccerGame {
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
                         console.log('Goal detected from opponent move!');
-                        setTimeout(() => this.handleGoal(), 300);
+                        // Don't call handleGoal - opponent already sent goal event
                     } else if (gameState.gameMode !== 'spectator') {
                         // Switch to local player's turn (not for spectators)
                         this.waitingForMove = false;
@@ -2997,7 +3008,9 @@ class DiceSoccerGame {
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
                         console.log('⚽ Goal detected from opponent move!');
-                        setTimeout(() => this.handleGoal(), 300);
+                        // Don't call handleGoal here - opponent already sent goal event
+                        // Just update the scores when we receive the goal event
+                        debugLog('Waiting for goal event from opponent...');
                     } else if (gameState.gameMode !== 'spectator') {
                         // Only switch player if not spectating (spectators just watch)
                         console.log('🔄 No goal, switching player after opponent move');

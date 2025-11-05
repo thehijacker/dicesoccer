@@ -281,6 +281,8 @@ io.on('connection', (socket) => {
                 score2: 0,  // Guest score
                 currentPlayer: 1,  // Current player's turn (1 = host, 2 = guest)
                 boardState: null,  // Will be set by first boardState event
+                player1Color: null,  // Host shirt color
+                player2Color: null,  // Guest shirt color
                 spectators: new Set(),  // Players watching this game
                 events: [],
                 createdAt: Date.now()
@@ -438,6 +440,22 @@ io.on('connection', (socket) => {
             // Track current player for dice rolls and moves
             if (event.type === 'diceRolled' && event.player) {
                 game.currentPlayer = event.player;
+            }
+            
+            // Track player colors from initialPositions and guestColor events
+            if (event.type === 'initialPositions' && event.myColor) {
+                game.player1Color = event.myColor; // Host's color
+                console.log(`🎨 Host color set to: ${event.myColor}`);
+            }
+            
+            if (event.type === 'guestColor' && event.myColor) {
+                game.player2Color = event.myColor; // Guest's color
+                console.log(`🎨 Guest color set to: ${event.myColor}`);
+            }
+            
+            if (event.type === 'colorCorrected' && event.correctedColor) {
+                game.player2Color = event.correctedColor; // Corrected guest color
+                console.log(`🎨 Guest color corrected to: ${event.correctedColor}`);
             }
             
             // Update board state when pieces move
@@ -658,7 +676,9 @@ io.on('connection', (socket) => {
                 score2: game.score2 || 0,
                 currentPlayer: game.currentPlayer || 1,
                 player1Name: game.host.playerName,
-                player2Name: game.guest.playerName
+                player2Name: game.guest.playerName,
+                player1Color: game.player1Color || null,
+                player2Color: game.player2Color || null
             });
         } catch (error) {
             console.error('Join spectator error:', error);
