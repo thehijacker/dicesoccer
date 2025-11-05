@@ -681,18 +681,18 @@ io.on('connection', (socket) => {
                     const spectatorCount = game.spectators.size;
                     console.log(`👥 Spectator count for game ${gameId}: ${spectatorCount}`);
                     
-                    const hostSocket = lobbySockets.get(game.host.socketId);
-                    const guestSocket = lobbySockets.get(game.guest.socketId);
+                    const hostSocket = io.sockets.sockets.get(game.host.socketId);
+                    const guestSocket = io.sockets.sockets.get(game.guest.socketId);
                     
                     if (hostSocket) {
-                        io.to(hostSocket.id).emit('gameEvent', {
+                        hostSocket.emit('gameEvent', {
                             type: 'spectatorUpdate',
                             spectatorCount: spectatorCount
                         });
                     }
                     
                     if (guestSocket) {
-                        io.to(guestSocket.id).emit('gameEvent', {
+                        guestSocket.emit('gameEvent', {
                             type: 'spectatorUpdate',
                             spectatorCount: spectatorCount
                         });

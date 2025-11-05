@@ -1566,9 +1566,13 @@ function updateSpectatorCount(count) {
         if (count > 0) {
             spectatorCountText.textContent = `👁️ ${count}`;
             spectatorCountDiv.style.display = 'block';
+            debugLog(`Showing spectator count: ${count}`);
         } else {
             spectatorCountDiv.style.display = 'none';
+            debugLog(`Hiding spectator count (count is ${count})`);
         }
+    } else {
+        debugLog(`Warning: spectator count elements not found`);
     }
 }
 

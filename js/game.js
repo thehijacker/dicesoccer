@@ -2864,11 +2864,20 @@ class DiceSoccerGame {
                 
             case 'playerMoved':
                 // Opponent moved a player - animate it
-                const piece = this.board[event.fromRow][event.fromCol];
+                
+                // First, update the board state
+                const piece = this.board[event.fromRow]?.[event.fromCol];
                 if (!piece) {
-                    console.error('No piece found at source position!');
+                    console.error('No piece found at source position! Board may be out of sync.');
+                    // Try to continue by just rendering without animation
+                    this.renderBoard();
+                    soundManager.play('walk');
                     return;
                 }
+                
+                // Update board immediately (move will be animated)
+                this.board[event.toRow][event.toCol] = piece;
+                this.board[event.fromRow][event.fromCol] = null;
                 
                 // Cell IDs are ALWAYS based on original board coordinates (not flipped)
                 // So we use the event coordinates directly
@@ -2880,23 +2889,19 @@ class DiceSoccerGame {
                 
                 if (!fromCell || !toCell) {
                     console.error(`Could not find cells for animation. fromCell=${fromCell}, toCell=${toCell}`);
-                    // Update board immediately without animation
-                    this.board[event.toRow][event.toCol] = piece;
-                    this.board[event.fromRow][event.fromCol] = null;
+                    // Board was already updated above, just render
                     this.renderBoard();
                     soundManager.play('walk');
-                    
-                    // Reset waiting state
-                    this.waitingForMove = false;
-                    this.diceValue = 0;
                     
                     // Check for goal
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
                         console.log('Goal detected from opponent move!');
                         setTimeout(() => this.handleGoal(), 300);
-                    } else {
-                        // Switch to local player's turn
+                    } else if (gameState.gameMode !== 'spectator') {
+                        // Switch to local player's turn (not for spectators)
+                        this.waitingForMove = false;
+                        this.diceValue = 0;
                         this.switchPlayer();
                     }
                     return;
@@ -2906,23 +2911,19 @@ class DiceSoccerGame {
                 const shirtImg = fromCell.querySelector('.player-shirt');
                 if (!shirtImg) {
                     console.error('Could not find player shirt element in cell');
-                    // Fallback: update immediately without animation
-                    this.board[event.toRow][event.toCol] = piece;
-                    this.board[event.fromRow][event.fromCol] = null;
+                    // Board was already updated above, just render
                     this.renderBoard();
                     soundManager.play('walk');
-                    
-                    // Reset waiting state
-                    this.waitingForMove = false;
-                    this.diceValue = 0;
                     
                     // Check for goal
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
                         console.log('Goal detected from opponent move!');
                         setTimeout(() => this.handleGoal(), 300);
-                    } else {
-                        // Switch to local player's turn
+                    } else if (gameState.gameMode !== 'spectator') {
+                        // Switch to local player's turn (not for spectators)
+                        this.waitingForMove = false;
+                        this.diceValue = 0;
                         this.switchPlayer();
                     }
                     return;
@@ -2969,12 +2970,10 @@ class DiceSoccerGame {
                 
                 document.body.appendChild(clone);
                 
-                // Hide original immediately and update board state
+                // Hide original immediately (board state already updated above)
                 shirtImg.style.opacity = '0';
                 shirtImg.style.pointerEvents = 'none';
                 fromCell.style.pointerEvents = 'none';
-                this.board[event.toRow][event.toCol] = piece;
-                this.board[event.fromRow][event.fromCol] = null;
                 
                 soundManager.play('walk');
                 
@@ -2999,10 +2998,13 @@ class DiceSoccerGame {
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
                         console.log('⚽ Goal detected from opponent move!');
                         setTimeout(() => this.handleGoal(), 300);
-                    } else {
-                        // Switch to local player's turn
+                    } else if (gameState.gameMode !== 'spectator') {
+                        // Only switch player if not spectating (spectators just watch)
                         console.log('🔄 No goal, switching player after opponent move');
                         setTimeout(() => this.switchPlayer(), 200);
+                    } else {
+                        // Spectators just update UI
+                        this.updateUI();
                     }
                 }, 500); // Match the 0.5s animation duration
                 break;
