@@ -3141,6 +3141,11 @@ class DiceSoccerGame {
                 document.getElementById('finalStatsContent').innerHTML = statsHTML;
                 debugLog(`Updated stats display - P1 moves: ${this.player1Moves}, P2 moves: ${this.player2Moves}`);
                 break;
+            
+            case 'spectatorUpdate':
+                // Update spectator count display
+                updateSpectatorCount(event.spectatorCount);
+                break;
         }
     }
 }

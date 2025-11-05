@@ -279,6 +279,8 @@ io.on('connection', (socket) => {
                 status: 'active',
                 score1: 0,  // Host score
                 score2: 0,  // Guest score
+                currentPlayer: 1,  // Current player's turn (1 = host, 2 = guest)
+                boardState: null,  // Will be set by first boardState event
                 spectators: new Set(),  // Players watching this game
                 events: [],
                 createdAt: Date.now()
@@ -424,6 +426,18 @@ io.on('connection', (socket) => {
                 game.score1 = event.score1;
                 game.score2 = event.score2;
                 console.log(`⚽ Goal scored in game ${gameId}: ${game.score1}:${game.score2}`);
+            }
+            
+            // Track board state when boardState event is received
+            if (event.type === 'boardState' && event.board) {
+                game.boardState = event.board;
+                game.currentPlayer = event.currentPlayer || game.currentPlayer;
+                console.log(`📋 Board state updated in game ${gameId}`);
+            }
+            
+            // Track current player for dice rolls and moves
+            if (event.type === 'diceRolled' && event.player) {
+                game.currentPlayer = event.player;
             }
             
             // Send event to opponent
@@ -603,7 +617,28 @@ io.on('connection', (socket) => {
             socket.join(gameId);
             socket.leave('lobby');
             
-            console.log(`👁️ Player ${playerId} joined as spectator of game ${gameId}`);
+            console.log(`👁️ Player ${playerId} joined as spectator of game ${gameId} (${game.spectators.size} spectators total)`);
+            
+            // Notify both players about spectator count
+            const spectatorCount = game.spectators.size;
+            const hostSocket = io.sockets.sockets.get(game.host.socketId);
+            const guestSocket = io.sockets.sockets.get(game.guest.socketId);
+            
+            if (hostSocket) {
+                hostSocket.emit('gameEvent', {
+                    type: 'spectatorUpdate',
+                    spectatorCount: spectatorCount,
+                    timestamp: Date.now()
+                });
+            }
+            
+            if (guestSocket) {
+                guestSocket.emit('gameEvent', {
+                    type: 'spectatorUpdate',
+                    spectatorCount: spectatorCount,
+                    timestamp: Date.now()
+                });
+            }
             
             // Return current game state
             callback({
@@ -641,6 +676,27 @@ io.on('connection', (socket) => {
                 const game = games.get(gameId);
                 if (game && game.spectators) {
                     game.spectators.delete(playerId);
+                    
+                    // Notify both players about updated spectator count
+                    const spectatorCount = game.spectators.size;
+                    console.log(`👥 Spectator count for game ${gameId}: ${spectatorCount}`);
+                    
+                    const hostSocket = lobbySockets.get(game.host.socketId);
+                    const guestSocket = lobbySockets.get(game.guest.socketId);
+                    
+                    if (hostSocket) {
+                        io.to(hostSocket.id).emit('gameEvent', {
+                            type: 'spectatorUpdate',
+                            spectatorCount: spectatorCount
+                        });
+                    }
+                    
+                    if (guestSocket) {
+                        io.to(guestSocket.id).emit('gameEvent', {
+                            type: 'spectatorUpdate',
+                            spectatorCount: spectatorCount
+                        });
+                    }
                 }
                 
                 socket.leave(gameId);

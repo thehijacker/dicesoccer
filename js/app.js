@@ -1556,6 +1556,22 @@ function exitSpectatorMode() {
     }, 100);
 }
 
+function updateSpectatorCount(count) {
+    debugLog(`👁️ Spectator count updated: ${count}`);
+    
+    const spectatorCountDiv = document.getElementById('spectatorCount');
+    const spectatorCountText = document.getElementById('spectatorCountText');
+    
+    if (spectatorCountDiv && spectatorCountText) {
+        if (count > 0) {
+            spectatorCountText.textContent = `👁️ ${count}`;
+            spectatorCountDiv.style.display = 'block';
+        } else {
+            spectatorCountDiv.style.display = 'none';
+        }
+    }
+}
+
 async function challengePlayer(player) {
     currentChallengeInfo = {
         targetPlayerId: player.playerId,
@@ -1902,6 +1918,12 @@ async function joinGame(hostId, hostName) {
 function startMultiplayerGame(role, opponent) {
     debugLog(`Starting multiplayer game as ${role}`, opponent);
     
+    // Hide spectator count (will be shown if spectators join)
+    const spectatorCountDiv = document.getElementById('spectatorCount');
+    if (spectatorCountDiv) {
+        spectatorCountDiv.style.display = 'none';
+    }
+    
     // Cleanup any existing game state
     if (currentGame) {
         currentGame.cleanup();
@@ -2028,6 +2050,12 @@ function showScreen(screenId) {
 
 // Start new game
 function startNewGame() {
+    // Hide spectator count (only relevant for multiplayer)
+    const spectatorCountDiv = document.getElementById('spectatorCount');
+    if (spectatorCountDiv) {
+        spectatorCountDiv.style.display = 'none';
+    }
+    
     currentGame = new DiceSoccerGame();
     currentGame.start();
 }
