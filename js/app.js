@@ -1526,12 +1526,13 @@ function handleSpectatorEvent(event) {
     }
 }
 
-function exitSpectatorMode() {
+async function exitSpectatorMode() {
     debugLog('🚪 Exiting spectator mode');
     
-    // Notify server we're leaving FIRST (before clearing state)
+    // Notify server we're leaving FIRST and wait for confirmation
     if (multiplayerManager) {
-        multiplayerManager.leaveSpectator();
+        await multiplayerManager.leaveSpectator();
+        debugLog('✅ Server confirmed spectator exit');
     }
     
     // Clean up game
@@ -1560,13 +1561,13 @@ function exitSpectatorMode() {
         spectatorCountDiv.style.display = 'none';
     }
     
-    // Return to main menu, then open lobby (which manages its own refresh interval)
+    // Return to main menu, then open lobby
     showScreen('mainMenu');
     
-    // Small delay to ensure screen transition, then open lobby
+    // Small delay to ensure clean transition
     setTimeout(() => {
         openLobby();
-    }, 50);
+    }, 100);
 }
 
 function updateSpectatorCount(count) {

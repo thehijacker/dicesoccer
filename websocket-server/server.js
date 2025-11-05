@@ -6,7 +6,9 @@
  * - Challenge system
  * - Game sessions and events
  * - Connection management
- */
+*/
+
+const VERSION = '1.0.0';
 
 const http = require('http');
 const socketIO = require('socket.io');
@@ -895,6 +897,42 @@ function handlePlayerDisconnect(playerId) {
             const opponentId = game.host.playerId === playerId ? game.guest.playerId : game.host.playerId;
             const opponent = players.get(opponentId);
             
+            // Check if opponent is also disconnected - if so, end game immediately
+            const opponentConnected = opponent && opponent.status !== 'disconnected' && io.sockets.sockets.has(opponent.socketId);
+            
+            if (!opponentConnected) {
+                console.log(`🗑️ Both players disconnected in game ${gameId}, ending immediately`);
+                
+                // Notify and clean up any spectators
+                if (game.spectators && game.spectators.size > 0) {
+                    for (const spectatorId of game.spectators) {
+                        const spectator = players.get(spectatorId);
+                        if (spectator) {
+                            const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
+                            if (spectatorSocket) {
+                                spectatorSocket.emit('gameEvent', {
+                                    type: 'gameEnded',
+                                    reason: 'both_players_disconnected',
+                                    timestamp: Date.now()
+                                });
+                            }
+                            spectator.status = 'available';
+                            spectator.inLobby = true;
+                            delete spectator.spectatingGame;
+                        }
+                    }
+                    game.spectators.clear();
+                }
+                
+                // Clean up game
+                games.delete(gameId);
+                playerGames.delete(playerId);
+                playerGames.delete(opponentId);
+                players.delete(playerId);
+                if (opponent) players.delete(opponentId);
+                return;
+            }
+            
             if (opponent) {
                 const opponentSocket = io.sockets.sockets.get(opponent.socketId);
                 if (opponentSocket) {
@@ -1033,12 +1071,42 @@ setInterval(() => {
     for (const [gameId, game] of games.entries()) {
         const gameAge = now - game.createdAt;
         
-        // Check if both players are gone
-        const hostExists = players.has(game.host.playerId);
-        const guestExists = players.has(game.guest.playerId);
+        // Check if both players exist and are actually connected
+        const host = players.get(game.host.playerId);
+        const guest = players.get(game.guest.playerId);
         
-        if (!hostExists && !guestExists) {
-            console.log(`🗑️ Removing abandoned game ${gameId} (both players gone)`);
+        const hostConnected = host && host.status !== 'disconnected' && io.sockets.sockets.has(host.socketId);
+        const guestConnected = guest && guest.status !== 'disconnected' && io.sockets.sockets.has(guest.socketId);
+        
+        // If both players are disconnected or gone, remove game immediately
+        if (!hostConnected && !guestConnected) {
+            console.log(`🗑️ Removing abandoned game ${gameId} (both players disconnected/gone)`);
+            
+            // Clean up player game references
+            if (host) playerGames.delete(game.host.playerId);
+            if (guest) playerGames.delete(game.guest.playerId);
+            
+            // Notify and clean up any spectators
+            if (game.spectators && game.spectators.size > 0) {
+                for (const spectatorId of game.spectators) {
+                    const spectator = players.get(spectatorId);
+                    if (spectator) {
+                        const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
+                        if (spectatorSocket) {
+                            spectatorSocket.emit('gameEvent', {
+                                type: 'gameEnded',
+                                reason: 'game_abandoned',
+                                timestamp: Date.now()
+                            });
+                        }
+                        spectator.status = 'available';
+                        spectator.inLobby = true;
+                        delete spectator.spectatingGame;
+                    }
+                }
+                game.spectators.clear();
+            }
+            
             games.delete(gameId);
             continue;
         }
@@ -1047,30 +1115,45 @@ setInterval(() => {
         if (gameAge > GAME_TIMEOUT) {
             console.log(`🗑️ Removing stale game ${gameId} (over 5 minutes old)`);
             
-            // Notify any remaining players
-            if (hostExists) {
-                const hostSocket = io.sockets.sockets.get(game.host.socketId);
+            // Notify any remaining connected players
+            if (hostConnected) {
+                const hostSocket = io.sockets.sockets.get(host.socketId);
                 if (hostSocket) {
                     hostSocket.emit('gameEvent', { type: 'gameEnded', reason: 'timeout' });
                 }
-                const host = players.get(game.host.playerId);
-                if (host) {
-                    host.status = 'available';
-                    host.inGame = false;
-                }
+                host.status = 'available';
+                host.inGame = false;
                 playerGames.delete(game.host.playerId);
             }
-            if (guestExists) {
-                const guestSocket = io.sockets.sockets.get(game.guest.socketId);
+            if (guestConnected) {
+                const guestSocket = io.sockets.sockets.get(guest.socketId);
                 if (guestSocket) {
                     guestSocket.emit('gameEvent', { type: 'gameEnded', reason: 'timeout' });
                 }
-                const guest = players.get(game.guest.playerId);
-                if (guest) {
-                    guest.status = 'available';
-                    guest.inGame = false;
-                }
+                guest.status = 'available';
+                guest.inGame = false;
                 playerGames.delete(game.guest.playerId);
+            }
+            
+            // Notify and clean up spectators
+            if (game.spectators && game.spectators.size > 0) {
+                for (const spectatorId of game.spectators) {
+                    const spectator = players.get(spectatorId);
+                    if (spectator) {
+                        const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
+                        if (spectatorSocket) {
+                            spectatorSocket.emit('gameEvent', {
+                                type: 'gameEnded',
+                                reason: 'timeout',
+                                timestamp: Date.now()
+                            });
+                        }
+                        spectator.status = 'available';
+                        spectator.inLobby = true;
+                        delete spectator.spectatingGame;
+                    }
+                }
+                game.spectators.clear();
             }
             
             games.delete(gameId);
@@ -1081,6 +1164,7 @@ setInterval(() => {
 // Start server
 server.listen(PORT, () => {
     console.log(`✅ Dice Soccer WebSocket Server running on port ${PORT}`);
+    console.log(`🔧 Version: ${VERSION}`);
     console.log(`📡 WebSocket endpoint: ws://localhost:${PORT}`);
     console.log(`🌐 HTTP health check: http://localhost:${PORT}`);
 });
