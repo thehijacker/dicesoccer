@@ -440,6 +440,16 @@ io.on('connection', (socket) => {
                 game.currentPlayer = event.player;
             }
             
+            // Update board state when pieces move
+            if (event.type === 'playerMoved' && game.boardState) {
+                const piece = game.boardState[event.fromRow]?.[event.fromCol];
+                if (piece) {
+                    game.boardState[event.toRow][event.toCol] = piece;
+                    game.boardState[event.fromRow][event.fromCol] = null;
+                    console.log(`♟️ Board updated: piece moved from (${event.fromRow},${event.fromCol}) to (${event.toRow},${event.toCol})`);
+                }
+            }
+            
             // Send event to opponent
             const opponentId = game.host.playerId === playerId ? game.guest.playerId : game.host.playerId;
             const opponent = players.get(opponentId);
@@ -659,19 +669,27 @@ io.on('connection', (socket) => {
     // Leave spectator mode
     socket.on('leaveSpectator', (data, callback) => {
         try {
+            console.log(`🚪 leaveSpectator called by socket ${socket.id}`);
+            
             const playerId = lobbySockets.get(socket.id);
             if (!playerId) {
+                console.log(`❌ Socket ${socket.id} not found in lobbySockets`);
                 if (callback) return callback({ success: false, error: 'Not initialized' });
                 return;
             }
             
+            console.log(`👤 Player ${playerId} attempting to leave spectator mode`);
+            
             const player = players.get(playerId);
             if (!player) {
+                console.log(`❌ Player ${playerId} not found in players map`);
                 if (callback) return callback({ success: false, error: 'Player not found' });
                 return;
             }
             
             const gameId = player.spectatingGame;
+            console.log(`🎮 Player was spectating game: ${gameId}`);
+            
             if (gameId) {
                 const game = games.get(gameId);
                 if (game && game.spectators) {

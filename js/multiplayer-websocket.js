@@ -353,10 +353,17 @@ class WebSocketMultiplayerManager {
 
     leaveSpectator() {
         if (this.socket && this.connected && this.isSpectator) {
-            this.socket.emit('leaveSpectator', { gameId: this.gameId });
+            const gameId = this.gameId; // Save before clearing
+            this.socket.emit('leaveSpectator', { gameId: gameId }, (response) => {
+                if (response && response.success) {
+                    wsDebugLog('🚪 Successfully left spectator mode');
+                } else {
+                    console.error('Failed to leave spectator mode:', response?.error);
+                }
+            });
             this.isSpectator = false;
             this.gameId = null;
-            wsDebugLog('🚪 Left spectator mode');
+            wsDebugLog('🚪 Leaving spectator mode');
         }
     }
 
