@@ -552,9 +552,10 @@ io.on('connection', (socket) => {
                                 });
                                 spectatorSocket.leave(gameId);
                             }
+                            // Don't delete spectatingGame here - let leaveSpectator handle it
+                            // This prevents undefined gameId when client calls leaveSpectator
                             spectator.status = 'available';
                             spectator.inLobby = true;
-                            delete spectator.spectatingGame;
                         }
                     }
                     game.spectators.clear();
@@ -691,7 +692,7 @@ io.on('connection', (socket) => {
     // Leave spectator mode
     socket.on('leaveSpectator', (data, callback) => {
         try {
-            console.log(`🚪 leaveSpectator called by socket ${socket.id}`);
+            console.log(`🚪 leaveSpectator called by socket ${socket.id}, data:`, data);
             
             const playerId = lobbySockets.get(socket.id);
             if (!playerId) {
@@ -709,8 +710,8 @@ io.on('connection', (socket) => {
                 return;
             }
             
-            const gameId = player.spectatingGame;
-            console.log(`🎮 Player was spectating game: ${gameId}`);
+            const gameId = player.spectatingGame || data.gameId;
+            console.log(`🎮 Player was spectating game: ${gameId} (from player: ${player.spectatingGame}, from data: ${data.gameId})`);
             
             if (gameId) {
                 const game = games.get(gameId);
@@ -737,6 +738,8 @@ io.on('connection', (socket) => {
                             spectatorCount: spectatorCount
                         });
                     }
+                } else {
+                    console.log(`ℹ️ Game ${gameId} no longer exists or has no spectators (game already ended)`);
                 }
                 
                 socket.leave(gameId);
@@ -749,7 +752,7 @@ io.on('connection', (socket) => {
             
             socket.join('lobby');
             
-            console.log(`🚪 Player ${playerId} left spectator mode`);
+            console.log(`🚪 Player ${playerId} left spectator mode successfully`);
             
             if (callback) callback({ success: true });
         } catch (error) {
@@ -916,9 +919,9 @@ function handlePlayerDisconnect(playerId) {
                                     timestamp: Date.now()
                                 });
                             }
+                            // Don't delete spectatingGame here - let leaveSpectator handle it
                             spectator.status = 'available';
                             spectator.inLobby = true;
-                            delete spectator.spectatingGame;
                         }
                     }
                     game.spectators.clear();
@@ -957,10 +960,9 @@ function handlePlayerDisconnect(playerId) {
                                 timestamp: Date.now()
                             });
                         }
-                        // Clean up spectator
+                        // Don't delete spectatingGame here - let leaveSpectator handle it
                         spectator.status = 'available';
                         spectator.inLobby = true;
-                        delete spectator.spectatingGame;
                     }
                 }
                 game.spectators.clear();
@@ -997,9 +999,9 @@ function handlePlayerDisconnect(playerId) {
                             for (const spectatorId of currentGame.spectators) {
                                 const spectator = players.get(spectatorId);
                                 if (spectator) {
+                                    // Don't delete spectatingGame here - let leaveSpectator handle it
                                     spectator.status = 'available';
                                     spectator.inLobby = true;
-                                    delete spectator.spectatingGame;
                                 }
                             }
                             currentGame.spectators.clear();
@@ -1099,9 +1101,9 @@ setInterval(() => {
                                 timestamp: Date.now()
                             });
                         }
+                        // Don't delete spectatingGame here - let leaveSpectator handle it
                         spectator.status = 'available';
                         spectator.inLobby = true;
-                        delete spectator.spectatingGame;
                     }
                 }
                 game.spectators.clear();
@@ -1148,9 +1150,9 @@ setInterval(() => {
                                 timestamp: Date.now()
                             });
                         }
+                        // Don't delete spectatingGame here - let leaveSpectator handle it
                         spectator.status = 'available';
                         spectator.inLobby = true;
-                        delete spectator.spectatingGame;
                     }
                 }
                 game.spectators.clear();

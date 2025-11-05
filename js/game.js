@@ -2247,6 +2247,11 @@ class DiceSoccerGame {
             return; // Skip showing goal modal
         }
         
+        // Show goal modal
+        this.showGoalModal();
+    }
+
+    showGoalModal() {
         // Don't show goal modal for spectators
         if (gameState.gameMode === 'spectator') {
             debugLog('👁️ Spectator: suppressing goal modal');
@@ -2282,12 +2287,7 @@ class DiceSoccerGame {
         if (viewBoardBtn) viewBoardBtn.style.display = 'block';
         if (continueBtn) continueBtn.style.display = 'block';
         
-        // Rotate goal modal for Player 2 in portrait 2-player mode
-        if (gameState.twoPlayerMode && gameState.orientation === 'portrait' && scoringPlayer === 2) {
-            goalModal.style.transform = 'rotate(180deg)';
-        } else {
-            goalModal.style.transform = '';
-        }
+        // No rotation needed for multiplayer online mode (each player sees their own screen normally)
     }
 
     continueAfterGoal() {
@@ -2846,10 +2846,16 @@ class DiceSoccerGame {
                 // Set the value immediately so it's ready when animation ends
                 this.diceValue = event.value;
                 
-                // Determine which visual dice to animate for the opponent
-                // Guest (Player 2) sees opponent (Player 1) as "Player 2" visually
-                const isGuest = multiplayerManager && !multiplayerManager.isHost;
-                const visualPlayer = (isGuest && event.player === 1) ? 2 : (isGuest && event.player === 2) ? 1 : event.player;
+                // Determine which visual dice to animate
+                let visualPlayer;
+                if (gameState.gameMode === 'spectator') {
+                    // Spectators: show dice animation on the actual player's side (no swapping)
+                    visualPlayer = event.player;
+                } else {
+                    // Guest (Player 2) sees opponent (Player 1) as "Player 2" visually
+                    const isGuest = multiplayerManager && !multiplayerManager.isHost;
+                    visualPlayer = (isGuest && event.player === 1) ? 2 : (isGuest && event.player === 2) ? 1 : event.player;
+                }
                 
                 // Show rolling animation
                 const diceImg = document.getElementById(`player${visualPlayer}Dice`);
@@ -3107,21 +3113,40 @@ class DiceSoccerGame {
                 debugLog('Received goal event from opponent:', event);
                 this.lastRoundLoser = event.losingPlayer;
                 
-                // Sync scores - host is always player 1, guest is always player 2 in real terms
-                // But on display, each sees themselves as player 1
-                const isGuestPlayer = multiplayerManager && !multiplayerManager.isHost;
-                if (isGuestPlayer) {
-                    // Guest: swap the scores because guest sees themselves as P1 but is actually P2
-                    this.player1Score = event.score2; // Guest's score (their P1 = real P2)
-                    this.player2Score = event.score1; // Host's score (their P2 = real P1)
-                } else {
-                    // Host: scores are correct as-is
+                // Sync scores
+                if (gameState.gameMode === 'spectator') {
+                    // Spectators: see true scores (host=P1, guest=P2)
                     this.player1Score = event.score1;
                     this.player2Score = event.score2;
+                } else {
+                    // Players: host is always player 1, guest is always player 2 in real terms
+                    // But on display, each sees themselves as player 1
+                    const isGuestPlayer = multiplayerManager && !multiplayerManager.isHost;
+                    if (isGuestPlayer) {
+                        // Guest: swap the scores because guest sees themselves as P1 but is actually P2
+                        this.player1Score = event.score2; // Guest's score (their P1 = real P2)
+                        this.player2Score = event.score1; // Host's score (their P2 = real P1)
+                    } else {
+                        // Host: scores are correct as-is
+                        this.player1Score = event.score1;
+                        this.player2Score = event.score2;
+                    }
                 }
                 
                 this.updateUI();
                 debugLog(`Scores synced: ${this.player1Score} - ${this.player2Score}`);
+                
+                // Show goal modal for opponent too (but not spectators)
+                if (gameState.gameMode !== 'spectator') {
+                    // Check if game is over
+                    if (this.player1Score >= 3 || this.player2Score >= 3) {
+                        const timeoutId = setTimeout(() => this.endGame(), 1000);
+                        this.activeTimeouts.push(timeoutId);
+                    } else {
+                        // Show goal modal
+                        this.showGoalModal();
+                    }
+                }
                 break;
             
             case 'boardState':
