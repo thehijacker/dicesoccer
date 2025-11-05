@@ -1008,11 +1008,12 @@ function handlePlayerDisconnect(playerId) {
     broadcastLobbyUpdate();
 }
 
-// Cleanup old connections periodically
+// Cleanup old connections and stale games periodically
 setInterval(() => {
     const now = Date.now();
     const timeout = HEARTBEAT_TIMEOUT;
     
+    // Cleanup disconnected players
     for (const [playerId, player] of players.entries()) {
         if (now - player.lastSeen > timeout) {
             console.log(`⏰ Timeout: ${player.playerName}`);
@@ -1024,6 +1025,55 @@ setInterval(() => {
             }
             
             handlePlayerDisconnect(playerId);
+        }
+    }
+    
+    // Cleanup stale games (older than 5 minutes with no activity)
+    const GAME_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+    for (const [gameId, game] of games.entries()) {
+        const gameAge = now - game.createdAt;
+        
+        // Check if both players are gone
+        const hostExists = players.has(game.host.playerId);
+        const guestExists = players.has(game.guest.playerId);
+        
+        if (!hostExists && !guestExists) {
+            console.log(`🗑️ Removing abandoned game ${gameId} (both players gone)`);
+            games.delete(gameId);
+            continue;
+        }
+        
+        // Check if game is too old (over 5 minutes)
+        if (gameAge > GAME_TIMEOUT) {
+            console.log(`🗑️ Removing stale game ${gameId} (over 5 minutes old)`);
+            
+            // Notify any remaining players
+            if (hostExists) {
+                const hostSocket = io.sockets.sockets.get(game.host.socketId);
+                if (hostSocket) {
+                    hostSocket.emit('gameEvent', { type: 'gameEnded', reason: 'timeout' });
+                }
+                const host = players.get(game.host.playerId);
+                if (host) {
+                    host.status = 'available';
+                    host.inGame = false;
+                }
+                playerGames.delete(game.host.playerId);
+            }
+            if (guestExists) {
+                const guestSocket = io.sockets.sockets.get(game.guest.socketId);
+                if (guestSocket) {
+                    guestSocket.emit('gameEvent', { type: 'gameEnded', reason: 'timeout' });
+                }
+                const guest = players.get(game.guest.playerId);
+                if (guest) {
+                    guest.status = 'available';
+                    guest.inGame = false;
+                }
+                playerGames.delete(game.guest.playerId);
+            }
+            
+            games.delete(gameId);
         }
     }
 }, LOBBY_CLEANUP_INTERVAL);

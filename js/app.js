@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-goal-sync-v2';
+const APP_VERSION = '2.0.0-spectator-v2';
 
 // Global config
 let appConfig = {
@@ -1293,11 +1293,13 @@ async function openLobby() {
         // Initial refresh
         await refreshLobby();
         
-        // Set up periodic refresh (every 3 seconds)
-        lobbyRefreshInterval = setInterval(async () => {
-            await refreshLobby();
-            await checkForChallenges();
-        }, 3000);
+        // Set up periodic refresh (every 3 seconds) - only if not already running
+        if (!lobbyRefreshInterval) {
+            lobbyRefreshInterval = setInterval(async () => {
+                await refreshLobby();
+                await checkForChallenges();
+            }, 3000);
+        }
     } catch (error) {
         console.error('Failed to enter lobby:', error);
         alert(translationManager.get('failedToJoin') + ': ' + error.message);
@@ -1479,13 +1481,9 @@ async function startSpectating(game) {
         );
         
         // Set player shirt colors if provided by server
-        if (result.player1Color) {
-            gameState.setPlayerShirtColor(result.player1Color, 1);
-            debugLog(`🎨 Set player 1 color to: ${result.player1Color}`);
-        }
-        if (result.player2Color) {
-            gameState.setPlayerShirtColor(result.player2Color, 2);
-            debugLog(`🎨 Set player 2 color to: ${result.player2Color}`);
+        if (result.player1Color && result.player2Color) {
+            gameState.setMultiplayerColors(result.player1Color, result.player2Color);
+            debugLog(`🎨 Set colors - P1: ${result.player1Color}, P2: ${result.player2Color}`);
         }
         
         // If server provided board state, apply it
@@ -1531,13 +1529,7 @@ function handleSpectatorEvent(event) {
 function exitSpectatorMode() {
     debugLog('🚪 Exiting spectator mode');
     
-    // Stop lobby refresh if running
-    if (lobbyRefreshInterval) {
-        clearInterval(lobbyRefreshInterval);
-        lobbyRefreshInterval = null;
-    }
-    
-    // Notify server we're leaving
+    // Notify server we're leaving FIRST (before clearing state)
     if (multiplayerManager) {
         multiplayerManager.leaveSpectator();
     }
@@ -1557,15 +1549,24 @@ function exitSpectatorMode() {
         multiplayerManager.onEvent = null;
     }
     
-    // Hide network icon
+    // Hide network icon and spectator count
     const networkIcon = document.getElementById('networkIcon');
     if (networkIcon) {
         networkIcon.style.display = 'none';
     }
     
-    // Return to lobby directly
+    const spectatorCountDiv = document.getElementById('spectatorCount');
+    if (spectatorCountDiv) {
+        spectatorCountDiv.style.display = 'none';
+    }
+    
+    // Return to main menu, then open lobby (which manages its own refresh interval)
     showScreen('mainMenu');
-    openLobby();
+    
+    // Small delay to ensure screen transition, then open lobby
+    setTimeout(() => {
+        openLobby();
+    }, 50);
 }
 
 function updateSpectatorCount(count) {

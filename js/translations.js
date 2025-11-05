@@ -213,6 +213,8 @@ const translations = {
         waitingForOpponent: "Čakanje na ponovno povezavo nasprotnika",
         backToLobby: "Nazaj v ložo",
         connectionLost: "Povezava izgubljena",
+        spectateGame: "Gledam igro?",
+        watch: "Gledaj",
         
         // Game
         gameStarting: "Igra se začenja...",
@@ -323,6 +325,8 @@ const translations = {
         opponentLeft: "Gegner hat das Spiel verlassen",
         opponentDisconnected: "Gegner hat die Verbindung getrennt",
         connectionLost: "Verbindung verloren",
+        spectateGame: "Spiel zuschauen?",
+        watch: "Zuschauen",
 
         // Game
         gameStarting: "Spiel startet...",
@@ -433,6 +437,8 @@ const translations = {
         opponentLeft: "L'avversario ha lasciato la partita",
         opponentDisconnected: "Avversario disconnesso",
         connectionLost: "Connessione persa",
+        spectateGame: "Guardare la partita?",
+        watch: "Guarda",
 
         // Game
         gameStarting: "Inizio partita...",
@@ -543,6 +549,8 @@ const translations = {
         opponentLeft: "El oponente abandonó la partida",
         opponentDisconnected: "Oponente desconectado",
         connectionLost: "Conexión perdida",
+        spectateGame: "¿Ver el juego?",
+        watch: "Ver",
 
         // Game
         gameStarting: "Iniciando partida...",
@@ -653,6 +661,8 @@ const translations = {
         opponentLeft: "L'adversaire a quitté la partie",
         opponentDisconnected: "Adversaire déconnecté",
         connectionLost: "Connexion perdue",
+        spectateGame: "Regarder le jeu?",
+        watch: "Regarder",
 
         // Game
         gameStarting: "Début de la partie...",
@@ -763,7 +773,9 @@ const translations = {
         opponentLeft: "Protivnik je napustio igru",
         opponentDisconnected: "Protivnik je prekinuo vezu",
         connectionLost: "Veza je izgubljena",
-        
+        spectateGame: "Gledati igru?",
+        watch: "Gledaj",
+
         // Game
         gameStarting: "Igra počinje...",
         backToMenu: "Povratak na izbornik",
@@ -873,6 +885,8 @@ const translations = {
         opponentLeft: "Az ellenfél elhagyta a játékot",
         opponentDisconnected: "Az ellenfél kapcsolata megszakadt",
         connectionLost: "A kapcsolat megszakadt",
+        spectateGame: "Játék megtekintése?",
+        watch: "Nézd",
         
         // Game
         gameStarting: "Játék indul...",
