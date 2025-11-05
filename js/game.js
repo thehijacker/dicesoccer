@@ -280,6 +280,15 @@ class DiceSoccerGame {
                 }
             }
         }
+        
+        // In multiplayer, host sends board state to guest
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager && multiplayerManager.isHost) {
+            debugLog('Host sending board state to guest');
+            multiplayerManager.sendEvent({
+                type: 'boardState',
+                board: this.board
+            });
+        }
     }
 
     shuffleArray(array) {
@@ -383,6 +392,11 @@ class DiceSoccerGame {
 
     handleCellClick(row, col) {
         console.log(`🖱️ handleCellClick(${row}, ${col}) - isRolling: ${this.isRolling}, isMoving: ${this.isMoving}, currentPlayer: ${this.currentPlayer}, localPlayer: ${multiplayerManager?.localPlayer}, waitingForMove: ${this.waitingForMove}`);
+        
+        // Disable all interactions in spectator mode
+        if (gameState.gameMode === 'spectator') {
+            return;
+        }
         
         if (this.isRolling || this.isMoving) return; // Prevent clicks during dice roll or move animation
         
@@ -570,6 +584,11 @@ class DiceSoccerGame {
     rollDice() {
         // Prevent rolling while already rolling, waiting for a move, or while a move animation is in progress
         if (this.isRolling || this.waitingForMove || this.isMoving) return;
+        
+        // Disable dice rolling in spectator mode
+        if (gameState.gameMode === 'spectator') {
+            return;
+        }
         
         // Collapse menu if expanded
         if (window.collapseMenuButton) window.collapseMenuButton();
@@ -2228,6 +2247,12 @@ class DiceSoccerGame {
             return; // Skip showing goal modal
         }
         
+        // Don't show goal modal for spectators
+        if (gameState.gameMode === 'spectator') {
+            debugLog('👁️ Spectator: suppressing goal modal');
+            return;
+        }
+        
         const scorer = this.currentPlayer === 1 ? 
             (gameState.player1Name || translationManager.get('player1')) : 
             (gameState.gameMode === 'ai' ? 
@@ -2397,6 +2422,20 @@ class DiceSoccerGame {
         const winner = this.player1Score >= 3 ? player1Name : player2Name;
         const totalMoves = this.player1Score >= 3 ? this.player1Moves : this.player2Moves;
         
+        // In multiplayer, send stats to opponent before displaying
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+            const isGuest = !multiplayerManager.isHost;
+            
+            // Send my stats to opponent
+            multiplayerManager.sendEvent({
+                type: 'gameStats',
+                myMoves: this.player1Moves,  // My moves (I always see myself as P1)
+                myThinkingTime: this.player1ThinkingTime  // My thinking time
+            });
+            
+            debugLog(`Sent my stats - Moves: ${this.player1Moves}, ThinkingTime: ${this.player1ThinkingTime}`);
+        }
+        
         // Log game end for all game modes
         if (window.gameLogger && window.gameLogger.logId) {
             window.gameLogger.endGameLog(
@@ -2410,6 +2449,13 @@ class DiceSoccerGame {
                 this.totalGameTime,
                 'Completed'
             );
+        }
+        
+        // Spectators don't see winner modal - they return to lobby
+        if (gameState.gameMode === 'spectator') {
+            debugLog('👁️ Spectator: game ended, will return to lobby');
+            // The exitSpectatorMode function in app.js will be called by handleSpectatorEvent
+            return;
         }
         
         document.getElementById('winnerMessage').textContent = `${winner} ${translationManager.get('wins')}!`;
@@ -2720,13 +2766,9 @@ class DiceSoccerGame {
                 const hostColor = event.myColor || 'green';
                 const myColor = gameState.player1Shirt;
                 
-                // Check if colors conflict
-                let opponentColor = hostColor;
-                if (hostColor === myColor) {
-                    // Same color - pick a random different one for opponent
-                    opponentColor = getRandomDifferentShirtColor(myColor);
-                    console.log(`⚠️ Color conflict! Both have ${myColor}. Using random color for opponent: ${opponentColor}`);
-                }
+                // Guest always uses host's color as-is for opponent
+                // If colors conflict, host will handle randomization on their side
+                const opponentColor = hostColor;
                 
                 // Guest sees their color as P1, opponent's color as P2
                 gameState.setMultiplayerColors(myColor, opponentColor);
@@ -2738,18 +2780,17 @@ class DiceSoccerGame {
                 });
                 this.renderBoard();
                 
-                // Send confirmation back to host with final colors
+                // Send guest's color back to host
                 multiplayerManager.sendEvent({
-                    type: 'colorsConfirmed',
-                    hostColor: opponentColor,
-                    guestColor: myColor
+                    type: 'guestColor',
+                    myColor: myColor
                 });
                 
                 console.log(`✅ Guest colors set: My P1=${myColor}, Opponent P2=${opponentColor}`);
                 break;
                 
             case 'guestColor':
-                // Host receives guest's color
+                // Host receives guest's color and resolves any conflicts
                 console.log(`📥 Host received guest color: ${event.myColor}`);
                 
                 const guestColor = event.myColor || 'blue';
@@ -2758,26 +2799,35 @@ class DiceSoccerGame {
                 // Check if colors conflict
                 let finalGuestColor = guestColor;
                 if (guestColor === hostMyColor) {
-                    // Same color - pick a random different one for guest
+                    // Same color - host picks a random different one for guest
                     finalGuestColor = getRandomDifferentShirtColor(hostMyColor);
-                    console.log(`⚠️ Color conflict! Both have ${hostMyColor}. Using random color for guest: ${finalGuestColor}`);
+                    console.log(`⚠️ Color conflict! Both have ${hostMyColor}. Host assigning random color for guest: ${finalGuestColor}`);
                 }
                 
                 // Host sees their color as P1, guest's color as P2
                 gameState.setMultiplayerColors(hostMyColor, finalGuestColor);
                 this.renderBoard();
                 
+                // Send final guest color back if it was changed
+                if (finalGuestColor !== guestColor) {
+                    multiplayerManager.sendEvent({
+                        type: 'colorCorrected',
+                        correctedColor: finalGuestColor
+                    });
+                }
+                
                 console.log(`✅ Host colors set: My P1=${hostMyColor}, Guest P2=${finalGuestColor}`);
                 break;
                 
-            case 'colorsConfirmed':
-                // Host receives final color confirmation from guest
-                console.log(`📥 Host received color confirmation: host=${event.hostColor}, guest=${event.guestColor}`);
-                // Update if different (in case of conflict resolution)
-                if (event.hostColor !== gameState.getPlayer1Shirt() || event.guestColor !== gameState.getPlayer2Shirt()) {
-                    gameState.setMultiplayerColors(event.hostColor, event.guestColor);
-                    this.renderBoard();
-                }
+            case 'colorCorrected':
+                // Guest receives corrected opponent color from host (in case of conflict)
+                console.log(`📥 Guest received color correction: opponent now ${event.correctedColor}`);
+                
+                // Update opponent's color (P2 from guest's perspective)
+                gameState.setMultiplayerColors(gameState.getPlayer1Shirt(), event.correctedColor);
+                this.renderBoard();
+                
+                console.log(`✅ Guest updated opponent color to: ${event.correctedColor}`);
                 break;
                 
             case 'diceRolled':
@@ -3038,9 +3088,58 @@ class DiceSoccerGame {
                 break;
             
             case 'goal':
-                // Opponent scored or received goal - sync lastRoundLoser
+                // Opponent scored or received goal - sync scores and lastRoundLoser
                 debugLog('Received goal event from opponent:', event);
                 this.lastRoundLoser = event.losingPlayer;
+                
+                // Sync scores - host is always player 1, guest is always player 2 in real terms
+                // But on display, each sees themselves as player 1
+                const isGuestPlayer = multiplayerManager && !multiplayerManager.isHost;
+                if (isGuestPlayer) {
+                    // Guest: swap the scores because guest sees themselves as P1 but is actually P2
+                    this.player1Score = event.score2; // Guest's score (their P1 = real P2)
+                    this.player2Score = event.score1; // Host's score (their P2 = real P1)
+                } else {
+                    // Host: scores are correct as-is
+                    this.player1Score = event.score1;
+                    this.player2Score = event.score2;
+                }
+                
+                this.updateUI();
+                debugLog(`Scores synced: ${this.player1Score} - ${this.player2Score}`);
+                break;
+            
+            case 'boardState':
+                // Guest receives board state from host
+                debugLog('Guest received board state from host');
+                this.board = event.board;
+                this.renderBoard();
+                break;
+            
+            case 'gameStats':
+                // Received opponent's game statistics at end of game
+                debugLog('Received opponent stats:', event);
+                
+                // Opponent sends their stats as "myMoves" and "myThinkingTime"
+                // From my perspective, opponent is always player2
+                this.player2Moves = event.myMoves;
+                this.player2ThinkingTime = event.myThinkingTime;
+                
+                // Update the stats display
+                const player1Name = gameState.player1Name || translationManager.get('player1');
+                const player2Name = gameState.player2Name || translationManager.get('player2');
+                const totalMoves = this.player1Score >= 3 ? this.player1Moves : this.player2Moves;
+                
+                const statsHTML = `
+                    <p style="font-size: 1.5em; margin: 10px 0; text-align: center;"><strong>${this.player1Score}:${this.player2Score}</strong></p>
+                    <p><strong>${player1Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player1ThinkingTime)}</p>
+                    <p><strong>${player2Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player2ThinkingTime)}</p>
+                    <p><strong>${translationManager.get('totalMoves')}:</strong> ${totalMoves}</p>
+                    <p><strong>${translationManager.get('totalTime')}:</strong> ${this.formatTime(this.totalGameTime)}</p>
+                `;
+                
+                document.getElementById('finalStatsContent').innerHTML = statsHTML;
+                debugLog(`Updated stats display - P1 moves: ${this.player1Moves}, P2 moves: ${this.player2Moves}`);
                 break;
         }
     }

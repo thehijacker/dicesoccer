@@ -734,6 +734,18 @@ function setupEventListeners() {
         closeLobby();
     });
 
+    // Spectate modal handlers
+    document.getElementById('confirmSpectateBtn')?.addEventListener('click', () => {
+        if (window.spectateGameInfo) {
+            startSpectating(window.spectateGameInfo);
+        }
+    });
+
+    document.getElementById('cancelSpectateBtn')?.addEventListener('click', () => {
+        closeModal('spectateModal');
+        openModal('lobbyModal');
+    });
+
     // Challenge modal handlers
     document.getElementById('cancelChallengeBtn')?.addEventListener('click', () => {
         cancelChallenge();
@@ -1374,19 +1386,174 @@ async function refreshLobby() {
         activeGames.forEach(game => {
             const gameItem = document.createElement('div');
             gameItem.className = 'game-item';
+            gameItem.style.cursor = 'pointer';
             
             const timeAgo = getTimeAgo(game.timestamp);
             
+            // Display score if available (format: "2:1")
+            // Use !== undefined to handle 0 scores correctly
+            const scoreDisplay = (game.score1 !== undefined && game.score2 !== undefined)
+                ? `<span style="font-weight: 600; color: #2196F3; margin-left: 8px;">(${game.score1}:${game.score2})</span>` 
+                : '';
+            
             gameItem.innerHTML = `
                 <div>
-                    <div class="game-players">${escapeHtml(game.player1)} vs ${escapeHtml(game.player2)}</div>
+                    <div class="game-players">${escapeHtml(game.player1)} vs ${escapeHtml(game.player2)} ${scoreDisplay}</div>
                     <div class="game-time">${timeAgo}</div>
                 </div>
             `;
             
+            // Add click handler for spectating
+            gameItem.addEventListener('click', () => {
+                promptSpectateGame(game);
+            });
+            
             gamesList.appendChild(gameItem);
         });
     }
+}
+
+function promptSpectateGame(game) {
+    // Store game info for spectating
+    window.spectateGameInfo = game;
+    
+    // Show spectate modal
+    document.getElementById('spectateMessage').textContent = `${game.player1} vs ${game.player2}`;
+    
+    // Close lobby modal
+    closeModal('lobbyModal');
+    
+    // Open spectate confirmation modal
+    openModal('spectateModal');
+}
+
+async function startSpectating(game) {
+    debugLog('🔭 Starting spectator mode for game:', game);
+    
+    // Close spectate modal
+    closeModal('spectateModal');
+    
+    // Cleanup any existing game state
+    if (currentGame) {
+        currentGame.cleanup();
+    }
+    
+    // Set spectator mode in gameState
+    gameState.gameMode = 'spectator';
+    gameState.spectatorGameId = game.gameId;
+    gameState.player1Name = game.player1;
+    gameState.player2Name = game.player2;
+    
+    // Notify server we're joining as spectator
+    try {
+        const result = await multiplayerManager.joinAsSpectator(game.gameId);
+        
+        if (!result.success) {
+            alert(result.error || 'Failed to join as spectator');
+            gameState.gameMode = null;
+            openModal('lobbyModal');
+            return;
+        }
+        
+        debugLog('✅ Joined as spectator, received initial state:', result);
+        
+        // Update player displays
+        document.getElementById('player1NameDisplay').textContent = game.player1;
+        document.getElementById('player2NameDisplay').textContent = game.player2;
+        
+        // Show network icon for multiplayer spectating
+        const networkIcon = document.getElementById('networkIcon');
+        if (networkIcon) {
+            networkIcon.style.display = 'inline';
+        }
+        
+        // Show game screen
+        showScreen('gameScreen');
+        updateGameScreenOrientation(gameState.orientation);
+        
+        // Initialize the game
+        currentGame = new DiceSoccerGame(
+            gameState.boardSize,
+            gameState.hintsEnabled,
+            gameState.soundsEnabled
+        );
+        
+        // If server provided board state, apply it
+        if (result.boardState) {
+            currentGame.board = result.boardState;
+            currentGame.player1Score = result.score1 || 0;
+            currentGame.player2Score = result.score2 || 0;
+            currentGame.currentPlayer = result.currentPlayer || 1;
+            currentGame.renderBoard();
+            currentGame.updateUI();
+        }
+        
+        // Set up event handler for spectator updates
+        multiplayerManager.onEvent = handleSpectatorEvent;
+        
+        debugLog('🔭 Spectator mode fully initialized');
+        
+    } catch (error) {
+        console.error('Failed to start spectating:', error);
+        alert('Failed to join as spectator: ' + error.message);
+        gameState.gameMode = null;
+        openModal('lobbyModal');
+    }
+}
+
+function handleSpectatorEvent(event) {
+    debugLog('👁️ Spectator event:', event);
+    
+    // Handle game events as spectator
+    if (event.type === 'gameEnded' || event.type === 'playerDisconnected' || event.type === 'gameAborted') {
+        // Return to lobby
+        debugLog('🔚 Game ended or interrupted, returning to lobby');
+        exitSpectatorMode();
+        return;
+    }
+    
+    // Forward other events to the game for display
+    if (currentGame) {
+        currentGame.handleMultiplayerEvent(event);
+    }
+}
+
+function exitSpectatorMode() {
+    debugLog('🚪 Exiting spectator mode');
+    
+    // Notify server we're leaving
+    if (multiplayerManager) {
+        multiplayerManager.leaveSpectator();
+    }
+    
+    // Clean up game
+    if (currentGame) {
+        currentGame.cleanup();
+        currentGame = null;
+    }
+    
+    // Clean up game state
+    gameState.gameMode = null;
+    gameState.spectatorGameId = null;
+    
+    // Stop event handling
+    if (multiplayerManager) {
+        multiplayerManager.onEvent = null;
+    }
+    
+    // Hide network icon
+    const networkIcon = document.getElementById('networkIcon');
+    if (networkIcon) {
+        networkIcon.style.display = 'none';
+    }
+    
+    // Return to main menu
+    showScreen('mainMenu');
+    
+    // Reopen lobby
+    setTimeout(() => {
+        openLobby();
+    }, 100);
 }
 
 async function challengePlayer(player) {

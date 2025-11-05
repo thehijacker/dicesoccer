@@ -277,6 +277,9 @@ io.on('connection', (socket) => {
                 },
                 hintsEnabled: challenge.hintsEnabled,
                 status: 'active',
+                score1: 0,  // Host score
+                score2: 0,  // Guest score
+                spectators: new Set(),  // Players watching this game
                 events: [],
                 createdAt: Date.now()
             };
@@ -416,7 +419,14 @@ io.on('connection', (socket) => {
             
             game.events.push(event);
             
-            // Send event to opponent only
+            // Track scores when goal event is received
+            if (event.type === 'goal' && event.score1 !== undefined && event.score2 !== undefined) {
+                game.score1 = event.score1;
+                game.score2 = event.score2;
+                console.log(`⚽ Goal scored in game ${gameId}: ${game.score1}:${game.score2}`);
+            }
+            
+            // Send event to opponent
             const opponentId = game.host.playerId === playerId ? game.guest.playerId : game.host.playerId;
             const opponent = players.get(opponentId);
             
@@ -424,6 +434,19 @@ io.on('connection', (socket) => {
                 const opponentSocket = io.sockets.sockets.get(opponent.socketId);
                 if (opponentSocket) {
                     opponentSocket.emit('gameEvent', event);
+                }
+            }
+            
+            // Broadcast to all spectators
+            if (game.spectators && game.spectators.size > 0) {
+                for (const spectatorId of game.spectators) {
+                    const spectator = players.get(spectatorId);
+                    if (spectator) {
+                        const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
+                        if (spectatorSocket) {
+                            spectatorSocket.emit('gameEvent', event);
+                        }
+                    }
                 }
             }
             
@@ -471,6 +494,28 @@ io.on('connection', (socket) => {
                     playerGames.delete(opponentId);
                 }
                 
+                // Notify and clean up all spectators
+                if (game.spectators && game.spectators.size > 0) {
+                    for (const spectatorId of game.spectators) {
+                        const spectator = players.get(spectatorId);
+                        if (spectator) {
+                            const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
+                            if (spectatorSocket) {
+                                spectatorSocket.emit('gameEvent', {
+                                    type: 'gameEnded',
+                                    reason: 'game_ended',
+                                    timestamp: Date.now()
+                                });
+                                spectatorSocket.leave(gameId);
+                            }
+                            spectator.status = 'available';
+                            spectator.inLobby = true;
+                            delete spectator.spectatingGame;
+                        }
+                    }
+                    game.spectators.clear();
+                }
+                
                 // Clean up game
                 games.delete(gameId);
             }
@@ -509,14 +554,111 @@ io.on('connection', (socket) => {
             
             socket.leave('lobby');
             
-            console.log(`🚪 ${player?.playerName || playerId} left lobby`);
-            
-            broadcastLobbyUpdate();
+            console.log(`📤 Player left lobby: ${playerId}`);
             
             callback({ success: true });
         } catch (error) {
             console.error('Leave lobby error:', error);
             callback({ success: false, error: error.message });
+        }
+    });
+    
+    // Join as spectator
+    socket.on('joinSpectator', (data, callback) => {
+        try {
+            const playerId = lobbySockets.get(socket.id);
+            if (!playerId) {
+                return callback({ success: false, error: 'Not initialized' });
+            }
+            
+            const { gameId } = data;
+            if (!gameId) {
+                return callback({ success: false, error: 'Missing gameId' });
+            }
+            
+            const game = games.get(gameId);
+            if (!game) {
+                return callback({ success: false, error: 'Game not found' });
+            }
+            
+            if (game.status !== 'active') {
+                return callback({ success: false, error: 'Game is not active' });
+            }
+            
+            // Add player to spectators
+            if (!game.spectators) {
+                game.spectators = new Set();
+            }
+            game.spectators.add(playerId);
+            
+            // Update player status
+            const player = players.get(playerId);
+            if (player) {
+                player.status = 'spectating';
+                player.spectatingGame = gameId;
+                player.inLobby = false;
+            }
+            
+            // Join game room as spectator
+            socket.join(gameId);
+            socket.leave('lobby');
+            
+            console.log(`👁️ Player ${playerId} joined as spectator of game ${gameId}`);
+            
+            // Return current game state
+            callback({
+                success: true,
+                boardState: game.boardState || null,
+                score1: game.score1 || 0,
+                score2: game.score2 || 0,
+                currentPlayer: game.currentPlayer || 1,
+                player1Name: game.host.playerName,
+                player2Name: game.guest.playerName
+            });
+        } catch (error) {
+            console.error('Join spectator error:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+    
+    // Leave spectator mode
+    socket.on('leaveSpectator', (data, callback) => {
+        try {
+            const playerId = lobbySockets.get(socket.id);
+            if (!playerId) {
+                if (callback) return callback({ success: false, error: 'Not initialized' });
+                return;
+            }
+            
+            const player = players.get(playerId);
+            if (!player) {
+                if (callback) return callback({ success: false, error: 'Player not found' });
+                return;
+            }
+            
+            const gameId = player.spectatingGame;
+            if (gameId) {
+                const game = games.get(gameId);
+                if (game && game.spectators) {
+                    game.spectators.delete(playerId);
+                }
+                
+                socket.leave(gameId);
+            }
+            
+            // Update player status back to available
+            player.status = 'available';
+            player.inLobby = true;
+            delete player.spectatingGame;
+            
+            socket.join('lobby');
+            
+            console.log(`🚪 Player ${playerId} left spectator mode`);
+            
+            if (callback) callback({ success: true });
+        } catch (error) {
+            console.error('Leave spectator error:', error);
+            if (callback) callback({ success: false, error: error.message });
         }
     });
     
@@ -604,6 +746,10 @@ function getLobbyPlayersList(requestingPlayerId) {
                 gameId: gameId,
                 player1: game.host.playerName,
                 player2: game.guest.playerName,
+                player1Id: game.host.playerId,
+                player2Id: game.guest.playerId,
+                score1: game.score1 || 0,
+                score2: game.score2 || 0,
                 hintsEnabled: game.hintsEnabled,
                 timestamp: game.createdAt
             });
@@ -631,6 +777,17 @@ function handlePlayerDisconnect(playerId) {
     
     console.log(`🔌 Handling disconnect: ${player.playerName}`);
     
+    // If player was spectating, remove them from spectators
+    if (player.status === 'spectating' && player.spectatingGame) {
+        const game = games.get(player.spectatingGame);
+        if (game && game.spectators) {
+            game.spectators.delete(playerId);
+        }
+        players.delete(playerId);
+        playerGames.delete(playerId);
+        return;
+    }
+    
     // If player was in a game, mark as disconnected with grace period
     const gameId = playerGames.get(playerId);
     if (gameId) {
@@ -653,6 +810,28 @@ function handlePlayerDisconnect(playerId) {
                         timestamp: Date.now()
                     });
                 }
+            }
+            
+            // Notify all spectators
+            if (game.spectators && game.spectators.size > 0) {
+                for (const spectatorId of game.spectators) {
+                    const spectator = players.get(spectatorId);
+                    if (spectator) {
+                        const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
+                        if (spectatorSocket) {
+                            spectatorSocket.emit('gameEvent', {
+                                type: 'gameAborted',
+                                reason: 'player_disconnected',
+                                timestamp: Date.now()
+                            });
+                        }
+                        // Clean up spectator
+                        spectator.status = 'available';
+                        spectator.inLobby = true;
+                        delete spectator.spectatingGame;
+                    }
+                }
+                game.spectators.clear();
             }
             
             // Set timeout to end game if player doesn't reconnect
@@ -679,6 +858,19 @@ function handlePlayerDisconnect(playerId) {
                             currentOpponent.status = 'available';
                             currentOpponent.inGame = false;
                             playerGames.delete(opponentId);
+                        }
+                        
+                        // Clean up any remaining spectators
+                        if (currentGame.spectators && currentGame.spectators.size > 0) {
+                            for (const spectatorId of currentGame.spectators) {
+                                const spectator = players.get(spectatorId);
+                                if (spectator) {
+                                    spectator.status = 'available';
+                                    spectator.inLobby = true;
+                                    delete spectator.spectatingGame;
+                                }
+                            }
+                            currentGame.spectators.clear();
                         }
                         
                         games.delete(gameId);

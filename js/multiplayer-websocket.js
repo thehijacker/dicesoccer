@@ -330,6 +330,36 @@ class WebSocketMultiplayerManager {
         });
     }
 
+    async joinAsSpectator(gameId) {
+        return new Promise((resolve, reject) => {
+            if (!this.socket || !this.connected) {
+                return reject(new Error('Not connected to server'));
+            }
+
+            this.socket.emit('joinSpectator', { gameId }, (response) => {
+                if (response.success) {
+                    this.gameId = gameId;
+                    this.isSpectator = true;
+                    this.isInGame = false; // Spectators aren't "in game" as players
+                    
+                    wsDebugLog('👁️ Joined as spectator');
+                    resolve(response);
+                } else {
+                    reject(new Error(response.error));
+                }
+            });
+        });
+    }
+
+    leaveSpectator() {
+        if (this.socket && this.connected && this.isSpectator) {
+            this.socket.emit('leaveSpectator', { gameId: this.gameId });
+            this.isSpectator = false;
+            this.gameId = null;
+            wsDebugLog('🚪 Left spectator mode');
+        }
+    }
+
     async leaveLobby() {
         return new Promise((resolve, reject) => {
             if (!this.socket || !this.connected) {

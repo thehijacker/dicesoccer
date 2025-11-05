@@ -171,7 +171,7 @@
                         <img src="images/fastai128.png" alt="Fast AI Movement" class="menu-icon">                        
                         <span class="submenu-toggle-text" data-translate="fastAI">Fast AI Movement</span>
                         <div class="toggle-switch">
-                            <input type="checkbox" id="fastAICheckbox">
+                            <input type="checkbox" id="fastAICheckbox" checked>
                             <label for="fastAICheckbox" class="toggle-label"></label>
                         </div>
                     </div>                    
@@ -179,7 +179,7 @@
                         <img src="images/autodice128.png" alt="Automated Dice Rolling" class="menu-icon">
                         <span class="submenu-toggle-text" data-translate="autoDice">Automated Dice Rolling</span>
                         <div class="toggle-switch">
-                            <input type="checkbox" id="autoDiceCheckbox">
+                            <input type="checkbox" id="autoDiceCheckbox" checked>
                             <label for="autoDiceCheckbox" class="toggle-label"></label>
                         </div>
                     </div>
@@ -335,25 +335,40 @@
         <div class="modal-content lobby-modal-content">
             <h2 data-translate="multiplayerLobby">Multiplayer Lobby</h2>
             
-            <!-- Available Players Section -->
-            <div class="lobby-section">
-                <h3 data-translate="availablePlayers">Available Players</h3>
-                <div id="lobbyPlayersList" class="lobby-players-list">
-                    <p class="no-players-message" data-translate="noPlayersInLobby">No players in lobby yet...</p>
+            <div class="lobby-sections-wrapper">
+                <!-- Available Players Section -->
+                <div class="lobby-section">
+                    <h3 data-translate="availablePlayers">Available Players</h3>
+                    <div id="lobbyPlayersList" class="lobby-players-list">
+                        <p class="no-players-message" data-translate="noPlayersInLobby">No players in lobby yet...</p>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Active Games Section -->
-            <div class="lobby-section">
-                <h3 data-translate="activeGames">Active Games</h3>
-                <div id="activeGamesList" class="active-games-list">
-                    <p class="no-games-message" data-translate="noActiveGames">No active games</p>
+                
+                <!-- Active Games Section -->
+                <div class="lobby-section">
+                    <h3 data-translate="activeGames">Active Games</h3>
+                    <div id="activeGamesList" class="active-games-list">
+                        <p class="no-games-message" data-translate="noActiveGames">No active games</p>
+                    </div>
                 </div>
             </div>
             
             <div class="lobby-buttons">
                 <button class="close-modal-btn" id="refreshLobbyBtn" data-translate="refresh">Refresh</button>
                 <button class="close-modal-btn" id="closeLobbyBtn" data-translate="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spectate Confirmation Modal -->
+    <div id="spectateModal" class="modal">
+        <div class="modal-content challenge-modal-content">
+            <h2 data-translate="spectateGame">Watch Game?</h2>
+            <p id="spectateMessage"></p>
+            
+            <div class="challenge-buttons">
+                <button class="close-modal-btn" id="confirmSpectateBtn" data-translate="watch">Watch</button>
+                <button class="close-modal-btn" id="cancelSpectateBtn" data-translate="cancel">Cancel</button>
             </div>
         </div>
     </div>
