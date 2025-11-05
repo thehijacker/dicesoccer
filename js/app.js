@@ -273,8 +273,15 @@ async function handleBackToMenu() {
         }
     }
     
-    // Track if this was a multiplayer game
+    // Track if this was a multiplayer game or spectator mode
     const wasMultiplayer = gameState.gameMode === 'multiplayer';
+    const wasSpectator = gameState.gameMode === 'spectator';
+    
+    // Leave spectator mode properly if active
+    if (wasSpectator && multiplayerManager) {
+        await exitSpectatorMode();
+        return; // exitSpectatorMode handles the transition back to lobby
+    }
     
     // Leave multiplayer game if active
     if (wasMultiplayer && multiplayerManager) {
@@ -1440,6 +1447,11 @@ async function startSpectating(game) {
         currentGame.cleanup();
     }
     
+    // Save spectator's own name before overwriting
+    if (!gameState.spectatorOwnName) {
+        gameState.spectatorOwnName = gameState.player1Name;
+    }
+    
     // Set spectator mode in gameState
     gameState.gameMode = 'spectator';
     gameState.spectatorGameId = game.gameId;
@@ -1453,6 +1465,11 @@ async function startSpectating(game) {
         if (!result.success) {
             alert(result.error || 'Failed to join as spectator');
             gameState.gameMode = null;
+            // Restore spectator's own name
+            if (gameState.spectatorOwnName) {
+                gameState.player1Name = gameState.spectatorOwnName;
+                gameState.spectatorOwnName = null;
+            }
             openModal('lobbyModal');
             return;
         }
@@ -1544,6 +1561,13 @@ async function exitSpectatorMode() {
     // Clean up game state
     gameState.gameMode = null;
     gameState.spectatorGameId = null;
+    
+    // Restore spectator's own name
+    if (gameState.spectatorOwnName) {
+        gameState.player1Name = gameState.spectatorOwnName;
+        gameState.spectatorOwnName = null;
+        debugLog(`🔄 Restored spectator name: ${gameState.player1Name}`);
+    }
     
     // Stop event handling
     if (multiplayerManager) {
