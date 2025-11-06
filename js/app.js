@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-spectator-v4';
+const APP_VERSION = '2.0.0-spectator-v6';
 
 // Global config
 let appConfig = {
@@ -1920,19 +1920,14 @@ async function declineChallenge() {
 async function cancelChallenge() {
     multiplayerManager.stopPolling();
     
-    // Clean up challenge state on server
-    if (currentChallengeInfo && currentChallengeInfo.isChallenger && currentChallengeInfo.targetPlayerId) {
-        // When challenger cancels, we decline using target as the declining player
-        // This will reset both players to 'available'
-        await fetch('multiplayer-server.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'declineChallenge',
-                playerId: currentChallengeInfo.targetPlayerId,
-                challengerId: multiplayerManager.playerId
-            })
-        });
+    // Clean up challenge state on server via WebSocket
+    if (currentChallengeInfo && currentChallengeInfo.challengeId) {
+        try {
+            await multiplayerManager.declineChallenge(currentChallengeInfo.challengeId);
+            console.log('✅ Challenge cancelled successfully');
+        } catch (error) {
+            console.error('Failed to cancel challenge:', error);
+        }
     }
     
     currentChallengeInfo = null;

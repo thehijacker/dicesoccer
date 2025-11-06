@@ -361,23 +361,44 @@ io.on('connection', (socket) => {
                 return callback({ success: false, error: 'Challenge not found' });
             }
             
-            if (challenge.targetId !== playerId) {
+            // Allow both target (decline) and challenger (cancel) to end the challenge
+            const isTarget = challenge.targetId === playerId;
+            const isChallenger = challenge.challengerId === playerId;
+            
+            if (!isTarget && !isChallenger) {
                 return callback({ success: false, error: 'Not your challenge' });
             }
             
             const challenger = players.get(challenge.challengerId);
+            const target = players.get(challenge.targetId);
             const decliner = players.get(playerId);
             
             if (challenger) {
                 challenger.status = 'available';
                 
-                // Notify challenger
-                const challengerSocket = io.sockets.sockets.get(challenger.socketId);
-                if (challengerSocket) {
-                    challengerSocket.emit('challengeDeclined', {
-                        challengeId,
-                        declinedBy: decliner?.playerName || 'Unknown'
-                    });
+                // Notify challenger if they didn't initiate the decline
+                if (!isChallenger) {
+                    const challengerSocket = io.sockets.sockets.get(challenger.socketId);
+                    if (challengerSocket) {
+                        challengerSocket.emit('challengeDeclined', {
+                            challengeId,
+                            declinedBy: decliner?.playerName || 'Unknown'
+                        });
+                    }
+                }
+            }
+            
+            if (target) {
+                target.status = 'available';
+                
+                // Notify target if challenger cancelled
+                if (isChallenger) {
+                    const targetSocket = io.sockets.sockets.get(target.socketId);
+                    if (targetSocket) {
+                        targetSocket.emit('challengeCancelled', {
+                            challengeId
+                        });
+                    }
                 }
             }
             
@@ -387,7 +408,7 @@ io.on('connection', (socket) => {
             
             challenges.delete(challengeId);
             
-            console.log(`❌ Challenge declined: ${decliner?.playerName || playerId}`);
+            console.log(`❌ Challenge ${isChallenger ? 'cancelled' : 'declined'}: ${decliner?.playerName || playerId}`);
             
             broadcastLobbyUpdate();
             

@@ -186,8 +186,11 @@ class WebSocketMultiplayerManager {
                     const isInGame = document.getElementById('gameScreen')?.classList.contains('active');
                     const isInLobby = document.getElementById('lobbyModal')?.classList.contains('active');
                     
-                    // Only show connection lost if we were actually using the connection
-                    if (isInGame || isInLobby || this.isInGame || this.isInLobby) {
+                    // Check if we're in a local or AI game - don't interrupt these
+                    const isLocalOrAIGame = gameState && (gameState.gameMode === 'local' || gameState.gameMode === 'ai');
+                    
+                    // Only show connection lost if we were using multiplayer features
+                    if ((isInGame || isInLobby || this.isInGame || this.isInLobby) && !isLocalOrAIGame) {
                         if (typeof window.showConnectionLost === 'function') {
                             window.showConnectionLost();
                         }
@@ -275,9 +278,15 @@ class WebSocketMultiplayerManager {
 
             this.socket.on('serverShutdown', (data) => {
                 console.warn('⚠️ Server shutting down:', data.message);
-                // Show connection lost modal
-                if (typeof window.showConnectionLost === 'function') {
-                    window.showConnectionLost();
+                
+                // Check if we're in a local or AI game - don't interrupt these
+                const isLocalOrAIGame = gameState && (gameState.gameMode === 'local' || gameState.gameMode === 'ai');
+                
+                // Only show connection lost modal if we're in multiplayer/spectator mode
+                if (!isLocalOrAIGame) {
+                    if (typeof window.showConnectionLost === 'function') {
+                        window.showConnectionLost();
+                    }
                 }
             });
 

@@ -1028,6 +1028,10 @@ class DiceSoccerGame {
     movePlayer(fromRow, fromCol, toRow, toCol) {
         const piece = this.board[fromRow][fromCol];
         
+        // Clear highlights immediately when move starts
+        this.clearHighlights();
+        this.selectedPlayer = null;
+        
         // Log move event
         if (window.gameLogger && window.gameLogger.logId && piece) {
             const playerName = piece.player === 1 ? 
@@ -1147,8 +1151,6 @@ class DiceSoccerGame {
                     // Small delay to ensure clone is fully removed from DOM
                     requestAnimationFrame(() => {
                         // Now render the board to show piece at new position
-                        this.clearHighlights();
-                        this.selectedPlayer = null;
                         this.renderBoard();
                         
                         // Check for goal
@@ -1172,8 +1174,6 @@ class DiceSoccerGame {
         this.board[toRow][toCol] = piece;
         this.board[fromRow][fromCol] = null;
         
-        this.clearHighlights();
-        this.selectedPlayer = null;
         this.renderBoard();
         
         // Check for goal
