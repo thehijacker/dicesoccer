@@ -395,9 +395,12 @@ io.on('connection', (socket) => {
                 if (isChallenger) {
                     const targetSocket = io.sockets.sockets.get(target.socketId);
                     if (targetSocket) {
+                        console.log(`📤 Sending challengeCancelled event to target player ${target.playerName} (${target.playerId})`);
                         targetSocket.emit('challengeCancelled', {
                             challengeId
                         });
+                    } else {
+                        console.warn(`⚠️ Target socket not found for player ${target.playerName}`);
                     }
                 }
             }

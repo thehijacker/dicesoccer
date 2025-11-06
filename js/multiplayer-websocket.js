@@ -256,9 +256,13 @@ class WebSocketMultiplayerManager {
             });
 
             this.socket.on('challengeCancelled', (data) => {
+                console.log('🚫 WebSocket received challengeCancelled event:', data);
                 wsDebugLog('🚫 Challenge cancelled:', data);
                 if (window.handleChallengeCancelled) {
+                    console.log('✅ Calling window.handleChallengeCancelled');
                     window.handleChallengeCancelled(data);
+                } else {
+                    console.error('❌ window.handleChallengeCancelled is not defined!');
                 }
             });
 

@@ -1849,25 +1849,20 @@ window.handleChallengeDeclined = function(data) {
 
 // Global handler for challenge cancelled
 window.handleChallengeCancelled = function(data) {
-    debugLog('🚫 Challenge cancelled by:', data.cancelledBy || 'opponent');
+    console.log('🚫 handleChallengeCancelled called with data:', data);
+    debugLog('🚫 Challenge cancelled by challenger');
     
     currentChallengeInfo = null;
     
-    // Show notification in challenge modal
-    document.getElementById('challengeTitle').textContent = translationManager.get('challengePlayer');
-    document.getElementById('challengeMessage').textContent = translationManager.get('challengeCancelled');
+    // Close challenge modal regardless of state
+    closeModal('challengeModal');
     
-    // Hide all buttons and show only a close button
-    document.getElementById('challengeHintsSelection').classList.add('hidden');
-    document.getElementById('challengeResponseButtons').classList.add('hidden');
-    document.getElementById('challengeWaiting').classList.add('hidden');
-    document.getElementById('cancelChallengeBtn').classList.remove('hidden');
-    document.getElementById('cancelChallengeBtn').textContent = translationManager.get('close');
-    document.getElementById('cancelChallengeBtn').onclick = () => {
-        closeModal('challengeModal');
-        openModal('lobbyModal');
-        refreshLobby();
-    };
+    // Show alert that challenge was cancelled
+    alert(translationManager.get('challengeCancelled'));
+    
+    // Return to lobby
+    openModal('lobbyModal');
+    refreshLobby();
 };
 
 async function acceptChallenge() {
