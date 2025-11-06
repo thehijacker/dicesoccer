@@ -1915,14 +1915,19 @@ async function declineChallenge() {
 async function cancelChallenge() {
     multiplayerManager.stopPolling();
     
+    console.log('🚫 cancelChallenge called, currentChallengeInfo:', currentChallengeInfo);
+    
     // Clean up challenge state on server via WebSocket
     if (currentChallengeInfo && currentChallengeInfo.challengeId) {
         try {
+            console.log('📤 Sending declineChallenge with challengeId:', currentChallengeInfo.challengeId);
             await multiplayerManager.declineChallenge(currentChallengeInfo.challengeId);
             console.log('✅ Challenge cancelled successfully');
         } catch (error) {
-            console.error('Failed to cancel challenge:', error);
+            console.error('❌ Failed to cancel challenge:', error);
         }
+    } else {
+        console.error('❌ No challengeId available to cancel');
     }
     
     currentChallengeInfo = null;

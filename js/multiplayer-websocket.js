@@ -387,14 +387,18 @@ class WebSocketMultiplayerManager {
     async declineChallenge(challengeId) {
         return new Promise((resolve, reject) => {
             if (!this.socket || !this.connected) {
+                console.error('❌ declineChallenge: Not connected to server');
                 return reject(new Error('Not connected to server'));
             }
 
+            console.log('📤 Emitting declineChallenge to server with challengeId:', challengeId);
             this.socket.emit('declineChallenge', { challengeId }, (response) => {
+                console.log('📥 Server response to declineChallenge:', response);
                 if (response.success) {
                     wsDebugLog('❌ Challenge declined');
                     resolve(response);
                 } else {
+                    console.error('❌ Server returned error:', response.error);
                     reject(new Error(response.error));
                 }
             });

@@ -352,18 +352,26 @@ io.on('connection', (socket) => {
             const playerId = lobbySockets.get(socket.id);
             const { challengeId } = data;
             
+            console.log(`📥 Server received declineChallenge from ${playerId}, challengeId: ${challengeId}`);
+            
             if (!playerId || !challengeId) {
+                console.error('❌ Invalid request - missing playerId or challengeId');
                 return callback({ success: false, error: 'Invalid request' });
             }
             
             const challenge = challenges.get(challengeId);
             if (!challenge) {
+                console.error('❌ Challenge not found:', challengeId);
                 return callback({ success: false, error: 'Challenge not found' });
             }
+            
+            console.log(`📋 Challenge details:`, challenge);
             
             // Allow both target (decline) and challenger (cancel) to end the challenge
             const isTarget = challenge.targetId === playerId;
             const isChallenger = challenge.challengerId === playerId;
+            
+            console.log(`👤 Player role - isTarget: ${isTarget}, isChallenger: ${isChallenger}`);
             
             if (!isTarget && !isChallenger) {
                 return callback({ success: false, error: 'Not your challenge' });
