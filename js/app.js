@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-spectator-v6';
+const APP_VERSION = '2.0.0-spectator-v7';
 
 // Global config
 let appConfig = {
@@ -437,8 +437,8 @@ function initializeApp() {
     }
 
     // Load saved player names
-    document.getElementById('player1Name').value = gameState.player1Name;
-    document.getElementById('player2Name').value = gameState.player2Name;
+    document.getElementById('player1Name').textContent = gameState.player1Name;
+    document.getElementById('player2Name').textContent = gameState.player2Name;
 
     // Update shirt icons
     updateShirtIcon(1, gameState.player1Shirt);
@@ -596,16 +596,35 @@ function setupEventListeners() {
         updatePlayer2UI(e.target.checked);
     });
 
-    // Player 2 Container - shows difficulty submenu when in AI mode
+    // Player 1 Container - opens name modal when clicked
+    document.getElementById('player1Container')?.addEventListener('click', (e) => {
+        const target = e.target;
+        
+        // Check if clicking on shirt icon (for color selection)
+        if (target && target.classList && target.classList.contains('shirt-icon')) {
+            return; // Let the shirt icon handler below handle this
+        }
+        
+        // If clicking on name input or container, open name modal
+        openPlayerNameModal(1);
+    });
+
+    // Player 2 Container - shows name modal in 2P mode or difficulty submenu in AI mode
     try {
         document.getElementById('player2Container').addEventListener('click', (e) => {
-            // Only open submenu if in AI mode (not two-player mode)
-            if (!gameState.twoPlayerMode) {
-                // Don't open if clicking directly on the shirt icon (for color selection)
-                const target = e.target;
-                if (target && target.classList && !target.classList.contains('shirt-icon')) {
-                    toggleSubmenu('difficultySubmenu');
-                }
+            const target = e.target;
+            
+            // Check if clicking on shirt icon (for color selection)
+            if (target && target.classList && target.classList.contains('shirt-icon')) {
+                return; // Let the shirt icon handler below handle this
+            }
+            
+            // If in two-player mode, open name modal
+            if (gameState.twoPlayerMode) {
+                openPlayerNameModal(2);
+            } else {
+                // In AI mode, open difficulty submenu
+                toggleSubmenu('difficultySubmenu');
             }
         });
     } catch (error) {
@@ -652,14 +671,8 @@ function setupEventListeners() {
         });
     });
 
-    // Player name inputs
-    document.getElementById('player1Name').addEventListener('input', (e) => {
-        gameState.setPlayerName(1, e.target.value);
-    });
-
-    document.getElementById('player2Name').addEventListener('input', (e) => {
-        gameState.setPlayerName(2, e.target.value);
-    });
+    // Player name inputs (readonly - names are changed via modal)
+    // Removed input event listeners since inputs are now readonly
 
     // Shirt selection
     document.getElementById('player1Shirt').addEventListener('click', () => {
@@ -707,6 +720,22 @@ function setupEventListeners() {
     // Modal close buttons
     document.getElementById('closeShirtModal')?.addEventListener('click', () => {
         closeModal('shirtModal');
+    });
+    
+    // Player name modal buttons
+    document.getElementById('savePlayerNameBtn')?.addEventListener('click', () => {
+        savePlayerName();
+    });
+    
+    document.getElementById('cancelPlayerNameBtn')?.addEventListener('click', () => {
+        closeModal('playerNameModal');
+    });
+    
+    // Allow Enter key to save player name
+    document.getElementById('playerNameInput')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            savePlayerName();
+        }
     });
 
     document.getElementById('closeJoinModal')?.addEventListener('click', () => {
@@ -995,8 +1024,10 @@ function setupEventListeners() {
         }
     });
 
-    // Close modals on outside click
+    // Close modals on outside click (except lobbyModal which has a close button)
     document.querySelectorAll('.modal').forEach(modal => {
+        if (modal.id === 'lobbyModal') return; // Lobby modal should only close via close button
+        
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 closeModal(modal.id);
@@ -1012,16 +1043,13 @@ function updatePlayer2UI(twoPlayerMode) {
     const player2Container = document.getElementById('player2Container');
     
     if (twoPlayerMode) {
-        // Two-player mode: show editable name input
+        // Two-player mode: show player name display
         player2Name.classList.remove('hidden');
-        player2Name.readOnly = false;
-        player2Name.style.cursor = 'text';
         aiLabel.classList.add('hidden');
         player2Container.classList.remove('expandable');
     } else {
         // AI mode: show AI label and make clickable
         player2Name.classList.add('hidden');
-        player2Name.readOnly = true;
         aiLabel.classList.remove('hidden');
         aiLabel.textContent = `AI (${translationManager.get(gameState.difficulty)})`;
         player2Container.classList.add('expandable');
@@ -1084,8 +1112,8 @@ function toggleSubmenu(submenuId, show = null) {
         submenu.classList.toggle('active', show);
     }
     
-    // Add click listener to close when clicking outside
-    if (submenu.classList.contains('active')) {
+    // Add click listener to close when clicking outside (except for settingsSubmenu which has a close button)
+    if (submenu.classList.contains('active') && submenuId !== 'settingsSubmenu') {
         setTimeout(() => {
             const closeOnClickOutside = (e) => {
                 if (!submenu.contains(e.target) && !e.target.closest('.menu-item')) {
@@ -1169,6 +1197,49 @@ function selectShirt(color) {
     gameState.setPlayerShirt(currentShirtPlayer, color);
     updateShirtIcon(currentShirtPlayer, color);
     closeModal('shirtModal');
+}
+
+// Player name modal functions
+let currentNamePlayer = null;
+
+function openPlayerNameModal(player) {
+    currentNamePlayer = player;
+    const input = document.getElementById('playerNameInput');
+    const title = document.getElementById('playerNameModalTitle');
+    
+    // Set current name as default value
+    if (player === 1) {
+        input.value = gameState.player1Name || '';
+        input.placeholder = translationManager.get('player1');
+    } else {
+        input.value = gameState.player2Name || '';
+        input.placeholder = translationManager.get('player2');
+    }
+    
+    // Update title
+    title.textContent = translationManager.get('enterPlayerName');
+    
+    openModal('playerNameModal');
+    
+    // Focus input and position cursor at end (not select all)
+    setTimeout(() => {
+        input.focus();
+        // Move cursor to end of text
+        const length = input.value.length;
+        input.setSelectionRange(length, length);
+    }, 100);
+}
+
+function savePlayerName() {
+    const input = document.getElementById('playerNameInput');
+    const name = input.value.trim();
+    
+    if (currentNamePlayer) {
+        gameState.setPlayerName(currentNamePlayer, name);
+        document.getElementById(`player${currentNamePlayer}Name`).textContent = name || translationManager.get(`player${currentNamePlayer}`);
+    }
+    
+    closeModal('playerNameModal');
 }
 
 // Hints selection modal functions

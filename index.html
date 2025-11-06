@@ -59,15 +59,15 @@
             </div>
 
             <!-- Player 1 Name and Shirt -->
-            <div class="menu-item player-item">
+            <div class="menu-item player-item" id="player1Container">
                 <img src="images/selectcolor128.png" alt="Player 1" class="menu-icon shirt-icon" id="player1Shirt">
-                <input type="text" class="player-name-input" id="player1Name" placeholder="Player 1" data-translate-placeholder="player1">
+                <div class="player-name-display" id="player1Name" data-placeholder="Player 1" data-translate-placeholder="player1">Player 1</div>
             </div>
 
             <!-- Player 2 Name and Shirt or AI Difficulty -->
             <div class="menu-item player-item" id="player2Container">
                 <img src="images/selectcolor128.png" alt="Player 2" class="menu-icon shirt-icon" id="player2Shirt">
-                <input type="text" class="player-name-input" id="player2Name" placeholder="Player 2" data-translate-placeholder="player2">
+                <div class="player-name-display" id="player2Name" data-placeholder="Player 2" data-translate-placeholder="player2">Player 2</div>
                 <span class="ai-difficulty-label hidden" id="aiDifficultyLabel"></span>
             </div>
 
@@ -237,6 +237,18 @@
                     <span data-translate="playWithoutHints">Play without Hints</span>
                     <p class="hints-description" data-translate="hintsOffDescription">No highlighting - more challenging!</p>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Name Input Modal -->
+    <div id="playerNameModal" class="modal">
+        <div class="modal-content">
+            <h2 id="playerNameModalTitle" data-translate="enterPlayerName">Enter Player Name</h2>
+            <input type="text" id="playerNameInput" class="player-name-modal-input" maxlength="20" placeholder="Enter name">
+            <div class="modal-buttons">
+                <button class="close-modal-btn" id="savePlayerNameBtn" data-translate="save">Save</button>
+                <button class="close-modal-btn" id="cancelPlayerNameBtn" data-translate="cancel">Cancel</button>
             </div>
         </div>
     </div>
