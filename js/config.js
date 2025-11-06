@@ -29,6 +29,7 @@ class ConfigManager {
         this.config = {
             'websocket-server': 'wss://localhost:3000',
             'log-enabled': false,
+            'log-script': 'logger.php',
             'debug-mode': false
         };
         this.loaded = true;
@@ -55,8 +56,38 @@ class ConfigManager {
     }
 
     getLoggerUrl() {
-        // Logger always uses PHP for now
-        return 'logger.php';
+        // Return configured log script URL (can be local file or external URL)
+        return this.config['log-script'] || 'logger.php';
+    }
+
+    async validateLogScript() {
+        // Test if the log script is accessible and working
+        const loggerUrl = this.getLoggerUrl();
+        
+        try {
+            // Send a test request to check if logger is available
+            const response = await fetch(loggerUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'test'
+                })
+            });
+            
+            // Check if we got any response (even error response means script exists)
+            if (response.ok || response.status === 400) {
+                console.log(`✅ Log script validated: ${loggerUrl}`);
+                return true;
+            } else {
+                console.warn(`⚠️ Log script not accessible: ${loggerUrl} (Status: ${response.status})`);
+                return false;
+            }
+        } catch (error) {
+            console.warn(`⚠️ Log script validation failed: ${loggerUrl}`, error.message);
+            return false;
+        }
     }
 }
 
@@ -73,7 +104,16 @@ class GameLogger {
 
     async initialize() {
         if (!this.configManager.isLoggingEnabled()) {
-            console.log('Logging is disabled');
+            console.log('Logging is disabled in config');
+            return false;
+        }
+
+        // Validate log script is accessible and working
+        const isLogScriptValid = await this.configManager.validateLogScript();
+        if (!isLogScriptValid) {
+            console.warn('⚠️ Logging disabled: log script is not accessible or not working');
+            // Silently disable logging by updating config
+            this.configManager.config['log-enabled'] = false;
             return false;
         }
 
@@ -90,7 +130,7 @@ class GameLogger {
         return true;
     }
 
-    async startGameLog(player1Name, player2Name, player2IP = null, gameMode = 'multiplayer', player2UserAgent = null) {
+    async startGameLog(player1Name, player2Name, player2IP = null, gameMode = 'multiplayer', player2UserAgent = null, player2Resolution = null) {
         if (!this.configManager.isLoggingEnabled()) {
             console.log('Logging not enabled in config');
             return null;
@@ -101,6 +141,8 @@ class GameLogger {
         this.gameStartTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
         this.player2IP = player2IP || 'Local';
 
+        const currentResolution = `${window.innerWidth}x${window.innerHeight}`;
+
         const logData = {
             action: 'start',
             player1Name: player1Name,
@@ -109,6 +151,8 @@ class GameLogger {
             player2IP: this.player2IP,
             player1UserAgent: navigator.userAgent,
             player2UserAgent: player2UserAgent || navigator.userAgent, // Use same UA for local/AI, or opponent's UA for multiplayer
+            player1Resolution: currentResolution,
+            player2Resolution: player2Resolution || currentResolution, // Use opponent's resolution for multiplayer, or same for local/AI
             startTime: this.gameStartTime,
             gameMode: gameMode
         };

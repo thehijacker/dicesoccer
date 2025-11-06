@@ -10,8 +10,8 @@ class GameState {
         this.orientation = localStorage.getItem('dicesoccer_orientation') || 'portrait';
         this.twoPlayerMode = localStorage.getItem('dicesoccer_twoPlayerMode') === 'true';
         this.hintsEnabled = localStorage.getItem('dicesoccer_hints') !== 'off';
-        this.fastAI = localStorage.getItem('dicesoccer_fastAI') === 'true';
-        this.autoDice = localStorage.getItem('dicesoccer_autoDice') === 'true';
+        this.fastAI = localStorage.getItem('dicesoccer_fastAI') !== 'false'; // Default true
+        this.autoDice = localStorage.getItem('dicesoccer_autoDice') !== 'false'; // Default true
         this.isMultiplayer = false;
         this.gameMode = 'local'; // can be local, ai, multiplayer
         
@@ -1114,6 +1114,7 @@ class DiceSoccerGame {
                 clone.style.height = fromRect.height + 'px';
                 clone.style.zIndex = '1000';
                 clone.style.pointerEvents = 'none';
+                clone.style.transition = 'none'; // Disable CSS transitions on the clone
                 
                 // Choose animation based on movement direction and player
                 if (needsFlippedAnimation) {
@@ -1130,32 +1131,36 @@ class DiceSoccerGame {
                 
                 document.body.appendChild(clone);
                 
-                // Hide original immediately and update board state
-                shirtImg.style.opacity = '0';
-                shirtImg.style.pointerEvents = 'none';
-                fromCell.style.pointerEvents = 'none'; // Disable pointer events on the cell too
+                // Completely remove original shirt element immediately
+                shirtImg.remove();
+                fromCell.style.pointerEvents = 'none';
+                
+                // Update board state immediately
                 this.board[toRow][toCol] = piece;
                 this.board[fromRow][fromCol] = null;
                 
                 // Wait for animation to complete
                 const animationTimeoutId = setTimeout(() => {
-                    // Remove clone first
+                    // Remove clone completely before calling renderBoard
                     clone.remove();
                     
-                    // Then render the board to show piece at new position
-                    this.clearHighlights();
-                    this.selectedPlayer = null;
-                    this.renderBoard();
-                    
-                    // Check for goal
-                    const middleRow = Math.floor(this.rows / 2);
-                    if ((toCol === 0 && piece.player === 2) || (toCol === this.cols - 1 && piece.player === 1)) {
-                        const goalTimeoutId = setTimeout(() => this.handleGoal(), 300);
-                        this.activeTimeouts.push(goalTimeoutId);
-                    } else {
-                        const switchTimeoutId = setTimeout(() => this.switchPlayer(), 200);
-                        this.activeTimeouts.push(switchTimeoutId);
-                    }
+                    // Small delay to ensure clone is fully removed from DOM
+                    requestAnimationFrame(() => {
+                        // Now render the board to show piece at new position
+                        this.clearHighlights();
+                        this.selectedPlayer = null;
+                        this.renderBoard();
+                        
+                        // Check for goal
+                        const middleRow = Math.floor(this.rows / 2);
+                        if ((toCol === 0 && piece.player === 2) || (toCol === this.cols - 1 && piece.player === 1)) {
+                            const goalTimeoutId = setTimeout(() => this.handleGoal(), 300);
+                            this.activeTimeouts.push(goalTimeoutId);
+                        } else {
+                            const switchTimeoutId = setTimeout(() => this.switchPlayer(), 200);
+                            this.activeTimeouts.push(switchTimeoutId);
+                        }
+                    });
                 }, 500);
                 this.activeTimeouts.push(animationTimeoutId);
                 
@@ -1324,7 +1329,7 @@ class DiceSoccerGame {
         
         // Check for winner
         if (this.player1Score >= 3 || this.player2Score >= 3) {
-            const timeoutId = setTimeout(() => this.endGame(), 2000);
+            const timeoutId = setTimeout(() => this.endGame(), 300);
             this.activeTimeouts.push(timeoutId);
         }
     }
@@ -1416,13 +1421,20 @@ class DiceSoccerGame {
                         finalScore += 400; // Increased from 200
                     }
                     
-                    // Add a bonus for blocking threats
+                    // CRITICAL: Check if this move OPENS a clear path to our own goal for opponent
+                    // This is more important than "blocking" bonuses
+                    const opensPathToOwnGoal = this.checkIfMoveClearsOpponentPath(move, boardAfterAIMove);
+                    if (opensPathToOwnGoal) {
+                        finalScore -= 20000; // HUGE penalty for opening path to own goal
+                    }
+                    
+                    // Reduced blocking bonus - minimax should handle this better
                     const isBlocking = this.isBlockingOpponent(move.toRow, move.toCol);
                     if (isBlocking) {
-                        finalScore += 15000;
+                        finalScore += 5000; // Reduced from 15000
                     }
 
-                    console.log(`  Move from (${move.fromRow},${move.fromCol}) to (${move.toRow},${move.toCol}): minimax=${score}, pieceBonus=${pieceAdvancementBonus}, destBonus=${destinationBonus}, forward=${movingForward?400:0}, blocking=${isBlocking?15000:0}, TOTAL=${finalScore}`);
+                    console.log(`  Move from (${move.fromRow},${move.fromCol}) to (${move.toRow},${move.toCol}): minimax=${score}, pieceBonus=${pieceAdvancementBonus}, destBonus=${destinationBonus}, forward=${movingForward?400:0}, opensPath=${opensPathToOwnGoal?'YES':'NO'}, blocking=${isBlocking?5000:0}, TOTAL=${finalScore}`);
 
                     if (finalScore > bestScore) {
                         bestScore = finalScore;
@@ -1834,6 +1846,106 @@ class DiceSoccerGame {
             }
         }
         return count;
+    }
+
+    checkIfMoveClearsOpponentPath(move, boardAfterMove) {
+        // Check if moving away from current position opens a clear path for opponent to our goal
+        const opponent = this.currentPlayer === 1 ? 2 : 1;
+        const myGoalCol = this.currentPlayer === 1 ? 0 : this.cols - 1;
+        const middleRow = Math.floor(this.rows / 2);
+        const opponentDirection = opponent === 1 ? 1 : -1;
+        
+        // Check if there's an opponent piece near the position we're leaving
+        // that would have a clear path to goal after we move
+        const fromRow = move.fromRow;
+        const fromCol = move.fromCol;
+        
+        // Look for opponents in adjacent positions to where we're moving FROM
+        for (let checkRow = Math.max(0, fromRow - 1); checkRow <= Math.min(this.rows - 1, fromRow + 1); checkRow++) {
+            // Check the column behind our old position (where opponent would be coming from)
+            const behindCol = fromCol - opponentDirection;
+            
+            if (behindCol >= 0 && behindCol < this.cols) {
+                const piece = this.board[checkRow][behindCol];
+                if (piece && piece.player === opponent) {
+                    // Found an opponent behind our old position
+                    // Check if they would have a CLEAR path to our goal after we move
+                    
+                    // 1. Check if they can reach middle row (required for goal)
+                    const distanceToMiddleRow = Math.abs(checkRow - middleRow);
+                    const distanceToGoal = Math.abs(behindCol - myGoalCol);
+                    
+                    // If they can reach middle row within the distance to goal, they have potential
+                    if (distanceToMiddleRow <= distanceToGoal) {
+                        // 2. Check if the path from opponent to goal is clear on the boardAfterMove
+                        const hasDirectPath = this.checkClearPathToGoal(
+                            checkRow, 
+                            behindCol, 
+                            opponent, 
+                            boardAfterMove
+                        );
+                        
+                        if (hasDirectPath) {
+                            // This move opens a dangerous path!
+                            console.log(`  WARNING: Moving from (${fromRow},${fromCol}) opens path for opponent at (${checkRow},${behindCol}) to goal!`);
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    checkClearPathToGoal(startRow, startCol, player, board) {
+        // Check if there's a clear path from (startRow, startCol) to the goal
+        const goalCol = player === 1 ? this.cols - 1 : 0;
+        const middleRow = Math.floor(this.rows / 2);
+        const direction = player === 1 ? 1 : -1;
+        
+        // Use BFS to check if player can reach (middleRow, goalCol) without obstacles
+        const queue = [{row: startRow, col: startCol, visited: new Set([`${startRow},${startCol}`])}];
+        
+        while (queue.length > 0) {
+            const {row, col, visited} = queue.shift();
+            
+            // Reached the goal!
+            if (row === middleRow && col === goalCol) {
+                return true;
+            }
+            
+            // Limit search depth (don't search more than 5 moves ahead)
+            const colDistance = Math.abs(col - goalCol);
+            if (colDistance > 5) continue;
+            
+            // Try all possible moves from current position
+            const nextCol = col + direction;
+            if (nextCol < 0 || nextCol >= this.cols) continue;
+            
+            // Check forward, diagonal up, diagonal down
+            const possibleRows = [row, row - 1, row + 1];
+            
+            for (const nextRow of possibleRows) {
+                if (nextRow < 0 || nextRow >= this.rows) continue;
+                
+                const key = `${nextRow},${nextCol}`;
+                if (visited.has(key)) continue;
+                
+                // Check if cell is empty or reachable
+                const cellPiece = board[nextRow][nextCol];
+                if (!cellPiece || cellPiece.player === player) {
+                    // Empty or own piece - can potentially move here
+                    if (!cellPiece) { // Only move to empty cells
+                        const newVisited = new Set(visited);
+                        newVisited.add(key);
+                        queue.push({row: nextRow, col: nextCol, visited: newVisited});
+                    }
+                }
+            }
+        }
+        
+        return false;
     }
 
     isBlockingOpponent(row, col) {
@@ -2259,7 +2371,7 @@ class DiceSoccerGame {
         
         // Check for winner - if game is over, go directly to endGame without showing goal modal
         if (this.player1Score >= 3 || this.player2Score >= 3) {
-            const timeoutId = setTimeout(() => this.endGame(), 1000);
+            const timeoutId = setTimeout(() => this.endGame(), 300);
             this.activeTimeouts.push(timeoutId);
             return; // Skip showing goal modal
         }
@@ -2515,9 +2627,11 @@ class DiceSoccerGame {
             document.getElementById('newGameFromWinner').style.display = 'block';
         }
 
-        // Launch confetti animation
-        if (window.launchConfetti) {
-            window.launchConfetti();
+        // Launch confetti animation only if we won or we are in a 2-player local game
+        if (winner === player1Name || gameState.twoPlayerMode) {
+            if (window.launchConfetti) {
+                window.launchConfetti();
+            }
         }
         
         // Rotate winner modal for Player 2 in portrait 2-player mode
@@ -3157,7 +3271,7 @@ class DiceSoccerGame {
                 if (gameState.gameMode !== 'spectator') {
                     // Check if game is over
                     if (this.player1Score >= 3 || this.player2Score >= 3) {
-                        const timeoutId = setTimeout(() => this.endGame(), 1000);
+                        const timeoutId = setTimeout(() => this.endGame(), 300);
                         this.activeTimeouts.push(timeoutId);
                     } else {
                         // Show goal modal

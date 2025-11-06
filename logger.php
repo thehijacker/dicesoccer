@@ -134,6 +134,8 @@ if ($action === 'start') {
     $gameMode = $data['gameMode'] ?? 'multiplayer';
     $player1UserAgent = $data['player1UserAgent'] ?? '';
     $player2UserAgent = $data['player2UserAgent'] ?? '';
+    $player1Resolution = $data['player1Resolution'] ?? '';
+    $player2Resolution = $data['player2Resolution'] ?? '';
     
     // Parse user agents
     $player1Info = $player1UserAgent ? parseUserAgent($player1UserAgent) : null;
@@ -195,6 +197,11 @@ if ($action === 'start') {
         $logContent .= "\n";
     }
     
+    // Add Player 1 resolution
+    if ($player1Resolution) {
+        $logContent .= "Player 1 Resolution: {$player1Resolution}\n";
+    }
+    
     $logContent .= "Player 2: {$player2Name}\n";
     
     if ($gameMode === 'multiplayer') {
@@ -213,6 +220,11 @@ if ($action === 'start') {
             }
             $logContent .= "\n";
         }
+        
+        // Add Player 2 resolution for multiplayer
+        if ($player2Resolution) {
+            $logContent .= "Player 2 Resolution: {$player2Resolution}\n";
+        }
     } elseif ($gameMode === 'local') {
         $logContent .= "Player 2 IP: Same Device (Local)\n";
         // Same device info as Player 1
@@ -228,6 +240,11 @@ if ($action === 'start') {
                 $logContent .= " {$player1Info['browser_version']}";
             }
             $logContent .= "\n";
+        }
+        
+        // Add Player 2 resolution for local (same as Player 1)
+        if ($player1Resolution) {
+            $logContent .= "Player 2 Resolution: {$player1Resolution}\n";
         }
     } elseif ($gameMode === 'ai') {
         $logContent .= "Player 2: AI Opponent\n";

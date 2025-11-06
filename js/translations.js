@@ -6,8 +6,6 @@ const translations = {
         twoPlayerGame: "2 Player Game",
         aiDifficulty: "A.I. Difficulty",
         multiplayer: "Multiplayer",
-        hostGame: "Host Game",
-        joinGame: "Join Game",
         settings: "Settings",
         gameSettings: "Game Settings",
         language: "Language",
@@ -55,16 +53,10 @@ const translations = {
         // Modals
         selectShirtColor: "Select Shirt Color",
         close: "Close",
-        availableGames: "Available Games",
-        searching: "Searching for games...",
-        noGamesFound: "No games found. Try hosting one!",
-        waitingForPlayer: "Waiting for player to join...",
-        gameCode: "Game Code:",
         cancel: "Cancel",
         join: "Join",
         refresh: "Refresh",
         player: "Player",
-        availableHosts: "Available Hosts",
         noHostsFound: "No hosts found. Ask someone to host a game!",
         failedToHost: "Failed to host game",
         failedToJoin: "Failed to join game",
@@ -74,6 +66,15 @@ const translations = {
         waitingForOpponent: "Waiting for opponent to reconnect",
         backToLobby: "Back to Lobby",
         connectionLost: "Connection lost",
+        
+        // Connection
+        connecting: "Connecting...",
+        tryingToConnect: "Trying to connect to the server...",
+        connectionFailed: "Connection Failed",
+        connectionFailedMessage: "Could not connect to the server. Please try again later.",
+        connectionLostMessage: "Connection to the server was lost. You've been returned to the main menu.",
+        ok: "OK",
+        cancel: "Cancel",
         
         // Lobby
         multiplayerLobby: "Multiplayer Lobby",
@@ -99,7 +100,6 @@ const translations = {
         hoursAgo: "h ago",
         
         // Game
-        gameStarting: "Game Starting...",
         backToMenu: "Back to Menu",
         goal: "GOAL!",
         continue: "Continue",
@@ -127,13 +127,11 @@ const translations = {
         twoPlayerGame: "Igra za dva igralca",
         aiDifficulty: "A.I. težavnost",
         multiplayer: "Spletno igranje",
-        hostGame: "Gostuj igro",
-        joinGame: "Pridruži se igri",
         settings: "Nastavitve",
         gameSettings: "Nastavitve igre",
         language: "Jezik",
         sound: "Zvok",
-        fastAI: "Hitro AI gibanje",
+        fastAI: "Hitrejši premiki AI",
         autoDice: "Samodejno metanje kocke",
         
         // Difficulty levels
@@ -194,16 +192,10 @@ const translations = {
         hoursAgo: "pred urami",
         selectShirtColor: "Izberi barvo dresa",
         close: "Zapri",
-        availableGames: "Razpoložljive igre",
-        searching: "Iskanje iger...",
-        noGamesFound: "Ni najdenih iger. Poskusi gostiti eno!",
-        waitingForPlayer: "Čakanje na igralca...",
-        gameCode: "Koda igre:",
         cancel: "Prekliči",
         join: "Pridruži se",
         refresh: "Osveži",
         player: "Igralec",
-        availableHosts: "Razpoložljivi gostitelji",
         noHostsFound: "Ni najdenih gostiteljev. Prosi nekoga, da gosti igro!",
         failedToHost: "Gostovanje igre ni uspelo",
         failedToJoin: "Pridružitev igri ni uspela",
@@ -213,11 +205,20 @@ const translations = {
         waitingForOpponent: "Čakanje na ponovno povezavo nasprotnika",
         backToLobby: "Nazaj v ložo",
         connectionLost: "Povezava izgubljena",
+        
+        // Connection
+        connecting: "Povezovanje...",
+        tryingToConnect: "Poskušam se povezati s strežnikom...",
+        connectionFailed: "Povezava ni uspela",
+        connectionFailedMessage: "Ni se bilo mogoče povezati s strežnikom. Poskusite znova pozneje.",
+        connectionLostMessage: "Povezava s strežnikom je bila prekinjena. Vrnjeni ste bili v glavni meni.",
+        ok: "V redu",
+        cancel: "Prekliči",
+        
         spectateGame: "Gledam igro?",
         watch: "Gledaj",
         
         // Game
-        gameStarting: "Igra se začenja...",
         backToMenu: "Nazaj v meni",
         goal: "GOL!",
         continue: "Nadaljuj",
@@ -245,8 +246,6 @@ const translations = {
         twoPlayerGame: "2-Spieler-Spiel",
         aiDifficulty: "K.I.-Schwierigkeit",
         multiplayer: "Mehrspieler",
-        hostGame: "Spiel hosten",
-        joinGame: "Spiel beitreten",
         settings: "Einstellungen",
         gameSettings: "Spieleinstellungen",
         language: "Sprache",
@@ -308,28 +307,31 @@ const translations = {
         minutesAgo: "vor Minuten",
         hoursAgo: "vor Stunden",
         selectShirtColor: "Trikotfarbe auswählen",
-        close: "Schließen",
-        availableGames: "Verfügbare Spiele",
-        searching: "Suche nach Spielen...",
-        noGamesFound: "Keine Spiele gefunden. Versuche, eines zu hosten!",
-        waitingForPlayer: "Warte auf Beitritt eines Spielers...",
-        gameCode: "Spiel-Code:",
+        close: "Schließen",        
         cancel: "Abbrechen",
         join: "Beitreten",
         refresh: "Aktualisieren",
         player: "Spieler",
-        availableHosts: "Verfügbare Hosts",
         noHostsFound: "Keine Hosts gefunden. Bitte jemanden, ein Spiel zu hosten!",
         failedToHost: "Hosten des Spiels fehlgeschlagen",
         failedToJoin: "Beitritt zum Spiel fehlgeschlagen",
         opponentLeft: "Gegner hat das Spiel verlassen",
         opponentDisconnected: "Gegner hat die Verbindung getrennt",
         connectionLost: "Verbindung verloren",
+        
+        // Connection
+        connecting: "Verbinde...",
+        tryingToConnect: "Versuche, eine Verbindung zum Server herzustellen...",
+        connectionFailed: "Verbindung fehlgeschlagen",
+        connectionFailedMessage: "Konnte keine Verbindung zum Server herstellen. Bitte versuchen Sie es später erneut.",
+        connectionLostMessage: "Die Verbindung zum Server wurde unterbrochen. Sie wurden zum Hauptmenü zurückgekehrt.",
+        ok: "OK",
+        cancel: "Abbrechen",
+        
         spectateGame: "Spiel zuschauen?",
         watch: "Zuschauen",
 
         // Game
-        gameStarting: "Spiel startet...",
         backToMenu: "Zurück zum Menü",
         goal: "TOR!",
         continue: "Weiter",
@@ -357,8 +359,6 @@ const translations = {
         twoPlayerGame: "Partita a 2 Giocatori",
         aiDifficulty: "Difficoltà I.A.",
         multiplayer: "Multigiocatore",
-        hostGame: "Ospita Partita",
-        joinGame: "Unisciti a Partita",
         settings: "Impostazioni",
         gameSettings: "Impostazioni di Gioco",
         language: "Lingua",
@@ -420,17 +420,11 @@ const translations = {
         minutesAgo: "minuti fa",
         hoursAgo: "ore fa",
         selectShirtColor: "Seleziona Colore Maglia",
-        close: "Chiudi",
-        availableGames: "Partite Disponibili",
-        searching: "Ricerca di partite...",
-        noGamesFound: "Nessuna partita trovata. Prova a ospitarne una!",
-        waitingForPlayer: "In attesa che un giocatore si unisca...",
-        gameCode: "Codice Partita:",
+        close: "Chiudi",        
         cancel: "Annulla",
         join: "Unisciti",
         refresh: "Aggiorna",
         player: "Giocatore",
-        availableHosts: "Host Disponibili",
         noHostsFound: "Nessun host trovato. Chiedi a qualcuno di ospitare una partita!",
         failedToHost: "Impossibile ospitare la partita",
         failedToJoin: "Impossibile unirsi alla partita",
@@ -441,7 +435,6 @@ const translations = {
         watch: "Guarda",
 
         // Game
-        gameStarting: "Inizio partita...",
         backToMenu: "Torna al Menu",
         goal: "GOAL!",
         continue: "Continua",
@@ -469,8 +462,6 @@ const translations = {
         twoPlayerGame: "Juego de 2 Jugadores",
         aiDifficulty: "Dificultad de la IA",
         multiplayer: "Multijugador",
-        hostGame: "Crear Partida",
-        joinGame: "Unirse a Partida",
         settings: "Ajustes",
         gameSettings: "Ajustes del Juego",
         language: "Idioma",
@@ -533,16 +524,10 @@ const translations = {
         hoursAgo: "hace horas",
         selectShirtColor: "Seleccionar Color de Camiseta",
         close: "Cerrar",
-        availableGames: "Partidas Disponibles",
-        searching: "Buscando partidas...",
-        noGamesFound: "No se encontraron partidas. ¡Intenta crear una!",
-        waitingForPlayer: "Esperando a que se una un jugador...",
-        gameCode: "Código de la Partida:",
         cancel: "Cancelar",
         join: "Unirse",
         refresh: "Actualizar",
         player: "Jugador",
-        availableHosts: "Anfitriones Disponibles",
         noHostsFound: "No se encontraron anfitriones. ¡Pídele a alguien que cree una partida!",
         failedToHost: "Error al crear la partida",
         failedToJoin: "Error al unirse a la partida",
@@ -553,7 +538,6 @@ const translations = {
         watch: "Ver",
 
         // Game
-        gameStarting: "Iniciando partida...",
         backToMenu: "Volver al Menú",
         goal: "¡GOL!",
         continue: "Continuar",
@@ -581,8 +565,6 @@ const translations = {
         twoPlayerGame: "Partie à 2 Joueurs",
         aiDifficulty: "Difficulté de l'IA",
         multiplayer: "Multijoueur",
-        hostGame: "Héberger une Partie",
-        joinGame: "Rejoindre une Partie",
         settings: "Paramètres",
         gameSettings: "Paramètres du Jeu",
         language: "Langue",
@@ -645,16 +627,10 @@ const translations = {
         hoursAgo: "il y a quelques heures",
         selectShirtColor: "Choisir la Couleur du Maillot",
         close: "Fermer",
-        availableGames: "Parties Disponibles",
-        searching: "Recherche de parties...",
-        noGamesFound: "Aucune partie trouvée. Essayez d'en héberger une !",
-        waitingForPlayer: "En attente d'un joueur...",
-        gameCode: "Code de la Partie :",
         cancel: "Annuler",
         join: "Rejoindre",
         refresh: "Actualiser",
         player: "Joueur",
-        availableHosts: "Hôtes Disponibles",
         noHostsFound: "Aucun hôte trouvé. Demandez à quelqu'un d'héberger une partie !",
         failedToHost: "Échec de l'hébergement de la partie",
         failedToJoin: "Échec pour rejoindre la partie",
@@ -665,7 +641,6 @@ const translations = {
         watch: "Regarder",
 
         // Game
-        gameStarting: "Début de la partie...",
         backToMenu: "Retour au Menu",
         goal: "BUT !",
         continue: "Continuer",
@@ -693,8 +668,6 @@ const translations = {
         twoPlayerGame: "Igra za 2 igrača",
         aiDifficulty: "Težina A.I.-a",
         multiplayer: "Više igrača",
-        hostGame: "Stvori igru",
-        joinGame: "Pridruži se igri",
         settings: "Postavke",
         gameSettings: "Postavke igre",
         language: "Jezik",
@@ -757,16 +730,10 @@ const translations = {
         hoursAgo: "prije nekoliko sati",
         selectShirtColor: "Odaberi boju dresa",
         close: "Zatvori",
-        availableGames: "Dostupne igre",
-        searching: "Traženje igara...",
-        noGamesFound: "Nema pronađenih igara. Pokušaj stvoriti jednu!",
-        waitingForPlayer: "Čekanje na igrača...",
-        gameCode: "Kod igre:",
         cancel: "Odustani",
         join: "Pridruži se",
         refresh: "Osvježi",
         player: "Igrač",
-        availableHosts: "Dostupni domaćini",
         noHostsFound: "Nema pronađenih domaćina. Zamoli nekoga da stvori igru!",
         failedToHost: "Stvaranje igre nije uspjelo",
         failedToJoin: "Pridruživanje igri nije uspjelo",
@@ -777,7 +744,6 @@ const translations = {
         watch: "Gledaj",
 
         // Game
-        gameStarting: "Igra počinje...",
         backToMenu: "Povratak na izbornik",
         goal: "GOL!",
         continue: "Nastavi",
@@ -805,8 +771,6 @@ const translations = {
         twoPlayerGame: "Kétszemélyes játék",
         aiDifficulty: "M.I. nehézség",
         multiplayer: "Többjátékos",
-        hostGame: "Játék indítása",
-        joinGame: "Csatlakozás játékhoz",
         settings: "Beállítások",
         gameSettings: "Játékbeállítások",
         language: "Nyelv",
@@ -868,17 +832,11 @@ const translations = {
         minutesAgo: "perce",
         hoursAgo: "órája",
         selectShirtColor: "Mezszín kiválasztása",
-        close: "Bezárás",
-        availableGames: "Elérhető játékok",
-        searching: "Játékok keresése...",
-        noGamesFound: "Nincsenek elérhető játékok. Próbálj indítani egyet!",
-        waitingForPlayer: "Várakozás a másik játékosra...",
-        gameCode: "Játék kódja:",
+        close: "Bezárás",        
         cancel: "Mégse",
         join: "Csatlakozás",
         refresh: "Frissítés",
         player: "Játékos",
-        availableHosts: "Elérhető szerverek",
         noHostsFound: "Nincs elérhető szerver. Kérj meg valakit, hogy indítson egy játékot!",
         failedToHost: "Nem sikerült a játék indítása",
         failedToJoin: "Nem sikerült csatlakozni a játékhoz",
@@ -889,7 +847,6 @@ const translations = {
         watch: "Nézd",
         
         // Game
-        gameStarting: "Játék indul...",
         backToMenu: "Vissza a menübe",
         goal: "GÓL!",
         continue: "Folytatás",
@@ -961,7 +918,19 @@ class TranslationManager {
     }
 
     get(key) {
-        return this.translations[this.currentLanguage][key] || key;
+        // Try to get translation in current language
+        const translation = this.translations[this.currentLanguage][key];
+        if (translation) {
+            return translation;
+        }
+        
+        // Fall back to English if translation is missing
+        if (this.currentLanguage !== 'en' && this.translations['en'][key]) {
+            return this.translations['en'][key];
+        }
+        
+        // If even English doesn't have it, return the key itself
+        return key;
     }
 
     updateUI() {

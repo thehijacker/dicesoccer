@@ -1,3 +1,6 @@
+# Ignore production config.json
+config.json
+
 # Misc folder
 misc/*
 

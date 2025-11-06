@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-spectator-v2';
+const APP_VERSION = '2.0.0-spectator-v4';
 
 // Global config
 let appConfig = {
@@ -128,8 +128,23 @@ function handleGameplayOrientationChange() {
         if (currentGame) {
             currentGame.renderBoard();
             
+            // Spectators should never see highlights
+            if (gameState.gameMode === 'spectator') {
+                return;
+            }
+            
             // Redraw hints if dice was rolled and hints are enabled
             if (currentGame.waitingForMove && gameState.hintsEnabled && currentGame.diceValue > 0) {
+                // In multiplayer, only highlight if it's the local player's turn
+                const isMultiplayer = gameState.gameMode === 'multiplayer';
+                const isLocalPlayerTurn = !isMultiplayer || 
+                    (multiplayerManager && currentGame.currentPlayer === multiplayerManager.localPlayer);
+                
+                if (!isLocalPlayerTurn) {
+                    // Not our turn in multiplayer - don't highlight anything
+                    return;
+                }
+                
                 // If a player is selected, show their valid moves
                 if (currentGame.selectedPlayer) {
                     currentGame.highlightValidMoves(currentGame.selectedPlayer.row, currentGame.selectedPlayer.col);
@@ -159,10 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Load configuration first, then initialize
     window.configManager.loadConfig().then(() => {
-        checkPHPAvailability().then(() => {
-            window.gameLogger.initialize().then(() => {
-                initializeApp();
-            });
+        window.gameLogger.initialize().then(() => {
+            initializeApp();
         });
     });
     
@@ -341,26 +354,6 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Check if PHP is available on the server
-async function checkPHPAvailability() {
-    try {
-        const response = await fetch('php-check.php', {
-            method: 'GET',
-            cache: 'no-cache'
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            phpAvailable = data.php_available === true;
-        } else {
-            phpAvailable = false;
-        }
-    } catch (error) {
-        debugLog('PHP not available on this server:', error);
-        phpAvailable = false;
-    }
-}
-
 // Handle viewport height for mobile browsers (fixes address bar issues)
 function setViewportHeight() {
     const setHeight = () => {
@@ -496,18 +489,6 @@ function initializeApp() {
     const orientationValue = document.getElementById('orientationValue');
     orientationValue.setAttribute('data-translate-value', detectedOrientation);
     orientationValue.textContent = translationManager.get(detectedOrientation);
-
-    // Disable multiplayer options if PHP is not available
-    if (!phpAvailable) {
-        const multiplayerBtn = document.getElementById('multiplayerBtn');
-        
-        if (multiplayerBtn) {
-            multiplayerBtn.classList.add('disabled');
-            multiplayerBtn.title = 'PHP not available - Multiplayer requires PHP server support';
-        }
-        
-        debugLog('Multiplayer options disabled - PHP not available');
-    }
 
     // Set up event listeners
     debugLog('Setting up event listeners...');
@@ -764,6 +745,17 @@ function setupEventListeners() {
 
     document.getElementById('declineChallengeBtn')?.addEventListener('click', () => {
         declineChallenge();
+    });
+
+    // Connection modal handlers
+    document.getElementById('cancelConnectionBtn')?.addEventListener('click', () => {
+        connectionModalCancelled = true;
+        multiplayerManager.disconnect();
+        closeModal('connectionModal');
+    });
+
+    document.getElementById('okConnectionBtn')?.addEventListener('click', () => {
+        closeModal('connectionModal');
     });
 
     // Back to menu - expandable square
@@ -1270,17 +1262,103 @@ document.getElementById('cancelHostBtn')?.addEventListener('click', async () => 
 
 let lobbyRefreshInterval = null;
 let currentChallengeInfo = null;
+let connectionModalCancelled = false;
+
+// Connection modal functions
+window.showConnectionModal = function(status) {
+    const modal = document.getElementById('connectionModal');
+    const title = document.getElementById('connectionTitle');
+    const message = document.getElementById('connectionMessage');
+    const cancelBtn = document.getElementById('cancelConnectionBtn');
+    const okBtn = document.getElementById('okConnectionBtn');
+    
+    if (status === 'connecting') {
+        connectionModalCancelled = false;
+        title.textContent = translationManager.get('connecting');
+        message.textContent = translationManager.get('tryingToConnect');
+        cancelBtn.style.display = 'inline-block';
+        okBtn.style.display = 'none';
+        openModal('connectionModal');
+    } else if (status === 'failed') {
+        title.textContent = translationManager.get('connectionFailed');
+        message.textContent = translationManager.get('connectionFailedMessage');
+        cancelBtn.style.display = 'none';
+        okBtn.style.display = 'inline-block';
+    }
+};
+
+window.updateConnectionModal = function(attempt, maxAttempts) {
+    const message = document.getElementById('connectionMessage');
+    if (message && !connectionModalCancelled) {
+        message.textContent = `${translationManager.get('tryingToConnect')} (${attempt}/${maxAttempts})`;
+    }
+};
+
+window.hideConnectionModal = function() {
+    closeModal('connectionModal');
+    connectionModalCancelled = false;
+};
+
+window.showConnectionLost = function() {
+    // Return to main menu first
+    if (currentGame) {
+        currentGame.cleanup();
+        currentGame = null;
+    }
+    
+    // Clear lobby interval
+    if (lobbyRefreshInterval) {
+        clearInterval(lobbyRefreshInterval);
+        lobbyRefreshInterval = null;
+    }
+    
+    // Close all modals
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('active');
+    });
+    
+    // Show main menu
+    showScreen('mainMenu');
+    
+    // Show connection lost modal
+    const modal = document.getElementById('connectionModal');
+    const title = document.getElementById('connectionTitle');
+    const message = document.getElementById('connectionMessage');
+    const cancelBtn = document.getElementById('cancelConnectionBtn');
+    const okBtn = document.getElementById('okConnectionBtn');
+    
+    title.textContent = translationManager.get('connectionLost');
+    message.textContent = translationManager.get('connectionLostMessage');
+    cancelBtn.style.display = 'none';
+    okBtn.style.display = 'inline-block';
+    openModal('connectionModal');
+};
 
 async function openLobby() {
+    // Reset connection cancelled flag in multiplayerManager
+    if (multiplayerManager.connectionCancelled) {
+        multiplayerManager.connectionCancelled = false;
+    }
+    
     // Check if we need to initialize or reconnect
     if (!multiplayerManager.playerId || !multiplayerManager.connected) {
         try {
             await multiplayerManager.init();
         } catch (error) {
             console.error('Failed to initialize multiplayer:', error);
-            alert(translationManager.get('failedToJoin') + ': ' + error.message);
+            // Check if error was due to cancellation
+            if (error.message === 'Connection cancelled') {
+                return;
+            }
+            // Connection modal already shown the error, just return
             return;
         }
+    }
+    
+    // Check if connection was cancelled
+    if (connectionModalCancelled) {
+        connectionModalCancelled = false;
+        return;
     }
     
     const playerName = gameState.player1Name || translationManager.get('player1');
@@ -1990,7 +2068,10 @@ function startMultiplayerGame(role, opponent) {
         window.gameLogger.startGameLog(
             gameState.player1Name,
             opponent.playerName,
-            opponent.playerIp || 'Unknown'
+            opponent.playerIp || 'Unknown',
+            'multiplayer',
+            null, // player2UserAgent - not currently exchanged
+            null  // player2Resolution - not currently exchanged
         ).then(logId => {
             if (logId) {
                 debugLog('Game logging started with ID:', logId);

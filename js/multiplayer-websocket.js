@@ -30,6 +30,8 @@ class WebSocketMultiplayerManager {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.heartbeatInterval = null;
+        this.connectionCancelled = false;
+        this.connectPromiseReject = null;
     }
 
     // Initialize connection
@@ -61,26 +63,51 @@ class WebSocketMultiplayerManager {
 
         wsDebugLog(`🔌 Connecting to WebSocket server: ${this.serverUrl}`);
 
+        // Reset cancellation flag
+        this.connectionCancelled = false;
+
         return new Promise((resolve, reject) => {
+            this.connectPromiseReject = reject;
+            
             try {
+                // Show connection modal
+                if (typeof window.showConnectionModal === 'function') {
+                    window.showConnectionModal('connecting');
+                }
+                
                 // Load Socket.IO client library if not already loaded
                 if (typeof io === 'undefined') {
                     const script = document.createElement('script');
                     script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
                     script.crossOrigin = 'anonymous';
                     script.onload = () => this.connect(resolve, reject);
-                    script.onerror = () => reject(new Error('Failed to load Socket.IO client'));
+                    script.onerror = () => {
+                        if (typeof window.showConnectionModal === 'function') {
+                            window.showConnectionModal('failed');
+                        }
+                        reject(new Error('Failed to load Socket.IO client'));
+                    };
                     document.head.appendChild(script);
                 } else {
                     this.connect(resolve, reject);
                 }
             } catch (error) {
+                if (typeof window.showConnectionModal === 'function') {
+                    window.showConnectionModal('failed');
+                }
                 reject(error);
             }
         });
     }
 
     connect(resolve, reject) {
+        // Check if connection was cancelled
+        if (this.connectionCancelled) {
+            wsDebugLog('❌ Connection cancelled by user');
+            reject(new Error('Connection cancelled'));
+            return;
+        }
+        
         try {
             this.socket = io(this.serverUrl, {
                 transports: ['websocket', 'polling'],
@@ -94,6 +121,11 @@ class WebSocketMultiplayerManager {
                 wsDebugLog('✅ Connected to WebSocket server');
                 this.connected = true;
                 this.reconnectAttempts = 0;
+
+                // Hide connection modal on successful connection
+                if (typeof window.hideConnectionModal === 'function') {
+                    window.hideConnectionModal();
+                }
 
                 // Start heartbeat to prevent timeout
                 this.startHeartbeat();
@@ -147,20 +179,43 @@ class WebSocketMultiplayerManager {
                     this.wasInLobby = true;
                 }
                 
-                // Notify user if disconnected unexpectedly
-                if (reason === 'io server disconnect' || reason === 'transport close') {
+                // Notify user if disconnected unexpectedly (but not during intentional disconnects)
+                // Also handle cases where disconnect happens during active game or lobby
+                if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
                     // Server disconnected us or connection lost
-                    if (typeof window.showConnectionLost === 'function') {
-                        window.showConnectionLost();
+                    const isInGame = document.getElementById('gameScreen')?.classList.contains('active');
+                    const isInLobby = document.getElementById('lobbyModal')?.classList.contains('active');
+                    
+                    // Only show connection lost if we were actually using the connection
+                    if (isInGame || isInLobby || this.isInGame || this.isInLobby) {
+                        if (typeof window.showConnectionLost === 'function') {
+                            window.showConnectionLost();
+                        }
                     }
                 }
             });
 
             this.socket.on('connect_error', (error) => {
+                // Check if connection was cancelled
+                if (this.connectionCancelled) {
+                    wsDebugLog('❌ Connection cancelled during retry');
+                    return;
+                }
+                
                 console.error('Connection error:', error);
                 this.reconnectAttempts++;
+                
+                // Update connection modal with retry info
+                if (typeof window.updateConnectionModal === 'function') {
+                    window.updateConnectionModal(this.reconnectAttempts, this.maxReconnectAttempts);
+                }
+                
                 if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-                    reject(new Error('Failed to connect to server'));
+                    // Hide trying modal and show failed modal
+                    if (typeof window.showConnectionModal === 'function') {
+                        window.showConnectionModal('failed');
+                    }
+                    reject(new Error('Connection timeout'));
                 }
             });
 
@@ -220,7 +275,10 @@ class WebSocketMultiplayerManager {
 
             this.socket.on('serverShutdown', (data) => {
                 console.warn('⚠️ Server shutting down:', data.message);
-                alert('Server is shutting down. Please reconnect later.');
+                // Show connection lost modal
+                if (typeof window.showConnectionLost === 'function') {
+                    window.showConnectionLost();
+                }
             });
 
             // Set timeout for initial connection
@@ -464,6 +522,33 @@ class WebSocketMultiplayerManager {
 
     stopPolling() {
         // No-op for WebSocket
+    }
+
+    disconnect() {
+        wsDebugLog('🔌 Disconnecting from WebSocket server');
+        
+        // Set cancellation flag to stop connection attempts
+        this.connectionCancelled = true;
+        
+        // Reject pending connection promise if exists
+        if (this.connectPromiseReject) {
+            this.connectPromiseReject(new Error('Connection cancelled'));
+            this.connectPromiseReject = null;
+        }
+        
+        // Stop heartbeat
+        this.stopHeartbeat();
+        
+        // Disconnect socket
+        if (this.socket) {
+            this.socket.disconnect();
+        }
+        
+        // Reset connection state
+        this.connected = false;
+        this.reconnectAttempts = 0;
+        this.isInGame = false;
+        this.isInLobby = false;
     }
 
     cleanup() {
