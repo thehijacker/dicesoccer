@@ -915,10 +915,31 @@ function setupEventListeners() {
     });
     
     document.getElementById('newGameFromWinner').addEventListener('click', () => {
-        closeModal('winnerModal');
-        // stop all sounds (cheering))
-        soundManager.stopAll();
-        startNewGame();
+        // In multiplayer, coordinate with opponent (like Continue button)
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager && currentGame) {
+            // Set local ready state
+            currentGame.localPlayerReady = true;
+            
+            // Send ready event to opponent
+            multiplayerManager.sendEvent({
+                type: 'winnerContinue'
+            });
+            
+            // Update button to show waiting state
+            const newGameBtn = document.getElementById('newGameFromWinner');
+            newGameBtn.textContent = translationManager.get('waitingForOpponent') || 'Waiting for opponent...';
+            newGameBtn.disabled = true;
+            
+            // If opponent is also ready, start new game
+            if (currentGame.opponentPlayerReady) {
+                currentGame.bothPlayersReadyFromWinner();
+            }
+        } else {
+            // Local or AI game - just start new game immediately
+            closeModal('winnerModal');
+            soundManager.stopAll();
+            startNewGame();
+        }
     });
 
     document.getElementById('backToMenuFromWinner').addEventListener('click', async () => {
@@ -2178,6 +2199,12 @@ function showScreen(screenId) {
 
 // Start new game
 function startNewGame() {
+    // Cleanup old game instance before creating new one
+    if (currentGame && typeof currentGame.cleanup === 'function') {
+        console.log('Cleaning up previous game instance');
+        currentGame.cleanup();
+    }
+    
     // Hide spectator count (only relevant for multiplayer)
     const spectatorCountDiv = document.getElementById('spectatorCount');
     if (spectatorCountDiv) {

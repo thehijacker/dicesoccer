@@ -215,8 +215,8 @@ const translations = {
         ok: "V redu",
         cancel: "Prekliči",
         
-        spectateGame: "Gledam igro?",
-        watch: "Gledaj",
+        spectateGame: "Opazujem igro?",
+        watch: "Opazuj",
         
         // Game
         backToMenu: "Nazaj v meni",

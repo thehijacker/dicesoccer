@@ -207,6 +207,7 @@ class DiceSoccerGame {
         this.activeIntervals = []; // Track all active intervals
         this.localPlayerReady = false; // For goal continue synchronization
         this.opponentPlayerReady = false; // For goal continue synchronization
+        this.isResetting = false; // Prevent duplicate game resets for spectators
         
         // AI strategic tracking (for hard difficulty)
         this.aiScoutPlayer = null; // Track the forward scout player
@@ -2376,14 +2377,23 @@ class DiceSoccerGame {
             return; // Skip showing goal modal
         }
         
-        // Show goal modal
+        // Show goal modal (or notification for spectators)
         this.showGoalModal();
     }
 
     showGoalModal() {
-        // Don't show goal modal for spectators
+        // For spectators, show temporary notification instead of modal
         if (gameState.gameMode === 'spectator') {
-            debugLog('👁️ Spectator: suppressing goal modal');
+            debugLog('👁️ Spectator: showing goal notification');
+            
+            // Determine scorer name from spectator perspective (host=P1, guest=P2)
+            const scorer = this.currentPlayer === 1 ? 
+                (gameState.player1Name || translationManager.get('player1')) : 
+                (gameState.player2Name || translationManager.get('player2'));
+            
+            // Show temporary message: "Player X scored (2:1)"
+            const message = `${scorer} ${translationManager.get('scores')} (${this.player1Score}:${this.player2Score})`;
+            this.showMessage(message, 3000);
             return;
         }
         
@@ -2480,13 +2490,27 @@ class DiceSoccerGame {
         
         // Reset button state
         const continueBtn = document.getElementById('continueFromWinner');
-        continueBtn.textContent = translationManager.get('continue') || 'Continue';
-        continueBtn.disabled = false;
+        if (continueBtn) {
+            continueBtn.textContent = translationManager.get('continue') || 'Continue';
+            continueBtn.disabled = false;
+        }
         
-        // Close modal and start new game
-        closeModal('winnerModal');
-        soundManager.stopAll();
-        startNewGame();
+        // In multiplayer, only HOST notifies spectators that game is resetting (to avoid duplicate events)
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager && multiplayerManager.isHost) {
+            debugLog('Host sending gameReset event to guest and spectators');
+            multiplayerManager.sendEvent({
+                type: 'gameReset',
+                message: 'New game starting'
+            });
+        }
+        
+        // Give a small delay to ensure the event is sent before starting new game
+        setTimeout(() => {
+            // Close modal and start new game
+            closeModal('winnerModal');
+            soundManager.stopAll();
+            startNewGame();
+        }, 100);
     }
 
     resetRound() {
@@ -2591,10 +2615,18 @@ class DiceSoccerGame {
             );
         }
         
-        // Spectators don't see winner modal - they return to lobby
+        // Spectators don't see winner modal - show temporary notification and stay watching
         if (gameState.gameMode === 'spectator') {
-            debugLog('👁️ Spectator: game ended, will return to lobby');
-            // The exitSpectatorMode function in app.js will be called by handleSpectatorEvent
+            debugLog('👁️ Spectator: game ended, showing winner notification');
+            
+            // Determine winner from spectator perspective (host=P1, guest=P2)
+            const player1Name = gameState.player1Name || translationManager.get('player1');
+            const player2Name = gameState.player2Name || translationManager.get('player2');
+            const winner = this.player1Score >= 3 ? player1Name : player2Name;
+            
+            // Show temporary message: "Player X wins! (3:2)"
+            const message = `${winner} ${translationManager.get('wins')}! (${this.player1Score}:${this.player2Score})`;
+            this.showMessage(message, 5000); // Longer duration for game end
             return;
         }
         
@@ -2902,9 +2934,29 @@ class DiceSoccerGame {
     handleMultiplayerEvent(event) {        
         switch (event.type) {
             case 'initialPositions':
-                // Guest receives initial board and host's color
-                console.log(`📥 Guest received initialPositions with host color: ${event.myColor}`);
+                // Guest or spectator receives initial board and host's color
+                console.log(`📥 Guest/Spectator received initialPositions with host color: ${event.myColor}`);
                 
+                // Spectators should not send events back
+                if (gameState.gameMode === 'spectator') {
+                    const hostColor = event.myColor || 'green';
+                    const guestColor = event.guestColor || 'red'; // May be undefined in initial send
+                    
+                    // Spectators see host as P1, guest as P2
+                    gameState.setMultiplayerColors(hostColor, guestColor || hostColor);
+                    
+                    // Create board and populate with positions
+                    this.board = Array(this.rows).fill(null).map(() => Array(this.cols).fill(null));
+                    event.positions.forEach(pos => {
+                        this.board[pos.row][pos.col] = { player: pos.player, number: pos.number };
+                    });
+                    this.renderBoard();
+                    
+                    console.log(`✅ Spectator colors set: Host P1=${hostColor}, Guest P2=${guestColor || hostColor}`);
+                    break;
+                }
+                
+                // Guest player logic
                 const hostColor = event.myColor || 'green';
                 const myColor = gameState.player1Shirt;
                 
@@ -2933,6 +2985,11 @@ class DiceSoccerGame {
                 
             case 'guestColor':
                 // Host receives guest's color and resolves any conflicts
+                // Spectators should ignore this event
+                if (gameState.gameMode === 'spectator') {
+                    break;
+                }
+                
                 console.log(`📥 Host received guest color: ${event.myColor}`);
                 
                 const guestColor = event.myColor || 'blue';
@@ -3239,6 +3296,32 @@ class DiceSoccerGame {
                 }
                 break;
             
+            case 'gameReset':
+                // Both players agreed to start new game - reset for spectators too
+                debugLog('Received gameReset event, gameMode:', gameState.gameMode);
+                if (gameState.gameMode === 'spectator') {
+                    // Check if we're already resetting to avoid duplicate resets
+                    if (this.isResetting) {
+                        debugLog('👁️ Spectator: already resetting, ignoring duplicate gameReset event');
+                        break;
+                    }
+                    
+                    this.isResetting = true;
+                    debugLog('👁️ Spectator: game resetting, showing notification');
+                    this.showMessage(translationManager.get('newGame') || 'New Game', 3000);
+                    
+                    // Reset the game for spectator view
+                    debugLog('👁️ Spectator: calling startNewGame() in 1 second');
+                    setTimeout(() => {
+                        debugLog('👁️ Spectator: now calling startNewGame()');
+                        this.isResetting = false;
+                        startNewGame();
+                    }, 1000);
+                } else {
+                    debugLog('Received gameReset but not spectator, ignoring');
+                }
+                break;
+            
             case 'goal':
                 // Opponent scored or received goal - sync scores and lastRoundLoser
                 debugLog('Received goal event from opponent:', event);
@@ -3267,16 +3350,13 @@ class DiceSoccerGame {
                 this.updateUI();
                 debugLog(`Scores synced: ${this.player1Score} - ${this.player2Score}`);
                 
-                // Show goal modal for opponent too (but not spectators)
-                if (gameState.gameMode !== 'spectator') {
-                    // Check if game is over
-                    if (this.player1Score >= 3 || this.player2Score >= 3) {
-                        const timeoutId = setTimeout(() => this.endGame(), 300);
-                        this.activeTimeouts.push(timeoutId);
-                    } else {
-                        // Show goal modal
-                        this.showGoalModal();
-                    }
+                // Check if game is over and handle accordingly
+                if (this.player1Score >= 3 || this.player2Score >= 3) {
+                    const timeoutId = setTimeout(() => this.endGame(), 300);
+                    this.activeTimeouts.push(timeoutId);
+                } else {
+                    // Show goal modal/notification for everyone (players see modal, spectators see notification)
+                    this.showGoalModal();
                 }
                 break;
             
