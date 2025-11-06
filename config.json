@@ -1,6 +1,0 @@
-{
-  "websocket-server": "wss://ds.kralj.top",
-  "log-enabled": true,
-  "log-script": "logger.php",
-  "debug-mode": true
-}
