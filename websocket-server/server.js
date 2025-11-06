@@ -365,8 +365,6 @@ io.on('connection', (socket) => {
                 return callback({ success: false, error: 'Challenge not found' });
             }
             
-            console.log(`📋 Challenge details:`, challenge);
-            
             // Allow both target (decline) and challenger (cancel) to end the challenge
             const isTarget = challenge.targetId === playerId;
             const isChallenger = challenge.challengerId === playerId;
@@ -1158,53 +1156,9 @@ setInterval(() => {
             continue;
         }
         
-        // Check if game is too old (over 5 minutes)
-        if (gameAge > GAME_TIMEOUT) {
-            console.log(`🗑️ Removing stale game ${gameId} (over 5 minutes old)`);
-            
-            // Notify any remaining connected players
-            if (hostConnected) {
-                const hostSocket = io.sockets.sockets.get(host.socketId);
-                if (hostSocket) {
-                    hostSocket.emit('gameEvent', { type: 'gameEnded', reason: 'timeout' });
-                }
-                host.status = 'available';
-                host.inGame = false;
-                playerGames.delete(game.host.playerId);
-            }
-            if (guestConnected) {
-                const guestSocket = io.sockets.sockets.get(guest.socketId);
-                if (guestSocket) {
-                    guestSocket.emit('gameEvent', { type: 'gameEnded', reason: 'timeout' });
-                }
-                guest.status = 'available';
-                guest.inGame = false;
-                playerGames.delete(game.guest.playerId);
-            }
-            
-            // Notify and clean up spectators
-            if (game.spectators && game.spectators.size > 0) {
-                for (const spectatorId of game.spectators) {
-                    const spectator = players.get(spectatorId);
-                    if (spectator) {
-                        const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
-                        if (spectatorSocket) {
-                            spectatorSocket.emit('gameEvent', {
-                                type: 'gameEnded',
-                                reason: 'timeout',
-                                timestamp: Date.now()
-                            });
-                        }
-                        // Don't delete spectatingGame here - let leaveSpectator handle it
-                        spectator.status = 'available';
-                        spectator.inLobby = true;
-                    }
-                }
-                game.spectators.clear();
-            }
-            
-            games.delete(gameId);
-        }
+        // Don't remove games based on age alone - only remove if both players are gone
+        // Active games can last longer than 5 minutes and that's perfectly fine
+        // Games are cleaned up when players disconnect or leave
     }
 }, LOBBY_CLEANUP_INTERVAL);
 

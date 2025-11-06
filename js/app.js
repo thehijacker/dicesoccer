@@ -1739,6 +1739,10 @@ async function sendChallenge(hintsEnabled) {
         return;
     }
     
+    // Store the challengeId for cancellation
+    currentChallengeInfo.challengeId = result.challengeId;
+    console.log('✅ Challenge sent, challengeId:', result.challengeId);
+    
     // Start polling for challenge response
     multiplayerManager.onEvent = handleLobbyEvent;
     multiplayerManager.startPolling();
@@ -1854,15 +1858,21 @@ window.handleChallengeCancelled = function(data) {
     
     currentChallengeInfo = null;
     
-    // Close challenge modal regardless of state
-    closeModal('challengeModal');
+    // Update modal to show cancellation message
+    document.getElementById('challengeTitle').textContent = translationManager.get('challengePlayer');
+    document.getElementById('challengeMessage').textContent = translationManager.get('challengeCancelled');
     
-    // Show alert that challenge was cancelled
-    alert(translationManager.get('challengeCancelled'));
-    
-    // Return to lobby
-    openModal('lobbyModal');
-    refreshLobby();
+    // Hide all buttons except close button
+    document.getElementById('challengeHintsSelection').classList.add('hidden');
+    document.getElementById('challengeResponseButtons').classList.add('hidden');
+    document.getElementById('challengeWaiting').classList.add('hidden');
+    document.getElementById('cancelChallengeBtn').classList.remove('hidden');
+    document.getElementById('cancelChallengeBtn').textContent = translationManager.get('close');
+    document.getElementById('cancelChallengeBtn').onclick = () => {
+        closeModal('challengeModal');
+        openModal('lobbyModal');
+        refreshLobby();
+    };
 };
 
 async function acceptChallenge() {
