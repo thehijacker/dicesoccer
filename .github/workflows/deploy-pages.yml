@@ -39,6 +39,9 @@ jobs:
                 --exclude='misc/*' --exclude='config.json' \
                 . _site/
           
+          # Create .nojekyll to prevent GitHub Pages from processing with Jekyll
+          touch _site/.nojekyll
+          
           # Now create the production config.json in the deployment directory
           cat > _site/config.json << 'EOF'
           {
@@ -50,9 +53,13 @@ jobs:
           EOF
           
           echo "✅ Created deployment directory with config.json"
-          ls -la _site/
+          echo "📁 Files in _site root:"
+          ls -la _site/ | head -20
+          echo ""
           echo "📄 config.json content:"
           cat _site/config.json
+          echo ""
+          echo "✅ .nojekyll file created to bypass Jekyll processing"
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
