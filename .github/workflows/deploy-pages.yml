@@ -28,9 +28,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Create production config.json for GitHub Pages
+      - name: Prepare deployment directory
         run: |
-          cat > config.json << 'EOF'
+          # Create a clean deployment directory
+          mkdir -p _site
+          
+          # Copy all files except those in .gitignore
+          rsync -av --exclude='_site' --exclude='.git' --exclude='.github' \
+                --exclude='multiplayer-data/*' --exclude='logs/*' \
+                --exclude='misc/*' --exclude='config.json' \
+                . _site/
+          
+          # Now create the production config.json in the deployment directory
+          cat > _site/config.json << 'EOF'
           {
             "websocket-server": "wss://dice-soccer-websocket-multiplayer-server.onrender.com/",
             "log-enabled": false,
@@ -38,16 +48,11 @@ jobs:
             "debug-mode": false
           }
           EOF
-          echo "✅ Created config.json for GitHub Pages"
-          cat config.json
-      
-      - name: Create .artifactignore to override .gitignore for config.json
-        run: |
-          echo "# Override .gitignore for GitHub Pages artifact" > .artifactignore
-          echo "# This allows config.json to be included in the deployment" >> .artifactignore
-          echo "!config.json" >> .artifactignore
-          echo "✅ Created .artifactignore"
-          cat .artifactignore
+          
+          echo "✅ Created deployment directory with config.json"
+          ls -la _site/
+          echo "📄 config.json content:"
+          cat _site/config.json
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -55,7 +60,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
       
       - name: Deploy to GitHub Pages
         id: deployment
