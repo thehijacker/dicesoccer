@@ -4,17 +4,8 @@ config.json
 # Misc folder
 misc/*
 
-# Multiplayer data files (temporary session data)
-multiplayer-data/*
-
-# Keep the folder but not its contents
-!multiplayer-data/.gitkeep
-
 # Log files
 logs/*
 
-# Log files
-!logs/.gitkeep
-
 # Keep the log folder structure
-!multiplayer-logs/.gitkeep
+!logs/.gitkeep
