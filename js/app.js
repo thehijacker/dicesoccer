@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
 
 // Global config
 let appConfig = {

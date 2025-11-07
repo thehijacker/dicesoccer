@@ -1288,26 +1288,115 @@ class DiceSoccerGame {
         const blockedPlayer = this.currentPlayer;
         const scoringPlayer = this.currentPlayer === 1 ? 2 : 1;
         
-        // Award point to opponent (the player who blocked)
-        if (scoringPlayer === 1) {
-            this.player1Score++;
+        // Update scores - account for guest perspective (same logic as handleGoal)
+        const isGuestPlayer = gameState.gameMode === 'multiplayer' && multiplayerManager && !multiplayerManager.isHost;
+        if (isGuestPlayer) {
+            // Guest: currentPlayer is true game (1=host, 2=guest), but display is flipped
+            // So if scoringPlayer=2 (guest scores), increment player1Score (guest's display score)
+            if (scoringPlayer === 2) {
+                this.player1Score++; // Guest scored (their display = player1)
+            } else {
+                this.player2Score++; // Host scored (their display = player2)
+            }
         } else {
-            this.player2Score++;
+            // Host or local mode: normal increment
+            if (scoringPlayer === 1) {
+                this.player1Score++;
+            } else {
+                this.player2Score++;
+            }
+        }
+        
+        // Log event
+        if (window.gameLogger && window.gameLogger.logId) {
+            const blocked = blockedPlayer === 1 ? 
+                (gameState.player1Name || 'Player 1') : 
+                (gameState.gameMode === 'ai' ? `AI (${gameState.difficulty})` : (gameState.player2Name || 'Player 2'));
+            const scorer = scoringPlayer === 1 ? 
+                (gameState.player1Name || 'Player 1') : 
+                (gameState.gameMode === 'ai' ? `AI (${gameState.difficulty})` : (gameState.player2Name || 'Player 2'));
+            window.gameLogger.logEvent('NO_MOVES', `${blocked} blocked! ${scorer} scores. Score: ${this.player1Score} - ${this.player2Score}`);
         }
         
         this.updateUI();
         
-        const blockedPlayerName = blockedPlayer === 1 ? 
-            (gameState.player1Name || translationManager.get('player1')) :
-            (gameState.gameMode === 'ai' ? 
-                `AI (${translationManager.get(gameState.difficulty)})` : 
-                (gameState.player2Name || translationManager.get('player2')));
-                
-        const scorerName = scoringPlayer === 1 ? 
-            (gameState.player1Name || translationManager.get('player1')) :
-            (gameState.gameMode === 'ai' ? 
-                `AI (${translationManager.get(gameState.difficulty)})` : 
-                (gameState.player2Name || translationManager.get('player2')));
+        // Track who lost this round (for next round start)
+        this.lastRoundLoser = blockedPlayer;
+        
+        // In multiplayer, send event to sync scores and lastRoundLoser
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
+            // Send TRUE scores (not display scores)
+            const trueScore1 = isGuestPlayer ? this.player2Score : this.player1Score;
+            const trueScore2 = isGuestPlayer ? this.player1Score : this.player2Score;
+            
+            multiplayerManager.sendEvent({
+                type: 'noMoves',
+                blockedPlayer: blockedPlayer,
+                scoringPlayer: scoringPlayer,
+                score1: trueScore1,
+                score2: trueScore2
+            });
+        }
+        
+        // Check for winner - if game is over, go directly to endGame without showing goal modal
+        if (this.player1Score >= 3 || this.player2Score >= 3) {
+            const timeoutId = setTimeout(() => this.endGame(), 300);
+            this.activeTimeouts.push(timeoutId);
+            return; // Skip showing goal modal
+        }
+        
+        // Show no-moves modal
+        this.showNoMovesModal();
+    }
+
+    showNoMovesModal() {
+        // For spectators, show temporary notification instead of modal
+        if (gameState.gameMode === 'spectator') {
+            debugLog('👁️ Spectator: showing no-moves notification');
+            
+            // Determine blocked player name from spectator perspective (host=P1, guest=P2)
+            const blocked = this.currentPlayer === 1 ? 
+                (gameState.player1Name || translationManager.get('player1')) : 
+                (gameState.player2Name || translationManager.get('player2'));
+            const scorer = this.currentPlayer === 1 ? 
+                (gameState.player2Name || translationManager.get('player2')) : 
+                (gameState.player1Name || translationManager.get('player1'));
+            
+            // Show temporary message: "Player X blocked, Player Y scores (2:1)"
+            const message = `${blocked} ${translationManager.get('noMovesAvailable')}, ${scorer} ${translationManager.get('scores')} (${this.player1Score}:${this.player2Score})`;
+            this.showMessage(message, 3000);
+            return;
+        }
+        
+        // Determine names - account for guest perspective
+        let blockedPlayerName, scorerName;
+        const blockedPlayer = this.currentPlayer;
+        const scoringPlayer = this.currentPlayer === 1 ? 2 : 1;
+        
+        if (gameState.gameMode === 'multiplayer' && multiplayerManager && !multiplayerManager.isHost) {
+            // Guest perspective: currentPlayer is from true game (1=host, 2=guest)
+            // But display is flipped (player1Name=guest's name, player2Name=host's name)
+            blockedPlayerName = blockedPlayer === 1 ? 
+                (gameState.player2Name || translationManager.get('player2')) : // Blocked=1 (host) → show player2Name (host's name for guest)
+                (gameState.player1Name || translationManager.get('player1'));  // Blocked=2 (guest) → show player1Name (guest's own name)
+            
+            scorerName = scoringPlayer === 1 ? 
+                (gameState.player2Name || translationManager.get('player2')) : // Scorer=1 (host) → show player2Name (host's name for guest)
+                (gameState.player1Name || translationManager.get('player1'));  // Scorer=2 (guest) → show player1Name (guest's own name)
+        } else {
+            // Host or local/AI mode: normal mapping
+            blockedPlayerName = blockedPlayer === 1 ? 
+                (gameState.player1Name || translationManager.get('player1')) :
+                (gameState.gameMode === 'ai' ? 
+                    `AI (${translationManager.get(gameState.difficulty)})` : 
+                    (gameState.player2Name || translationManager.get('player2')));
+                    
+            scorerName = scoringPlayer === 1 ? 
+                (gameState.player1Name || translationManager.get('player1')) :
+                (gameState.gameMode === 'ai' ? 
+                    `AI (${translationManager.get(gameState.difficulty)})` : 
+                    (gameState.player2Name || translationManager.get('player2')));
+        }
         
         // Show blocked message and current score
         document.getElementById('goalMessage').innerHTML = `${blockedPlayerName} ${translationManager.get('noMovesAvailable')}!<br>${scorerName} ${translationManager.get('scores')}!<br><strong style="font-size: 1.5em;">${this.player1Score} : ${this.player2Score}</strong>`;
@@ -1320,15 +1409,6 @@ class DiceSoccerGame {
             goalModal.style.transform = 'rotate(180deg)';
         } else {
             goalModal.style.transform = '';
-        }
-        
-        // Track who lost this round (for next round start)
-        this.lastRoundLoser = blockedPlayer;
-        
-        // Check for winner
-        if (this.player1Score >= 3 || this.player2Score >= 3) {
-            const timeoutId = setTimeout(() => this.endGame(), 300);
-            this.activeTimeouts.push(timeoutId);
         }
     }
 
@@ -3373,6 +3453,44 @@ class DiceSoccerGame {
                 } else {
                     // Show goal modal/notification for everyone (players see modal, spectators see notification)
                     this.showGoalModal();
+                }
+                break;
+            
+            case 'noMoves':
+                // Opponent had no moves - sync scores and lastRoundLoser (same logic as goal)
+                debugLog('Received noMoves event from opponent:', event);
+                this.lastRoundLoser = event.blockedPlayer;
+                
+                // Sync scores (same logic as goal event)
+                if (gameState.gameMode === 'spectator') {
+                    // Spectators: see true scores (host=P1, guest=P2)
+                    this.player1Score = event.score1;
+                    this.player2Score = event.score2;
+                } else {
+                    // Players: host is always player 1, guest is always player 2 in real terms
+                    // But on display, each sees themselves as player 1
+                    const isGuestPlayer = multiplayerManager && !multiplayerManager.isHost;
+                    if (isGuestPlayer) {
+                        // Guest: swap the scores because guest sees themselves as P1 but is actually P2
+                        this.player1Score = event.score2; // Guest's score (their P1 = real P2)
+                        this.player2Score = event.score1; // Host's score (their P2 = real P1)
+                    } else {
+                        // Host: scores are correct as-is
+                        this.player1Score = event.score1;
+                        this.player2Score = event.score2;
+                    }
+                }
+                
+                this.updateUI();
+                debugLog(`Scores synced after noMoves: ${this.player1Score} - ${this.player2Score}`);
+                
+                // Check if game is over and handle accordingly
+                if (this.player1Score >= 3 || this.player2Score >= 3) {
+                    const timeoutId = setTimeout(() => this.endGame(), 300);
+                    this.activeTimeouts.push(timeoutId);
+                } else {
+                    // Show no-moves modal/notification for everyone
+                    this.showNoMovesModal();
                 }
                 break;
             

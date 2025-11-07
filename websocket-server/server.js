@@ -8,7 +8,7 @@
  * - Connection management
 */
 
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 
 const http = require('http');
 const socketIO = require('socket.io');
@@ -511,6 +511,13 @@ io.on('connection', (socket) => {
                 game.score1 = event.score1;
                 game.score2 = event.score2;
                 console.log(`⚽ Goal scored in game ${gameId}: ${game.score1}:${game.score2}`);
+            }
+            
+            // Track scores when noMoves event is received
+            if (event.type === 'noMoves' && event.score1 !== undefined && event.score2 !== undefined) {
+                game.score1 = event.score1;
+                game.score2 = event.score2;
+                console.log(`🚫 Player blocked in game ${gameId}: ${game.score1}:${game.score2}`);
             }
             
             // Track board state when boardState event is received
