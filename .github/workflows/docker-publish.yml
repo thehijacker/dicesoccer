@@ -1,11 +1,14 @@
 name: Build and Publish Docker Image
 
-# This workflow runs on two triggers:
-# 1. When making new push to the 'main' branch
-# 2. When creating a new release
+# This workflow runs on three triggers:
+# 1. When making new push to the 'main' branch (tags: latest, main)
+# 2. When making new push to the 'dev' branch (tag: dev)
+# 3. When creating a new release (tags: version numbers)
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - "main"
+      - "dev"
   release:
     types: [ published ]
 
@@ -41,7 +44,7 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            latest
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4

@@ -8,10 +8,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Dice Soccer">
     <meta name="theme-color" content="#4a7c59">
-    <title>Dice Soccer - Nogomet s kocko</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Dice Soccer</title>
+    <link rel="stylesheet" href="css/styles.css">
     <link rel="icon" href="icons/icon512_maskable_transparent.png">
-    <link rel="manifest" href="manifest.json?v=1.0.11">
+    <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/icon512_maskable_transparent.png">
     
     <!-- Early orientation detection to prevent layout jump -->
@@ -28,6 +28,18 @@
     <!-- Main Menu Screen -->
     <div id="mainMenu" class="screen active">
         <div class="menu-container" id="menuContainer">
+            <script>
+                // Apply orientation class immediately to prevent flash
+                (function() {
+                    const isLandscape = window.innerWidth > window.innerHeight;
+                    const menuContainer = document.currentScript.parentElement;
+                    if (isLandscape) {
+                        menuContainer.classList.add('horizontal-menu');
+                    } else {
+                        menuContainer.classList.add('vertical-menu');
+                    }
+                })();
+            </script>
             <!-- Removed top logo/icon -->
 
             <!-- New Game Button -->
@@ -47,24 +59,19 @@
             </div>
 
             <!-- Player 1 Name and Shirt -->
-            <div class="menu-item player-item">
+            <div class="menu-item player-item" id="player1Container">
                 <img src="images/selectcolor128.png" alt="Player 1" class="menu-icon shirt-icon" id="player1Shirt">
-                <input type="text" class="player-name-input" id="player1Name" placeholder="Player 1" data-translate-placeholder="player1">
+                <div class="player-name-display" id="player1Name" data-placeholder="Player 1" data-translate-placeholder="player1">Player 1</div>
             </div>
 
             <!-- Player 2 Name and Shirt or AI Difficulty -->
             <div class="menu-item player-item" id="player2Container">
                 <img src="images/selectcolor128.png" alt="Player 2" class="menu-icon shirt-icon" id="player2Shirt">
-                <input type="text" class="player-name-input" id="player2Name" placeholder="Player 2" data-translate-placeholder="player2">
+                <div class="player-name-display" id="player2Name" data-placeholder="Player 2" data-translate-placeholder="player2">Player 2</div>
                 <span class="ai-difficulty-label hidden" id="aiDifficultyLabel"></span>
-            </div>            
-
-            <!-- AI Difficulty (hidden when 2-player is on) -->
-            <div class="menu-item expandable" id="aiDifficultyItem">
-                <img src="images/ai128.png" alt="AI Difficulty" class="menu-icon">
-                <span class="menu-text" data-translate="aiDifficulty">A.I. Difficulty</span>
-                <span class="menu-value" id="difficultyValue" data-translate-value="easy">Easy</span>
             </div>
+
+            <!-- AI Difficulty Submenu (shown when player2Container is clicked in AI mode) -->
             <div class="submenu" id="difficultySubmenu">
                 <div class="submenu-option" data-difficulty="easy">
                     <img src="images/difficultyeasy64.png" alt="Easy">
@@ -97,16 +104,10 @@
                 </div>
             </div>
 
-            <!-- Host Game -->
-            <div class="menu-item" id="hostGameBtn">
-                <img src="images/hostgame128.png" alt="Host Game" class="menu-icon">
-                <span class="menu-text" data-translate="hostGame">Host Game</span>
-            </div>
-
-            <!-- Join Game -->
-            <div class="menu-item" id="joinGameBtn">
-                <img src="images/joingame128.png" alt="Join Game" class="menu-icon">
-                <span class="menu-text" data-translate="joinGame">Join Game</span>
+            <!-- Multiplayer -->
+            <div class="menu-item" id="multiplayerBtn">
+                <img src="images/hostgame128.png" alt="Multiplayer" class="menu-icon">
+                <span class="menu-text" data-translate="multiplayer">Multiplayer</span>
             </div>
 
             <!-- Settings -->
@@ -170,7 +171,7 @@
                         <img src="images/fastai128.png" alt="Fast AI Movement" class="menu-icon">                        
                         <span class="submenu-toggle-text" data-translate="fastAI">Fast AI Movement</span>
                         <div class="toggle-switch">
-                            <input type="checkbox" id="fastAICheckbox">
+                            <input type="checkbox" id="fastAICheckbox" checked>
                             <label for="fastAICheckbox" class="toggle-label"></label>
                         </div>
                     </div>                    
@@ -178,7 +179,7 @@
                         <img src="images/autodice128.png" alt="Automated Dice Rolling" class="menu-icon">
                         <span class="submenu-toggle-text" data-translate="autoDice">Automated Dice Rolling</span>
                         <div class="toggle-switch">
-                            <input type="checkbox" id="autoDiceCheckbox">
+                            <input type="checkbox" id="autoDiceCheckbox" checked>
                             <label for="autoDiceCheckbox" class="toggle-label"></label>
                         </div>
                     </div>
@@ -199,7 +200,14 @@
             </div>
             
             <!-- Version Number -->
-            <div class="version-info" id="versionInfo"></div>
+            <div class="version-info">
+                <span id="versionInfo"></span>
+                <a href="https://github.com/thehijacker/dicesoccer" target="_blank" rel="noopener noreferrer" class="github-link" title="View source code on GitHub">
+                    <svg class="github-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                </a>
+            </div>
         </div>
     </div>
 
@@ -233,14 +241,29 @@
         </div>
     </div>
 
+    <!-- Player Name Input Modal -->
+    <div id="playerNameModal" class="modal">
+        <div class="modal-content">
+            <h2 id="playerNameModalTitle" data-translate="enterPlayerName">Enter Player Name</h2>
+            <input type="text" id="playerNameInput" class="player-name-modal-input" maxlength="20" placeholder="Enter name">
+            <div class="modal-buttons">
+                <button class="close-modal-btn" id="savePlayerNameBtn" data-translate="save">Save</button>
+                <button class="close-modal-btn" id="cancelPlayerNameBtn" data-translate="cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Game Screen -->
     <div id="gameScreen" class="screen">
+        <div class="spectator-count" id="spectatorCount" style="display:none;">
+            <span id="spectatorCountText">👁️ 0</span>
+        </div>
         <div class="game-board-container">
             <!-- Player 2 Info and Dice (Top in portrait/Right in landscape) -->
             <div class="player-panel player2-panel">
                 <div class="player-info">
                     <span class="player-name" id="player2NameDisplay">Player 2</span>
-                    <img src="images/connerror32.png" alt="Online" class="network-icon" id="networkIcon" style="display:none;">
+                    <img src="images/network32.png" alt="Online" class="network-icon" id="networkIconPlayer2" style="display:none;">
                     <span class="player-score" id="player2Score">0</span>
                 </div>
                 <div class="dice-container" id="player2DiceContainer">
@@ -259,6 +282,7 @@
             <div class="player-panel player1-panel">
                 <div class="player-info">
                     <span class="player-name" id="player1NameDisplay">Player 1</span>
+                    <img src="images/network32.png" alt="Online" class="network-icon" id="networkIconPlayer1" style="display:none;">
                     <span class="player-score" id="player1Score">0</span>
                 </div>
                 <div class="dice-container" id="player1DiceContainer">
@@ -296,6 +320,7 @@
             <img src="images/goal128.png" alt="Goal!">
             <h2 data-translate="goal">GOAL!</h2>
             <p id="goalMessage"></p>
+            <button class="close-modal-btn view-board-btn" id="viewBoardFromGoal" data-translate="viewBoard">View Board</button>
             <button class="close-modal-btn" id="continueGameBtn" data-translate="continue">Continue</button>
         </div>
     </div>
@@ -303,46 +328,118 @@
     <!-- Winner Modal -->
     <div id="winnerModal" class="modal">
         <div class="modal-content winner-modal-content">
-            <img src="images/win128.png" alt="Winner!">
-            <h2 id="winnerMessage"></h2>
-            <div id="finalStatsContent">
-                <!-- Will be populated by JavaScript -->
+            <div class="winner-section winner-header">
+                <img src="images/win128.png" alt="Winner!">
+                <h2 id="winnerMessage"></h2>
             </div>
-            <button class="close-modal-btn" id="newGameFromWinner" data-translate="newGame">New Game</button>
-            <button class="close-modal-btn" id="backToMenuFromWinner" data-translate="backToMenu">Back to Menu</button>
+            <div class="winner-section winner-stats">
+                <div id="finalStatsContent">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="winner-section winner-actions">
+                <button class="close-modal-btn view-board-btn" id="viewBoardFromWinner" data-translate="viewBoard">View Board</button>
+                <button class="close-modal-btn" id="continueFromWinner" data-translate="continue" style="display: none;">Continue</button>
+                <button class="close-modal-btn" id="newGameFromWinner" data-translate="newGame">New Game</button>
+                <button class="close-modal-btn" id="backToMenuFromWinner" data-translate="backToMenu">Back to Menu</button>
+            </div>
         </div>
     </div>
 
-    <!-- Host Waiting Modal -->
-    <div id="hostWaitingModal" class="modal">
+    <!-- Multiplayer Lobby Modal -->
+    <div id="lobbyModal" class="modal">
+        <div class="modal-content lobby-modal-content">
+            <h2 data-translate="multiplayerLobby">Multiplayer Lobby</h2>
+            
+            <div class="lobby-sections-wrapper">
+                <!-- Available Players Section -->
+                <div class="lobby-section">
+                    <h3 data-translate="availablePlayers">Available Players</h3>
+                    <div id="lobbyPlayersList" class="lobby-players-list">
+                        <p class="no-players-message" data-translate="noPlayersInLobby">No players in lobby yet...</p>
+                    </div>
+                </div>
+                
+                <!-- Active Games Section -->
+                <div class="lobby-section">
+                    <h3 data-translate="activeGames">Active Games</h3>
+                    <div id="activeGamesList" class="active-games-list">
+                        <p class="no-games-message" data-translate="noActiveGames">No active games</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="lobby-buttons">
+                <button class="close-modal-btn" id="refreshLobbyBtn" data-translate="refresh">Refresh</button>
+                <button class="close-modal-btn" id="closeLobbyBtn" data-translate="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spectate Confirmation Modal -->
+    <div id="spectateModal" class="modal">
+        <div class="modal-content challenge-modal-content">
+            <h2 data-translate="spectateGame">Watch Game?</h2>
+            <p id="spectateMessage"></p>
+            
+            <div class="challenge-buttons">
+                <button class="close-modal-btn" id="confirmSpectateBtn" data-translate="watch">Watch</button>
+                <button class="close-modal-btn" id="cancelSpectateBtn" data-translate="cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Challenge Dialog Modal -->
+    <div id="challengeModal" class="modal">
+        <div class="modal-content challenge-modal-content">
+            <h2 id="challengeTitle"></h2>
+            <p id="challengeMessage"></p>
+            
+            <!-- Hints selection for challenger -->
+            <div id="challengeHintsSelection" class="hints-selection hidden">
+                <div class="hints-option-btn" data-hints="true">
+                    <img src="images/hintson128.png" alt="With Hints">
+                    <span data-translate="playWithHints">Play with Hints</span>
+                </div>
+                <div class="hints-option-btn" data-hints="false">
+                    <img src="images/hintsoff128.png" alt="Without Hints">
+                    <span data-translate="playWithoutHints">Play without Hints</span>
+                </div>
+            </div>
+            
+            <!-- Response buttons for challenged player -->
+            <div id="challengeResponseButtons" class="challenge-buttons hidden">
+                <button class="close-modal-btn" id="acceptChallengeBtn" data-translate="accept">Accept</button>
+                <button class="close-modal-btn" id="declineChallengeBtn" data-translate="decline">Decline</button>
+            </div>
+            
+            <!-- Waiting indicator -->
+            <div id="challengeWaiting" class="hidden">
+                <div class="loading-spinner"></div>
+                <p data-translate="waitingForResponse">Waiting for response...</p>
+            </div>
+            
+            <button class="close-modal-btn" id="cancelChallengeBtn" data-translate="cancel">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Connection Status Modal -->
+    <div id="connectionModal" class="modal">
         <div class="modal-content">
-            <img src="images/hostgame128.png" alt="Hosting">
-            <h2 data-translate="waitingForPlayer">Waiting for Player 2...</h2>
-            <div class="host-info">
-                <p><strong data-translate="player">Player:</strong> <span id="hostPlayerName"></span></p>
-                <p><strong>IP:</strong> <span id="hostPlayerIp"></span></p>
+            <h2 id="connectionTitle" data-translate="connecting">Connecting...</h2>
+            <p id="connectionMessage" data-translate="tryingToConnect">Trying to connect to the server...</p>
+            <div class="modal-buttons">
+                <button class="close-modal-btn" id="cancelConnectionBtn" data-translate="cancel">Cancel</button>
+                <button class="close-modal-btn" id="okConnectionBtn" data-translate="ok" style="display:none;">OK</button>
             </div>
-            <div class="loading-spinner"></div>
-            <button class="close-modal-btn" id="cancelHostBtn" data-translate="cancel">Cancel</button>
         </div>
     </div>
 
-    <!-- Join Game Modal -->
-    <div id="joinGameModal" class="modal">
-        <div class="modal-content join-modal-content">
-            <h2 data-translate="availableHosts">Available Hosts</h2>
-            <div id="hostsList" class="hosts-list">
-                <!-- Will be populated by JavaScript -->
-            </div>
-            <button class="close-modal-btn" id="refreshHostsBtn" data-translate="refresh">Refresh</button>
-            <button class="close-modal-btn" id="closeJoinModal" data-translate="close">Close</button>
-        </div>
-    </div>
-
-    <script src="tsparticles.confetti.bundle.min.js"></script>
-    <script src="translations.js"></script>
-    <script src="game.js"></script>
-    <script src="multiplayer.js"></script>
-    <script src="app.js"></script>
+    <script src="js/tsparticles.confetti.bundle.min.js"></script>
+    <script src="js/translations.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/multiplayer-websocket.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

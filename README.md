@@ -28,12 +28,34 @@ The inspiration for this project came from countless hours playing the physical 
 ## 🛠️ Technology Stack
 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Backend**: PHP (for multiplayer functionality)
-- **Storage**: JSON file-based storage for multiplayer game state
+- **Multiplayer**: Node.js WebSocket server with Socket.IO for real-time communication
 - **Audio**: Web Audio API for sound effects
 - **Graphics**: CSS animations and transforms
 - **Progressive Web App**: Service Worker for offline capability and installability
-- **Architecture**: Long-polling for real-time multiplayer communication
+- **Deployment**: Docker containers with pre-built images
+
+## 🌐 Multiplayer System
+
+The game features a **lobby-based multiplayer system** powered by WebSocket technology:
+
+### Real-Time WebSocket Server
+- ✅ Ultra-low latency communication (<10ms)
+- ✅ Lobby system for finding opponents
+- ✅ Challenge/accept matchmaking
+- ✅ Live spectator mode for watching active games
+- ✅ Automatic reconnection handling
+- ✅ Connection status monitoring
+- ✅ Scalable Socket.IO architecture
+- 📦 See `websocket-server/README.md` for deployment documentation
+
+**Configure the WebSocket server** in `config.json`:
+```json
+{
+  "websocket-server": "wss://your-server:7860",
+  "log-enabled": true,
+  "debug-mode": false
+}
+```
 
 ## 📋 Game Rules
 
@@ -183,43 +205,59 @@ Challenge the computer opponent with three difficulty levels.
   - Balances offense and defense dynamically
 
 ### 3. Multiplayer Network Game
-Play against another person over the network.
+Play against another person over the internet in real-time.
 
 <p align="center">
-  <img src="screenshots/hostgame.png" alt="Host Game" width="400"/>
-  <img src="screenshots/joingame.png" alt="Join Game" width="400"/>
+  <img src="screenshots/lobby.png" alt="Multiplayer Lobby" width="400"/>
+  <img src="screenshots/challenge.png" alt="Challenge Player" width="400"/>
 </p>
 
-**Hosting a Game**:
-- Click "Host Multiplayer Game"
-- System generates a unique Game ID
-- Share the Game ID with your opponent
-- Wait for opponent to join
-- Game automatically starts when opponent connects
+#### Lobby-Based Matchmaking
 
-**Joining a Game**:
-- Click "Join Multiplayer Game"
-- Enter the Game ID provided by the host
-- Automatically connects and syncs game state
-- Game starts with host as Player 1, guest as Player 2
+**Entering the Lobby**:
+- Click "Multiplayer" from the main menu
+- Automatically connects to the WebSocket server
+- See all available players in the lobby
+- View active games in progress
+- Refresh to update player list
 
-**Technical Implementation**:
-- **Long-polling architecture** for real-time communication
-- Events: dice rolls, player moves, goals, and game state changes
-- **Automatic synchronization** of board state, dice values, and animations
-- **Heartbeat system** monitors connection status every 5 seconds
-- **Reconnection handling**: Detects and manages disconnections gracefully
-- **Game cleanup**: If a player exits or disconnects, the game terminates for both players
-- **Board orientation**: Guest (Player 2) sees flipped board with their pieces at bottom
-- **Event sequencing**: lastEventId tracking ensures no events are missed or duplicated
+**Starting a Game**:
+1. **Challenge a Player**:
+   - Click "Challenge" next to an available player
+   - Choose hints preference (with/without)
+   - Wait for opponent to accept
+   
+2. **Accept a Challenge**:
+   - Receive notification when challenged
+   - Choose to accept or decline
+   - Game starts immediately upon acceptance
+
+**Spectator Mode** 👁️:
+- Click on any active game in the lobby to spectate
+- Watch games in real-time as a neutral observer
+- See both players' moves, dice rolls, and scores
+- Multiple spectators can watch the same game
+- Spectator count visible to players during the game
+- Return to lobby at any time
+
+**Technical Features**:
+- **WebSocket Communication**: Real-time bidirectional messaging with <10ms latency
+- **Automatic Synchronization**: Board state, dice rolls, animations, and scores
+- **Connection Monitoring**: Automatic reconnection on network issues
+- **Lobby Updates**: Real-time player availability and game status
+- **Event System**: Immediate move notifications and game state changes
+- **Session Management**: Persistent player IDs and game tracking
+- **Spectator Updates**: Live game state broadcast to all spectators
+- **Board Orientation**: Each player sees their pieces at the bottom
+- **Graceful Disconnects**: Proper game cleanup when players leave
 
 **Network Features**:
-- Visual dice rolls synchronized between players
-- Real-time move animations mirrored on both devices
-- Immediate goal notifications
-- Automatic game state recovery
-- Session management with unique player IDs
-- **Automatic PHP Detection**: Host and Join buttons automatically disable if PHP is not available on the server
+- Visual dice rolls synchronized between all players and spectators
+- Real-time move animations mirrored on all devices
+- Immediate goal notifications for players and spectators
+- Live score updates visible to spectators
+- Automatic game state recovery after connection issues
+- Clean lobby return when games end or players disconnect
 
 ### 4. Customization Options
 
@@ -337,68 +375,124 @@ Settings persist across game sessions using localStorage.
 - Compact UI in portrait mode to maximize playing field
 - Menu fits screen in both orientations without scrolling
 
+## ⚙️ Configuration
+
+The game uses `config.json` for runtime configuration. This file is **not tracked in Git** (listed in `.gitignore`) to allow different configurations for different environments.
+
+### Configuration Options
+
+Create a `config.json` file in the root directory with the following structure:
+
+```json
+{
+  "websocket-server": "wss://your-server.com/",
+  "log-enabled": false,
+  "log-script": "logger.php",
+  "debug-mode": false
+}
+```
+
+**Parameters:**
+- `websocket-server`: WebSocket server URL for multiplayer (ws:// for local, wss:// for production)
+- `log-enabled`: Enable/disable game logging (requires PHP backend)
+- `log-script`: Path to the logging script
+- `debug-mode`: Enable detailed console logging for debugging
+
+### Environment-Specific Configs
+
+- **Development**: Use `config.example.json` as a template, typically with `ws://localhost:7860`
+- **Production (GitHub Pages)**: Automatically generated by GitHub Actions workflow
+- **Self-Hosted**: Configure to point to your own WebSocket server
+
+**Note:** The live demo at https://thehijacker.github.io/dicesoccer/ uses an automated GitHub Actions workflow that creates a production `config.json` during deployment (not stored in the repository).
+
 ## 🚀 Installation & Usage
 
 ### Option 1: Docker (Recommended)
 
-The easiest way to run Dice Soccer with full multiplayer support is using Docker:
+The easiest way to run Dice Soccer is using Docker. Two deployment options are available:
 
-1. **Using Docker Compose**:
-   Create a `docker-compose.yml` file:
-   ```yaml
-      services:
-        dicesoccer:
-          image: ghcr.io/thehijacker/dicesoccer:latest
-          container_name: dicesoccer
-          ports:
-            - "8080:80"
-          restart: unless-stopped
-          volumes:
-            - dicesoccer-data:/var/www/html/multiplayer-data
+#### A. Frontend Only (Requires External WebSocket Server)
+Run just the game frontend:
 
-      volumes:
-        dicesoccer-data:
-   ```
+```yaml
+services:
+  dicesoccer:
+    image: ghcr.io/thehijacker/dicesoccer:latest
+    container_name: dicesoccer
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+```
 
-2. **Start the container**:
-   ```bash
-   docker-compose up -d
-   ```
+Configure `config.json` to point to your WebSocket server:
+```json
+{
+  "websocket-server": "wss://your-websocket-server:7860"
+}
+```
 
-3. **Access the game**:
-   - Open your browser and navigate to `http://localhost:8080`
-   - All features including multiplayer will be fully functional
-   - The container includes PHP and a web server pre-configured
+#### B. Full Stack (Frontend + WebSocket Server)
+Deploy the complete system with both frontend and multiplayer server:
 
-4. **Stop the container**:
-   ```bash
-   docker-compose down
-   ```
+```yaml
+services:
+  dicesoccer:
+    image: ghcr.io/thehijacker/dicesoccer:latest
+    container_name: dicesoccer
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    
+  websocket-server:
+    image: ghcr.io/thehijacker/dicesoccer-websocket:latest
+    container_name: dicesoccer-websocket
+    ports:
+      - "7860:7860"
+    restart: unless-stopped
+    environment:
+      - PORT=7860
+      - CORS_ORIGIN=http://localhost:8080
+```
+
+**Start the containers**:
+```bash
+docker-compose up -d
+```
+
+**Access the game**:
+- Frontend: `http://localhost:8080`
+- WebSocket Server: `ws://localhost:7860`
 
 **Advantages**:
-- ✅ No manual PHP or web server setup required
-- ✅ Consistent environment across all platforms (Windows, macOS, Linux)
-- ✅ Easy updates by pulling the latest image
-- ✅ Full multiplayer functionality out of the box
+- ✅ No manual setup required
+- ✅ Consistent environment across all platforms
+- ✅ Easy updates by pulling the latest images
+- ✅ Full multiplayer and spectator functionality
 - ✅ Isolated environment with no system dependencies
 
 ### Option 2: Traditional Web Server
 
-1. **Web Server Setup**: 
-   - Requires a web server with PHP support (for multiplayer features)
-   - Can be played locally for single-player and local 2-player modes
-   - **Note**: If PHP is not available, multiplayer options (Host/Join) will be automatically disabled
+1. **Static File Hosting**:
+   - Serve the files from any web server (Nginx, Apache, etc.)
+   - No server-side processing needed for the frontend
+   - Configure `config.json` to point to your WebSocket server
 
-2. **Access the Game**:
+2. **WebSocket Server**:
+   - Deploy the Node.js WebSocket server separately
+   - See `websocket-server/README.md` for detailed setup instructions
+   - Can be deployed on the same server or separately
+
+3. **Access the Game**:
    - Open `index.html` in a web browser
-   - Or deploy to a web server for full multiplayer functionality
-   - The game automatically detects PHP availability on startup
+   - Or deploy to a web server for production use
 
 ### Option 3: Install as PWA (Progressive Web App)
 
    - Visit the game in a supported browser
    - Use browser's "Add to Home Screen" or "Install" option
    - Game becomes available as a standalone app with offline capability
+   - **Note**: Multiplayer requires active internet connection and WebSocket server
 
 ## 🎨 Features
 
@@ -407,8 +501,9 @@ The easiest way to run Dice Soccer with full multiplayer support is using Docker
 - ✅ Touch-optimized for mobile devices
 - ✅ No text selection or context menu interference during gameplay
 - ✅ Automatic board rotation in portrait mode for 2-player games
-- ✅ Real-time multiplayer with automatic synchronization
-- ✅ Automatic PHP detection - disables multiplayer if PHP not available
+- ✅ **Real-time multiplayer with lobby-based matchmaking**
+- ✅ **Spectator mode for watching live games**
+- ✅ **WebSocket communication with <10ms latency**
 - ✅ Three AI difficulty levels with distinct strategies
 - ✅ Fast AI movement option for quicker gameplay
 - ✅ Automated dice rolling for streamlined turns

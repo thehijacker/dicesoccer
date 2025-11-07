@@ -1,3 +1,6 @@
+# Ignore production config.json
+config.json
+
 # Misc folder
 misc/*
 
@@ -6,3 +9,12 @@ multiplayer-data/*
 
 # Keep the folder but not its contents
 !multiplayer-data/.gitkeep
+
+# Log files
+logs/*
+
+# Log files
+!logs/.gitkeep
+
+# Keep the log folder structure
+!multiplayer-logs/.gitkeep

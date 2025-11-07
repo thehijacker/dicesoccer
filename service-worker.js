@@ -1,14 +1,18 @@
 // Service Worker for Dice Soccer PWA
-const CACHE_NAME = 'dice-soccer-v1.0.11';
+const CACHE_VERSION = '2.0.0';
+const CACHE_NAME = `dice-soccer-${CACHE_VERSION}`;
 const urlsToCache = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
-  './game.js',
-  './multiplayer.js',
-  './translations.js',
+  './css/styles.css',
+  './js/app.js',
+  './js/config.js',
+  './js/game.js',
+  './js/multiplayer-websocket.js',
+  './js/translations.js',
+  './js/tsparticles.confetti.bundle.min.js',
   './manifest.json',
+  './config.json',
   
   // Dice images
   './images/dice1.png',
@@ -136,44 +140,135 @@ const urlsToCache = [
   './sounds/whistle.mp3'
 ];
 
-// Install service worker and cache files
+// 🔹 Install service worker and cache assets
 self.addEventListener('install', event => {
+  console.log('[ServiceWorker] Installing new version:', CACHE_VERSION);
+  self.skipWaiting(); // activate new SW immediately
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache');
+        console.log('[ServiceWorker] Caching app shell');
         return cache.addAll(urlsToCache);
       })
+      .catch(err => console.error('[ServiceWorker] Cache add error:', err))
   );
 });
 
-// Fetch from cache first, then network
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
-});
-
-// Update service worker and clear old caches
+// 🔹 Activate and clean up old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
+    (async () => {
+      // Clean up old caches first.
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(name => {
+          // Only delete old dice-soccer caches
+          if (name.startsWith('dice-soccer-') && name !== CACHE_NAME) {
+            console.log('[ServiceWorker] Deleting old cache:', name);
+            return caches.delete(name);
           }
         })
       );
-    })
+      // Then, take control of all open clients.
+      await self.clients.claim();
+      
+      // Notify all clients that a new version is active
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'SW_UPDATED',
+          version: CACHE_VERSION
+        });
+      });
+    })()
   );
+});
+
+// 🔹 Network-first for JS/CSS/HTML to get updates quickly
+// and cache-first for images/sounds for performance
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // Ignore non-GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // Determine if this is a critical file that needs network-first strategy
+  const isCriticalFile = 
+    request.mode === 'navigate' || 
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.json');
+
+  if (isCriticalFile) {
+    // Network-first strategy for critical files (HTML, JS, CSS, JSON)
+    event.respondWith(
+      (async () => {
+        try {
+          // Try the network first
+          const networkResponse = await fetch(request);
+          
+          // Cache the new response if successful
+          if (networkResponse && networkResponse.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, networkResponse.clone());
+          }
+          
+          return networkResponse;
+        } catch (error) {
+          // If the network fails, fall back to the cache
+          console.log('[ServiceWorker] Network fetch failed, falling back to cache for:', url.pathname);
+          const cache = await caches.open(CACHE_NAME);
+          const cachedResponse = await cache.match(request);
+          
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          // If it's a navigation request and no cache, return index.html
+          if (request.mode === 'navigate') {
+            return cache.match('./index.html');
+          }
+          
+          // Return error for other resources
+          return new Response('Network error', {
+            status: 408,
+            headers: { 'Content-Type': 'text/plain' },
+          });
+        }
+      })()
+    );
+  } else {
+    // Cache-first strategy for static assets (images, sounds)
+    event.respondWith(
+      (async () => {
+        // 1. Check the cache first
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        // 2. If not in cache, go to the network
+        try {
+          const networkResponse = await fetch(request);
+          
+          // 3. Cache the new response and return it
+          if (networkResponse && networkResponse.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (error) {
+          console.error('[ServiceWorker] Fetch failed for:', url.pathname, error);
+          return new Response('Network error', {
+            status: 408,
+            headers: { 'Content-Type': 'text/plain' },
+          });
+        }
+      })()
+    );
+  }
 });
