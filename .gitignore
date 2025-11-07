@@ -1,9 +1,6 @@
 # Ignore production config.json
 config.json
 
-# GitHub Pages build directory
-_site/
-
 # Misc folder
 misc/*
 
