@@ -41,6 +41,14 @@ jobs:
           echo "✅ Created config.json for GitHub Pages"
           cat config.json
       
+      - name: Create .artifactignore to override .gitignore for config.json
+        run: |
+          echo "# Override .gitignore for GitHub Pages artifact" > .artifactignore
+          echo "# This allows config.json to be included in the deployment" >> .artifactignore
+          echo "!config.json" >> .artifactignore
+          echo "✅ Created .artifactignore"
+          cat .artifactignore
+      
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
