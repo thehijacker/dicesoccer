@@ -8,14 +8,14 @@ services:
     image: dicesoccer-websocket-server:latest
     container_name: dicesoccer-ws
     ports:
-      - "3000:3000"
+      - "7860:7860"
     environment:
-      - PORT=3000
+      - PORT=7860
       - CORS_ORIGIN=*
       - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:7860', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 5s
       retries: 3

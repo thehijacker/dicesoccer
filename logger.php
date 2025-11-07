@@ -128,8 +128,6 @@ if ($action === 'start') {
     // Start a new game log
     $player1Name = $data['player1Name'] ?? 'Player 1';
     $player2Name = $data['player2Name'] ?? 'Player 2';
-    $player1IP = $data['player1IP'] ?? 'Unknown';
-    $player2IP = $data['player2IP'] ?? 'Unknown';
     $startTime = $data['startTime'] ?? date('Y-m-d H:i:s');
     $gameMode = $data['gameMode'] ?? 'multiplayer';
     $player1UserAgent = $data['player1UserAgent'] ?? '';
@@ -178,10 +176,6 @@ if ($action === 'start') {
     $logContent .= "\n--- PLAYER INFORMATION ---\n";
     $logContent .= "Player 1: {$player1Name}\n";
     
-    if ($gameMode === 'multiplayer') {
-        $logContent .= "Player 1 IP: {$player1IP}\n";
-    }
-    
     // Add Player 1 device info
     if ($player1Info) {
         $logContent .= "Player 1 Device: {$player1Info['device_type']}";
@@ -205,7 +199,6 @@ if ($action === 'start') {
     $logContent .= "Player 2: {$player2Name}\n";
     
     if ($gameMode === 'multiplayer') {
-        $logContent .= "Player 2 IP: {$player2IP}\n";
         // Add Player 2 device info for multiplayer
         if ($player2Info) {
             $logContent .= "Player 2 Device: {$player2Info['device_type']}";
@@ -226,7 +219,6 @@ if ($action === 'start') {
             $logContent .= "Player 2 Resolution: {$player2Resolution}\n";
         }
     } elseif ($gameMode === 'local') {
-        $logContent .= "Player 2 IP: Same Device (Local)\n";
         // Same device info as Player 1
         if ($player1Info) {
             $logContent .= "Player 2 Device: {$player1Info['device_type']}";

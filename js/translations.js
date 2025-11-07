@@ -12,12 +12,12 @@ const translations = {
         sound: "Sound",
         fastAI: "Fast AI Movement",
         autoDice: "Auto Dice Rolling",
-        
+
         // Difficulty levels
         easy: "Easy",
         normal: "Normal",
         hard: "Hard",
-        
+
         // Shirt colors
         blue: "Blue",
         green: "Green",
@@ -29,7 +29,7 @@ const translations = {
         barca: "Barcelona",
         argentina: "Argentina",
         slovenija: "Slovenia",
-        
+
         // Players
         player1: "Player 1",
         player2: "Player 2",
@@ -68,16 +68,7 @@ const translations = {
         waitingForOpponent: "Waiting for opponent to reconnect",
         backToLobby: "Back to Lobby",
         connectionLost: "Connection lost",
-        
-        // Connection
-        connecting: "Connecting...",
-        tryingToConnect: "Trying to connect to the server...",
-        connectionFailed: "Connection Failed",
-        connectionFailedMessage: "Could not connect to the server. Please try again later.",
-        connectionLostMessage: "Connection to the server was lost. You've been returned to the main menu.",
-        ok: "OK",
-        cancel: "Cancel",
-        
+
         // Lobby
         multiplayerLobby: "Multiplayer Lobby",
         availablePlayers: "Available Players",
@@ -100,7 +91,15 @@ const translations = {
         justNow: "Just now",
         minutesAgo: "m ago",
         hoursAgo: "h ago",
-        
+
+        // Connection
+        connecting: "Connecting...",
+        tryingToConnect: "Trying to connect to the server...",
+        connectionFailed: "Connection Failed",
+        connectionFailedMessage: "Could not connect to the server. Please try again later.",
+        connectionLostMessage: "Connection to the server was lost. You've been returned to the main menu.",
+        ok: "OK",
+
         // Game
         backToMenu: "Back to Menu",
         goal: "GOAL!",
@@ -118,7 +117,7 @@ const translations = {
         cannotMovePlayer: "This player cannot be moved",
         noMovesAvailable: "has no moves available",
         scores: "scores",
-        
+
         // Status messages
         on: "On",
         off: "Off"
@@ -135,12 +134,12 @@ const translations = {
         sound: "Zvok",
         fastAI: "Hitrejši premiki AI",
         autoDice: "Samodejno metanje kocke",
-        
+
         // Difficulty levels
         easy: "Lahka",
         normal: "Normalna",
         hard: "Težka",
-        
+
         // Shirt colors
         blue: "Modra",
         green: "Zelena",
@@ -152,7 +151,7 @@ const translations = {
         barca: "Barcelona",
         argentina: "Argentina",
         slovenija: "Slovenija",
-        
+
         // Players
         player1: "Igralec 1",
         player2: "Igralec 2",
@@ -162,7 +161,7 @@ const translations = {
         portrait: "Pokončno",
         landscape: "Ležeče",
         difficulty: "težavnost",
-        
+
         // Hints
         hints: "Namigi",
         hintsOn: "Vključi namige",
@@ -174,24 +173,6 @@ const translations = {
         hintsOffDescription: "Brez označevanja - večji izziv!",
 
         // Modals
-        multiplayerLobby: "Igralci v loži",
-        availablePlayers: "Razpoložljivi igralci",
-        activeGames: "Aktivne igre",
-        noPlayersInLobby: "Nobenih igralcev ni v loži.",
-        noActiveGames: "Ni aktivnih iger.",
-        available: "Na voljo",
-        challenge: "Izzovi",
-        challengePlayer: "Izzovi igralca",
-        challenging: "Izzivanje...",
-        accept: "Sprejmi",
-        decline: "Zavrni",
-        waitingForResponse: "Čakanje na odgovor...",
-        challengedYou: "te je izzval na igro!",
-        challengeDeclined: "Izziv je bil zavrnjen",
-        challengeCancelled: "Izziv je bil preklican",
-        justNow: "ravnokar",
-        minutesAgo: "pred minutami",
-        hoursAgo: "pred urami",
         selectShirtColor: "Izberi barvo dresa",
         enterPlayerName: "Vnesi ime igralca",
         save: "Shrani",
@@ -209,7 +190,30 @@ const translations = {
         waitingForOpponent: "Čakanje na ponovno povezavo nasprotnika",
         backToLobby: "Nazaj v ložo",
         connectionLost: "Povezava izgubljena",
-        
+
+        // Lobby
+        multiplayerLobby: "Igralci v loži",
+        availablePlayers: "Razpoložljivi igralci",
+        activeGames: "Aktivne igre",
+        noPlayersInLobby: "Nobenih igralcev ni v loži.",
+        noActiveGames: "Ni aktivnih iger.",
+        available: "Na voljo",
+        spectating: "Opazovanje",
+        spectateGame: "Opazujem igro?",
+        watch: "Opazuj",
+        challenge: "Izzovi",
+        challengePlayer: "Izzovi igralca",
+        challenging: "Izzivanje...",
+        accept: "Sprejmi",
+        decline: "Zavrni",
+        waitingForResponse: "Čakanje na odgovor...",
+        challengedYou: "te je izzval na igro!",
+        challengeDeclined: "Izziv je bil zavrnjen",
+        challengeCancelled: "Izziv je bil preklican",
+        justNow: "ravnokar",
+        minutesAgo: "pred minutami",
+        hoursAgo: "pred urami",
+
         // Connection
         connecting: "Povezovanje...",
         tryingToConnect: "Poskušam se povezati s strežnikom...",
@@ -217,11 +221,7 @@ const translations = {
         connectionFailedMessage: "Ni se bilo mogoče povezati s strežnikom. Poskusite znova pozneje.",
         connectionLostMessage: "Povezava s strežnikom je bila prekinjena. Vrnjeni ste bili v glavni meni.",
         ok: "V redu",
-        cancel: "Prekliči",
-        
-        spectateGame: "Opazujem igro?",
-        watch: "Opazuj",
-        
+
         // Game
         backToMenu: "Nazaj v meni",
         goal: "GOL!",
@@ -239,7 +239,7 @@ const translations = {
         cannotMovePlayer: "Ta igralec ne more igrati",
         noMovesAvailable: "nima na voljo nobenih premikov",
         scores: "dobi točko",
-        
+
         // Status messages
         on: "Vključeno",
         off: "Izklopljeno"
@@ -295,25 +295,10 @@ const translations = {
         hintsOffDescription: "Keine Hervorhebung - anspruchsvoller!",
 
         // Modals
-        multiplayerLobby: "Mehrspieler-Lobby",
-        availablePlayers: "Verfügbare Spieler",
-        activeGames: "Aktive Spiele",
-        noPlayersInLobby: "Keine Spieler in der Lobby.",
-        noActiveGames: "Keine aktiven Spiele.",
-        available: "Verfügbar",
-        challenge: "Herausfordern",
-        challengePlayer: "Spieler herausfordern",
-        challenging: "Herausfordern...",
-        accept: "Annehmen",
-        decline: "Ablehnen",
-        waitingForResponse: "Warte auf Antwort...",
-        justNow: "gerade eben",
-        minutesAgo: "vor Minuten",
-        hoursAgo: "vor Stunden",
         selectShirtColor: "Trikotfarbe auswählen",
         enterPlayerName: "Spielername eingeben",
         save: "Speichern",
-        close: "Schließen",        
+        close: "Schließen",
         cancel: "Abbrechen",
         join: "Beitreten",
         refresh: "Aktualisieren",
@@ -323,8 +308,34 @@ const translations = {
         failedToJoin: "Beitritt zum Spiel fehlgeschlagen",
         opponentLeft: "Gegner hat das Spiel verlassen",
         opponentDisconnected: "Gegner hat die Verbindung getrennt",
+        opponentReconnected: "Gegner hat sich wieder verbunden",
+        waitingForOpponent: "Warte auf erneute Verbindung des Gegners",
+        backToLobby: "Zurück zur Lobby",
         connectionLost: "Verbindung verloren",
-        
+
+        // Lobby
+        multiplayerLobby: "Mehrspieler-Lobby",
+        availablePlayers: "Verfügbare Spieler",
+        activeGames: "Aktive Spiele",
+        noPlayersInLobby: "Keine Spieler in der Lobby.",
+        noActiveGames: "Keine aktiven Spiele.",
+        available: "Verfügbar",
+        spectating: "Zuschauen",
+        spectateGame: "Spiel zuschauen?",
+        watch: "Zuschauen",
+        challenge: "Herausfordern",
+        challengePlayer: "Spieler herausfordern",
+        challenging: "Herausfordern...",
+        accept: "Annehmen",
+        decline: "Ablehnen",
+        waitingForResponse: "Warte auf Antwort...",
+        challengedYou: "hat dich zu einem Spiel herausgefordert!",
+        challengeDeclined: "Herausforderung wurde abgelehnt",
+        challengeCancelled: "Herausforderung wurde abgebrochen",
+        justNow: "gerade eben",
+        minutesAgo: "vor Minuten",
+        hoursAgo: "vor Stunden",
+
         // Connection
         connecting: "Verbinde...",
         tryingToConnect: "Versuche, eine Verbindung zum Server herzustellen...",
@@ -332,10 +343,6 @@ const translations = {
         connectionFailedMessage: "Konnte keine Verbindung zum Server herstellen. Bitte versuchen Sie es später erneut.",
         connectionLostMessage: "Die Verbindung zum Server wurde unterbrochen. Sie wurden zum Hauptmenü zurückgekehrt.",
         ok: "OK",
-        cancel: "Abbrechen",
-        
-        spectateGame: "Spiel zuschauen?",
-        watch: "Zuschauen",
 
         // Game
         backToMenu: "Zurück zum Menü",
@@ -410,25 +417,10 @@ const translations = {
         hintsOffDescription: "Nessuna evidenziazione - più impegnativo!",
 
         // Modals
-        multiplayerLobby: "Lobby Multigiocatore",
-        availablePlayers: "Giocatori Disponibili",
-        activeGames: "Partite Attive",
-        noPlayersInLobby: "Nessun giocatore nella lobby.",
-        noActiveGames: "Nessuna partita attiva.",
-        available: "Disponibile",
-        challenge: "Sfida",
-        challengePlayer: "Sfida Giocatore",
-        challenging: "Sfidando...",
-        accept: "Accetta",
-        decline: "Rifiuta",
-        waitingForResponse: "In attesa di risposta...",
-        justNow: "proprio ora",
-        minutesAgo: "minuti fa",
-        hoursAgo: "ore fa",
         selectShirtColor: "Seleziona Colore Maglia",
         enterPlayerName: "Inserisci Nome Giocatore",
         save: "Salva",
-        close: "Chiudi",        
+        close: "Chiudi",
         cancel: "Annulla",
         join: "Unisciti",
         refresh: "Aggiorna",
@@ -438,9 +430,41 @@ const translations = {
         failedToJoin: "Impossibile unirsi alla partita",
         opponentLeft: "L'avversario ha lasciato la partita",
         opponentDisconnected: "Avversario disconnesso",
+        opponentReconnected: "Avversario riconnesso",
+        waitingForOpponent: "In attesa di riconnessione dell'avversario",
+        backToLobby: "Torna alla Lobby",
         connectionLost: "Connessione persa",
+
+        // Lobby
+        multiplayerLobby: "Lobby Multigiocatore",
+        availablePlayers: "Giocatori Disponibili",
+        activeGames: "Partite Attive",
+        noPlayersInLobby: "Nessun giocatore nella lobby.",
+        noActiveGames: "Nessuna partita attiva.",
+        available: "Disponibile",
+        spectating: "Osservando",
         spectateGame: "Guardare la partita?",
         watch: "Guarda",
+        challenge: "Sfida",
+        challengePlayer: "Sfida Giocatore",
+        challenging: "Sfidando...",
+        accept: "Accetta",
+        decline: "Rifiuta",
+        waitingForResponse: "In attesa di risposta...",
+        challengedYou: "ti ha sfidato a una partita!",
+        challengeDeclined: "La sfida è stata rifiutata",
+        challengeCancelled: "La sfida è stata annullata",
+        justNow: "proprio ora",
+        minutesAgo: "minuti fa",
+        hoursAgo: "ore fa",
+
+        // Connection
+        connecting: "Connessione in corso...",
+        tryingToConnect: "Tentativo di connessione al server...",
+        connectionFailed: "Connessione Fallita",
+        connectionFailedMessage: "Impossibile connettersi al server. Riprova più tardi.",
+        connectionLostMessage: "La connessione al server è stata persa. Sei tornato al menu principale.",
+        ok: "OK",
 
         // Game
         backToMenu: "Torna al Menu",
@@ -515,21 +539,6 @@ const translations = {
         hintsOffDescription: "Sin resaltado - ¡más desafiante!",
 
         // Modals
-        multiplayerLobby: "Sala Multijugador",
-        availablePlayers: "Jugadores Disponibles",
-        activeGames: "Partidas Activas",
-        noPlayersInLobby: "No hay jugadores en la sala.",
-        noActiveGames: "No hay partidas activas.",
-        available: "Disponible",
-        challenge: "Desafiar",
-        challengePlayer: "Desafiar Jugador",
-        challenging: "Desafiando...",
-        accept: "Aceptar",
-        decline: "Rechazar",
-        waitingForResponse: "Esperando respuesta...",
-        justNow: "justo ahora",
-        minutesAgo: "hace minutos",
-        hoursAgo: "hace horas",
         selectShirtColor: "Seleccionar Color de Camiseta",
         enterPlayerName: "Introducir Nombre del Jugador",
         save: "Guardar",
@@ -543,9 +552,41 @@ const translations = {
         failedToJoin: "Error al unirse a la partida",
         opponentLeft: "El oponente abandonó la partida",
         opponentDisconnected: "Oponente desconectado",
+        opponentReconnected: "Oponente reconectado",
+        waitingForOpponent: "Esperando que el oponente se reconecte",
+        backToLobby: "Volver a la Sala",
         connectionLost: "Conexión perdida",
+
+        // Lobby
+        multiplayerLobby: "Sala Multijugador",
+        availablePlayers: "Jugadores Disponibles",
+        activeGames: "Partidas Activas",
+        noPlayersInLobby: "No hay jugadores en la sala.",
+        noActiveGames: "No hay partidas activas.",
+        available: "Disponible",
+        spectating: "Espectando",
         spectateGame: "¿Ver el juego?",
         watch: "Ver",
+        challenge: "Desafiar",
+        challengePlayer: "Desafiar Jugador",
+        challenging: "Desafiando...",
+        accept: "Aceptar",
+        decline: "Rechazar",
+        waitingForResponse: "Esperando respuesta...",
+        challengedYou: "te desafió a un juego!",
+        challengeDeclined: "El desafío fue rechazado",
+        challengeCancelled: "El desafío fue cancelado",
+        justNow: "justo ahora",
+        minutesAgo: "hace minutos",
+        hoursAgo: "hace horas",
+
+        // Connection
+        connecting: "Conectando...",
+        tryingToConnect: "Intentando conectar al servidor...",
+        connectionFailed: "Conexión Fallida",
+        connectionFailedMessage: "No se pudo conectar al servidor. Por favor, inténtalo de nuevo más tarde.",
+        connectionLostMessage: "La conexión al servidor se perdió. Has sido devuelto al menú principal.",
+        ok: "OK",
 
         // Game
         backToMenu: "Volver al Menú",
@@ -620,21 +661,6 @@ const translations = {
         hintsOffDescription: "Pas de surbrillance - plus difficile !",
 
         // Modals
-        multiplayerLobby: "Salon Multijoueur",
-        availablePlayers: "Joueurs Disponibles",
-        activeGames: "Parties Actives",
-        noPlayersInLobby: "Aucun joueur dans le salon.",
-        noActiveGames: "Aucune partie active.",
-        available: "Disponible",
-        challenge: "Défier",
-        challengePlayer: "Défier le Joueur",
-        challenging: "En train de défier...",
-        accept: "Accepter",
-        decline: "Refuser",
-        waitingForResponse: "En attente de réponse...",
-        justNow: "à l'instant",
-        minutesAgo: "il y a quelques minutes",
-        hoursAgo: "il y a quelques heures",
         selectShirtColor: "Choisir la Couleur du Maillot",
         enterPlayerName: "Entrer le Nom du Joueur",
         save: "Enregistrer",
@@ -648,9 +674,41 @@ const translations = {
         failedToJoin: "Échec pour rejoindre la partie",
         opponentLeft: "L'adversaire a quitté la partie",
         opponentDisconnected: "Adversaire déconnecté",
+        opponentReconnected: "Adversaire reconnecté",
+        waitingForOpponent: "En attente de la reconnexion de l'adversaire",
+        backToLobby: "Retour au Salon",
         connectionLost: "Connexion perdue",
+
+        // Lobby
+        multiplayerLobby: "Salon Multijoueur",
+        availablePlayers: "Joueurs Disponibles",
+        activeGames: "Parties Actives",
+        noPlayersInLobby: "Aucun joueur dans le salon.",
+        noActiveGames: "Aucune partie active.",
+        available: "Disponible",
+        spectating: "En observation",
         spectateGame: "Regarder le jeu?",
         watch: "Regarder",
+        challenge: "Défier",
+        challengePlayer: "Défier le Joueur",
+        challenging: "En train de défier...",
+        accept: "Accepter",
+        decline: "Refuser",
+        waitingForResponse: "En attente de réponse...",
+        challengedYou: "vous a défié à un jeu!",
+        challengeDeclined: "Le défi a été refusé",
+        challengeCancelled: "Le défi a été annulé",
+        justNow: "à l'instant",
+        minutesAgo: "il y a quelques minutes",
+        hoursAgo: "il y a quelques heures",
+
+        // Connection
+        connecting: "Connexion en cours...",
+        tryingToConnect: "Tentative de connexion au serveur...",
+        connectionFailed: "Échec de la Connexion",
+        connectionFailedMessage: "Impossible de se connecter au serveur. Veuillez réessayer plus tard.",
+        connectionLostMessage: "La connexion au serveur a été perdue. Vous avez été renvoyé au menu principal.",
+        ok: "OK",
 
         // Game
         backToMenu: "Retour au Menu",
@@ -686,12 +744,12 @@ const translations = {
         sound: "Zvuk",
         fastAI: "Brzi potezi A.I.-a",
         autoDice: "Automatsko bacanje kocke",
-        
+
         // Difficulty levels
         easy: "Lako",
         normal: "Normalno",
         hard: "Teško",
-        
+
         // Shirt colors
         blue: "Plava",
         green: "Zelena",
@@ -703,7 +761,7 @@ const translations = {
         barca: "Barcelona",
         argentina: "Argentina",
         slovenija: "Slovenija",
-        
+
         // Players
         player1: "Igrač 1",
         player2: "Igrač 2",
@@ -725,21 +783,6 @@ const translations = {
         hintsOffDescription: "Bez isticanja - veći izazov!",
 
         // Modals
-        multiplayerLobby: "Predvorje za više igrača",
-        availablePlayers: "Dostupni igrači",
-        activeGames: "Aktivne igre",
-        noPlayersInLobby: "Nema igrača u predvorju.",
-        noActiveGames: "Nema aktivnih igara.",
-        available: "Dostupan",
-        challenge: "Izazov",
-        challengePlayer: "Izazovi igrača",
-        challenging: "Izazivanje...",
-        accept: "Prihvati",
-        decline: "Odbij",
-        waitingForResponse: "Čekanje na odgovor...",
-        justNow: "upravo sada",
-        minutesAgo: "prije nekoliko minuta",
-        hoursAgo: "prije nekoliko sati",
         selectShirtColor: "Odaberi boju dresa",
         enterPlayerName: "Unesi ime igrača",
         save: "Spremi",
@@ -753,9 +796,41 @@ const translations = {
         failedToJoin: "Pridruživanje igri nije uspjelo",
         opponentLeft: "Protivnik je napustio igru",
         opponentDisconnected: "Protivnik je prekinuo vezu",
+        opponentReconnected: "Protivnik se ponovno povezao",
+        waitingForOpponent: "Čekanje da se protivnik ponovno poveže",
+        backToLobby: "Povratak u predvorje",
         connectionLost: "Veza je izgubljena",
+
+        // Lobby
+        multiplayerLobby: "Predvorje za više igrača",
+        availablePlayers: "Dostupni igrači",
+        activeGames: "Aktivne igre",
+        noPlayersInLobby: "Nema igrača u predvorju.",
+        noActiveGames: "Nema aktivnih igara.",
+        available: "Dostupan",
+        spectating: "Gledanje",
         spectateGame: "Gledati igru?",
         watch: "Gledaj",
+        challenge: "Izazov",
+        challengePlayer: "Izazovi igrača",
+        challenging: "Izazivanje...",
+        accept: "Prihvati",
+        decline: "Odbij",
+        waitingForResponse: "Čekanje na odgovor...",
+        challengedYou: "izazvao te je na igru!",
+        challengeDeclined: "Izazov je odbijen",
+        challengeCancelled: "Izazov je otkazan",
+        justNow: "upravo sada",
+        minutesAgo: "prije nekoliko minuta",
+        hoursAgo: "prije nekoliko sati",
+
+        // Connection
+        connecting: "Povezivanje...",
+        tryingToConnect: "Pokušavam se povezati na poslužitelj...",
+        connectionFailed: "Povezivanje neuspješno",
+        connectionFailedMessage: "Nije se moguće povezati na poslužitelj. Pokušajte ponovno kasnije.",
+        connectionLostMessage: "Veza s poslužiteljem je izgubljena. Vraćeni ste na glavni izbornik.",
+        ok: "U redu",
 
         // Game
         backToMenu: "Povratak na izbornik",
@@ -774,7 +849,7 @@ const translations = {
         cannotMovePlayer: "Ovaj igrač se ne može pomaknuti",
         noMovesAvailable: "nema dostupnih poteza",
         scores: "zabija gol",
-        
+
         // Status messages
         on: "Uključeno",
         off: "Isključeno"
@@ -791,12 +866,12 @@ const translations = {
         sound: "Hang",
         fastAI: "Gyors M.I. lépések",
         autoDice: "Automatikus kockadobás",
-        
+
         // Difficulty levels
         easy: "Könnyű",
         normal: "Normál",
         hard: "Nehéz",
-        
+
         // Shirt colors
         blue: "Kék",
         green: "Zöld",
@@ -808,7 +883,7 @@ const translations = {
         barca: "Barcelona",
         argentina: "Argentína",
         slovenija: "Szlovénia",
-        
+
         // Players
         player1: "1. játékos",
         player2: "2. játékos",
@@ -830,25 +905,10 @@ const translations = {
         hintsOffDescription: "Nincs kiemelés - nagyobb kihívás!",
 
         // Modals
-        multiplayerLobby: "Többjátékos előszoba",
-        availablePlayers: "Elérhető játékosok",
-        activeGames: "Aktív játékok",
-        noPlayersInLobby: "Nincsenek játékosok az előszobában.",
-        noActiveGames: "Nincsenek aktív játékok.",
-        available: "Elérhető",
-        challenge: "Kihívás",
-        challengePlayer: "Játékos kihívása",
-        challenging: "Kihívás...",
-        accept: "Elfogadás",
-        decline: "Elutasítás",
-        waitingForResponse: "Válaszra várva...",
-        justNow: "most",
-        minutesAgo: "perce",
-        hoursAgo: "órája",
         selectShirtColor: "Mezszín kiválasztása",
         enterPlayerName: "Játékos nevének megadása",
         save: "Mentés",
-        close: "Bezárás",        
+        close: "Bezárás",
         cancel: "Mégse",
         join: "Csatlakozás",
         refresh: "Frissítés",
@@ -858,10 +918,42 @@ const translations = {
         failedToJoin: "Nem sikerült csatlakozni a játékhoz",
         opponentLeft: "Az ellenfél elhagyta a játékot",
         opponentDisconnected: "Az ellenfél kapcsolata megszakadt",
+        opponentReconnected: "Az ellenfél újracsatlakozott",
+        waitingForOpponent: "Várakozás az ellenfél újracsatlakozására",
+        backToLobby: "Vissza az előszobába",
         connectionLost: "A kapcsolat megszakadt",
+
+        // Lobby
+        multiplayerLobby: "Többjátékos előszoba",
+        availablePlayers: "Elérhető játékosok",
+        activeGames: "Aktív játékok",
+        noPlayersInLobby: "Nincsenek játékosok az előszobában.",
+        noActiveGames: "Nincsenek aktív játékok.",
+        available: "Elérhető",
+        spectating: "Megtekintés",
         spectateGame: "Játék megtekintése?",
         watch: "Nézd",
-        
+        challenge: "Kihívás",
+        challengePlayer: "Játékos kihívása",
+        challenging: "Kihívás...",
+        accept: "Elfogadás",
+        decline: "Elutasítás",
+        waitingForResponse: "Válaszra várva...",
+        challengedYou: "kihívott egy játékra!",
+        challengeDeclined: "A kihívás elutasítva",
+        challengeCancelled: "A kihívás törölve",
+        justNow: "most",
+        minutesAgo: "perce",
+        hoursAgo: "órája",
+
+        // Connection
+        connecting: "Kapcsolódás...",
+        tryingToConnect: "Kísérlet a szerverhez való csatlakozásra...",
+        connectionFailed: "Sikertelen csatlakozás",
+        connectionFailedMessage: "Nem sikerült csatlakozni a szerverhez. Kérjük, próbálja újra később.",
+        connectionLostMessage: "A szerverrel való kapcsolat megszakadt. Visszakerült a főmenübe.",
+        ok: "OK",
+
         // Game
         backToMenu: "Vissza a menübe",
         goal: "GÓL!",
@@ -879,7 +971,7 @@ const translations = {
         cannotMovePlayer: "Ezzel a játékossal nem lehet lépni",
         noMovesAvailable: "nem tud lépni",
         scores: "gólt lő",
-        
+
         // Status messages
         on: "Be",
         off: "Ki"

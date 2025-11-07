@@ -1,10 +1,10 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-spectator-v7';
+const APP_VERSION = '2.0.0-spectator-v8';
 
 // Global config
 let appConfig = {
     'debug-mode': false,
-    'log-enabled': true
+    'log-enabled': false
 };
 
 
@@ -90,7 +90,7 @@ async function requestWakeLock() {
             });
         }
     } catch (err) {
-        debugLog('Wake Lock request failed:', err);
+        console.error('Wake Lock request failed:', err);
     }
 }
 
@@ -100,7 +100,7 @@ async function releaseWakeLock() {
             await wakeLock.release();
             wakeLock = null;
         } catch (err) {
-            debugLog('Wake Lock release failed:', err);
+            console.error('Wake Lock release failed:', err);
         }
     }
 }
@@ -421,7 +421,7 @@ function registerServiceWorker() {
                 debugLog('Service Worker registered:', registration);
             })
             .catch(error => {
-                debugLog('Service Worker registration failed:', error);
+                console.error('Service Worker registration failed:', error);
             });
     }
 }
@@ -736,10 +736,6 @@ function setupEventListeners() {
         if (e.key === 'Enter') {
             savePlayerName();
         }
-    });
-
-    document.getElementById('closeJoinModal')?.addEventListener('click', () => {
-        closeModal('joinGameModal');
     });
     
     // Lobby modal handlers
@@ -1265,9 +1261,6 @@ function handleHintsSelection(hintsEnabled) {
         showScreen('gameScreen');
         updateGameScreenOrientation(gameState.orientation);
         startNewGame();
-    } else if (hintsModalMode === 'host') {
-        // Host multiplayer game
-        hostGame();
     }
 
     hintsModalMode = null;
@@ -1291,64 +1284,6 @@ async function launchConfetti() {
         }
     }
 }
-
-// Multiplayer functions
-async function hostGame() {
-    const playerName = gameState.player1Name || translationManager.get('player1');
-    
-    // Initialize multiplayer if not done
-    if (!multiplayerManager.playerId) {
-        multiplayerManager.init();
-    }
-    
-    const result = await multiplayerManager.hostGame(playerName, gameState.hintsEnabled);
-    
-    if (result.success) {
-        // Show waiting modal
-        document.getElementById('hostPlayerName').textContent = playerName;
-        document.getElementById('hostPlayerIp').textContent = 'Waiting...';
-        openModal('hostWaitingModal');
-        
-        // Get IP address (shown in modal)
-        fetch('https://api.ipify.org?format=json')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('hostPlayerIp').textContent = data.ip;
-            })
-            .catch(() => {
-                document.getElementById('hostPlayerIp').textContent = 'Unknown';
-            });
-        
-        // Start polling for events FIRST
-        multiplayerManager.startPolling();
-        
-        // Set up callback for when player joins
-        multiplayerManager.onEvent = (event) => {
-            debugLog('Host received event:', event);
-            if (event.type === 'gameStart') {
-                debugLog('Player joined:', event.opponent);
-                closeModal('hostWaitingModal');
-                // Apply hints setting from event (host's preference)
-                if (event.hintsEnabled !== undefined) {
-                    gameState.hintsEnabled = event.hintsEnabled;
-                }
-                // Play start sound
-                soundManager.play('whistle');
-                // Host is player 1, guest is player 2
-                startMultiplayerGame('host', event.opponent);
-            }
-        };
-    } else {
-        console.error('Failed to host game:', result.error);
-        alert(translationManager.get('failedToHost') + ': ' + result.error);
-    }
-}
-
-// Cancel hosting
-document.getElementById('cancelHostBtn')?.addEventListener('click', async () => {
-    await multiplayerManager.cancelHost();
-    closeModal('hostWaitingModal');
-});
 
 // === LOBBY SYSTEM FUNCTIONS ===
 
@@ -1460,7 +1395,7 @@ async function openLobby() {
         const result = await multiplayerManager.enterLobby(playerName);
         
         if (!result.success) {
-            alert(translationManager.get('failedToJoin') + ': ' + result.error);
+            console.error(translationManager.get('failedToJoin') + ': ' + result.error);
             return;
         }
         
@@ -1474,12 +1409,11 @@ async function openLobby() {
         if (!lobbyRefreshInterval) {
             lobbyRefreshInterval = setInterval(async () => {
                 await refreshLobby();
-                await checkForChallenges();
             }, 3000);
         }
     } catch (error) {
         console.error('Failed to enter lobby:', error);
-        alert(translationManager.get('failedToJoin') + ': ' + error.message);
+        console.error(translationManager.get('failedToJoin') + ': ' + error.message);
     }
 }
 
@@ -1633,7 +1567,7 @@ async function startSpectating(game) {
         const result = await multiplayerManager.joinAsSpectator(game.gameId);
         
         if (!result.success) {
-            alert(result.error || 'Failed to join as spectator');
+            console.error(result.error || 'Failed to join as spectator');
             gameState.gameMode = null;
             // Restore spectator's own name
             if (gameState.spectatorOwnName) {
@@ -1690,7 +1624,6 @@ async function startSpectating(game) {
         
     } catch (error) {
         console.error('Failed to start spectating:', error);
-        alert('Failed to join as spectator: ' + error.message);
         gameState.gameMode = null;
         openModal('lobbyModal');
     }
@@ -1825,7 +1758,7 @@ async function sendChallenge(hintsEnabled) {
     );
     
     if (!result.success) {
-        alert(translationManager.get('failedToJoin') + ': ' + result.error);
+        console.error(translationManager.get('failedToJoin') + ': ' + result.error);
         closeModal('challengeModal');
         openModal('lobbyModal');
         return;
@@ -1833,28 +1766,11 @@ async function sendChallenge(hintsEnabled) {
     
     // Store the challengeId for cancellation
     currentChallengeInfo.challengeId = result.challengeId;
-    console.log('✅ Challenge sent, challengeId:', result.challengeId);
+    debugLog('✅ Challenge sent, challengeId:', result.challengeId);
     
     // Start polling for challenge response
     multiplayerManager.onEvent = handleLobbyEvent;
     multiplayerManager.startPolling();
-}
-
-async function checkForChallenges() {
-    // This would require a new endpoint to check if we've been challenged
-    // For now, we'll rely on the getLobbyPlayers call which updates our status
-    const result = await multiplayerManager.getLobbyPlayers();
-    
-    if (result.success) {
-        // Check if we're in the challenging/challenged list
-        const allPlayers = [...result.availablePlayers, ...result.challengingPlayers];
-        const myInfo = allPlayers.find(p => p.playerId === multiplayerManager.playerId);
-        
-        if (myInfo && myInfo.status === 'challenged' && !currentChallengeInfo) {
-            // We've been challenged! - Note: We need to enhance the server to return challenger info
-            // For now, this is a placeholder
-        }
-    }
 }
 
 function handleLobbyEvent(event) {
@@ -1945,7 +1861,7 @@ window.handleChallengeDeclined = function(data) {
 
 // Global handler for challenge cancelled
 window.handleChallengeCancelled = function(data) {
-    console.log('🚫 handleChallengeCancelled called with data:', data);
+    debugLog('🚫 handleChallengeCancelled called with data:', data);
     debugLog('🚫 Challenge cancelled by challenger');
     
     currentChallengeInfo = null;
@@ -1975,7 +1891,7 @@ async function acceptChallenge() {
     const result = await multiplayerManager.acceptChallenge(challengeParam);
     
     if (!result.success) {
-        alert(translationManager.get('failedToJoin') + ': ' + result.error);
+        console.error(translationManager.get('failedToJoin') + ': ' + result.error);
         return;
     }
     
@@ -2017,19 +1933,19 @@ async function declineChallenge() {
 async function cancelChallenge() {
     multiplayerManager.stopPolling();
     
-    console.log('🚫 cancelChallenge called, currentChallengeInfo:', currentChallengeInfo);
+    debugLog('🚫 cancelChallenge called, currentChallengeInfo:', currentChallengeInfo);
     
     // Clean up challenge state on server via WebSocket
     if (currentChallengeInfo && currentChallengeInfo.challengeId) {
         try {
-            console.log('📤 Sending declineChallenge with challengeId:', currentChallengeInfo.challengeId);
+            debugLog('📤 Sending declineChallenge with challengeId:', currentChallengeInfo.challengeId);
             await multiplayerManager.declineChallenge(currentChallengeInfo.challengeId);
-            console.log('✅ Challenge cancelled successfully');
+            debugLog('✅ Challenge cancelled successfully');
         } catch (error) {
             console.error('❌ Failed to cancel challenge:', error);
         }
     } else {
-        console.error('❌ No challengeId available to cancel');
+        debugLog('❌ No challengeId available to cancel');
     }
     
     currentChallengeInfo = null;
@@ -2060,76 +1976,6 @@ function getTimeAgo(timestamp) {
     if (diff < 60) return translationManager.get('justNow');
     if (diff < 3600) return `${Math.floor(diff / 60)}${translationManager.get('minutesAgo')}`;
     return `${Math.floor(diff / 3600)}${translationManager.get('hoursAgo')}`;
-}
-
-// === LEGACY MULTIPLAYER FUNCTIONS ===
-
-async function openJoinModal() {
-    // Initialize multiplayer if not done
-    if (!multiplayerManager.playerId) {
-        multiplayerManager.init();
-    }
-    
-    openModal('joinGameModal');
-    await refreshGamesList();
-}
-
-async function refreshGamesList() {
-    const hostsList = document.getElementById('hostsList');
-    hostsList.innerHTML = '<div class="loading-spinner"></div>';
-    
-    const hosts = await multiplayerManager.getAvailableHosts();
-    
-    debugLog('Available hosts:', hosts);
-    
-    if (hosts.length === 0) {
-        hostsList.innerHTML = `
-            <div class="no-hosts-message">
-                <p data-translate="noHostsFound">${translationManager.get('noHostsFound')}</p>
-            </div>
-        `;
-    } else {
-        hostsList.innerHTML = '';
-        hosts.forEach(host => {
-            const hostItem = document.createElement('div');
-            hostItem.className = 'host-item';
-            hostItem.innerHTML = `
-                <div class="host-item-info">
-                    <div class="host-item-name">${escapeHtml(host.playerName)}</div>
-                    <div class="host-item-ip">${escapeHtml(host.playerIp)}</div>
-                </div>
-                <button class="join-host-btn" data-translate="join">${translationManager.get('join')}</button>
-            `;
-            
-            hostItem.querySelector('.join-host-btn').addEventListener('click', async (e) => {
-                e.stopPropagation();
-                await joinGame(host.playerId, host.playerName);
-            });
-            
-            hostsList.appendChild(hostItem);
-        });
-    }
-}
-
-async function joinGame(hostId, hostName) {
-    const playerName = gameState.player1Name || translationManager.get('player1');
-    const result = await multiplayerManager.joinGame(hostId, playerName);
-    
-    if (result.success) {
-        debugLog('Joined game:', result);
-        closeModal('joinGameModal');
-        // Apply hints setting from host
-        if (result.hintsEnabled !== undefined) {
-            gameState.hintsEnabled = result.hintsEnabled;
-        }
-        // Play start sound
-        soundManager.play('whistle');
-        // Guest is player 2, host is player 1
-        startMultiplayerGame('guest', result.opponent);
-    } else {
-        console.error('Failed to join game:', result.error);
-        alert(translationManager.get('failedToJoin') + ': ' + result.error);
-    }
 }
 
 function startMultiplayerGame(role, opponent) {
@@ -2165,7 +2011,6 @@ function startMultiplayerGame(role, opponent) {
         window.gameLogger.startGameLog(
             gameState.player1Name,
             opponent.playerName,
-            opponent.playerIp || 'Unknown',
             'multiplayer',
             null, // player2UserAgent - not currently exchanged
             null  // player2Resolution - not currently exchanged
@@ -2272,7 +2117,7 @@ function showScreen(screenId) {
 function startNewGame() {
     // Cleanup old game instance before creating new one
     if (currentGame && typeof currentGame.cleanup === 'function') {
-        console.log('Cleaning up previous game instance');
+        debugLog('Cleaning up previous game instance');
         currentGame.cleanup();
     }
     

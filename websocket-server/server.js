@@ -16,7 +16,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 
 // Configuration
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 7860;
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 const HEARTBEAT_TIMEOUT = 60000; // 60 seconds
 const LOBBY_CLEANUP_INTERVAL = 60000; // 1 minute
@@ -921,9 +921,31 @@ function handlePlayerDisconnect(playerId) {
     
     // If player was spectating, remove them from spectators
     if (player.status === 'spectating' && player.spectatingGame) {
-        const game = games.get(player.spectatingGame);
+        const gameId = player.spectatingGame;
+        const game = games.get(gameId);
         if (game && game.spectators) {
             game.spectators.delete(playerId);
+            
+            // Notify both players about updated spectator count
+            const spectatorCount = game.spectators.size;
+            console.log(`👥 Spectator disconnected, updated count for game ${gameId}: ${spectatorCount}`);
+            
+            const hostSocket = io.sockets.sockets.get(game.host.socketId);
+            const guestSocket = io.sockets.sockets.get(game.guest.socketId);
+            
+            if (hostSocket) {
+                hostSocket.emit('gameEvent', {
+                    type: 'spectatorUpdate',
+                    spectatorCount: spectatorCount
+                });
+            }
+            
+            if (guestSocket) {
+                guestSocket.emit('gameEvent', {
+                    type: 'spectatorUpdate',
+                    spectatorCount: spectatorCount
+                });
+            }
         }
         players.delete(playerId);
         playerGames.delete(playerId);

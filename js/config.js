@@ -11,7 +11,7 @@ class ConfigManager {
             if (response.ok) {
                 this.config = await response.json();
                 this.loaded = true;
-                console.log('Configuration loaded:', this.config);
+                debugLog('Configuration loaded:', this.config);
                 return true;
             } else {
                 console.error('Failed to load config.json');
@@ -27,7 +27,7 @@ class ConfigManager {
 
     setDefaultConfig() {
         this.config = {
-            'websocket-server': 'wss://localhost:3000',
+            'websocket-server': 'wss://localhost:7860',
             'log-enabled': false,
             'log-script': 'logger.php',
             'debug-mode': false
@@ -52,7 +52,7 @@ class ConfigManager {
     }
 
     getWebSocketServerUrl() {
-        return this.config['websocket-server'] || 'wss://localhost:3000';
+        return this.config['websocket-server'] || 'wss://localhost:7860';
     }
 
     getLoggerUrl() {
@@ -78,14 +78,14 @@ class ConfigManager {
             
             // Check if we got any response (even error response means script exists)
             if (response.ok || response.status === 400) {
-                console.log(`✅ Log script validated: ${loggerUrl}`);
+                debugLog(`✅ Log script validated: ${loggerUrl}`);
                 return true;
             } else {
-                console.warn(`⚠️ Log script not accessible: ${loggerUrl} (Status: ${response.status})`);
+                debugLog(`⚠️ Log script not accessible: ${loggerUrl} (Status: ${response.status})`);
                 return false;
             }
         } catch (error) {
-            console.warn(`⚠️ Log script validation failed: ${loggerUrl}`, error.message);
+            console.error(`⚠️ Log script validation failed: ${loggerUrl}`, error.message);
             return false;
         }
     }
@@ -98,13 +98,11 @@ class GameLogger {
         this.logId = null;
         this.logFilename = null;
         this.gameStartTime = null;
-        this.player1IP = null;
-        this.player2IP = null;
     }
 
     async initialize() {
         if (!this.configManager.isLoggingEnabled()) {
-            console.log('Logging is disabled in config');
+            debugLog('Logging is disabled in config');
             return false;
         }
 
@@ -117,29 +115,18 @@ class GameLogger {
             return false;
         }
 
-        // Get IP addresses
-        try {
-            const ipResponse = await fetch('https://api.ipify.org?format=json');
-            const ipData = await ipResponse.json();
-            this.player1IP = ipData.ip;
-        } catch (error) {
-            console.log('Could not fetch IP address:', error);
-            this.player1IP = 'Unknown';
-        }
-
         return true;
     }
 
-    async startGameLog(player1Name, player2Name, player2IP = null, gameMode = 'multiplayer', player2UserAgent = null, player2Resolution = null) {
+    async startGameLog(player1Name, player2Name, gameMode = 'multiplayer', player2UserAgent = null, player2Resolution = null) {
         if (!this.configManager.isLoggingEnabled()) {
-            console.log('Logging not enabled in config');
+            debugLog('Logging not enabled in config');
             return null;
         }
 
-        console.log('GameLogger.startGameLog called:', { player1Name, player2Name, player2IP, gameMode });
+        debugLog('GameLogger.startGameLog called:', { player1Name, player2Name, gameMode });
 
         this.gameStartTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
-        this.player2IP = player2IP || 'Local';
 
         const currentResolution = `${window.innerWidth}x${window.innerHeight}`;
 
@@ -147,8 +134,6 @@ class GameLogger {
             action: 'start',
             player1Name: player1Name,
             player2Name: player2Name,
-            player1IP: this.player1IP,
-            player2IP: this.player2IP,
             player1UserAgent: navigator.userAgent,
             player2UserAgent: player2UserAgent || navigator.userAgent, // Use same UA for local/AI, or opponent's UA for multiplayer
             player1Resolution: currentResolution,
@@ -157,7 +142,7 @@ class GameLogger {
             gameMode: gameMode
         };
 
-        console.log('Sending log data to:', this.configManager.getLoggerUrl(), logData);
+        debugLog('Sending log data to:', this.configManager.getLoggerUrl(), logData);
 
         try {
             const response = await fetch(this.configManager.getLoggerUrl(), {
@@ -168,19 +153,19 @@ class GameLogger {
                 body: JSON.stringify(logData)
             });
 
-            console.log('Logger response status:', response.status);
+            debugLog('Logger response status:', response.status);
 
             if (response.ok) {
                 const responseText = await response.text();
-                console.log('Logger response text:', responseText);
+                debugLog('Logger response text:', responseText);
                 
                 try {
                     const result = JSON.parse(responseText);
-                    console.log('Logger response:', result);
+                    debugLog('Logger response:', result);
                     if (result.success) {
                         this.logId = result.logId;
                         this.logFilename = result.logFilename;
-                        console.log('Game log started:', this.logFilename);
+                        debugLog('Game log started:', this.logFilename);
                         return this.logId;
                     }
                 } catch (parseError) {
@@ -271,7 +256,7 @@ class GameLogger {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
-                    console.log('Game log completed:', this.logFilename);
+                    debugLog('Game log completed:', this.logFilename);
                 }
             }
         } catch (error) {
@@ -287,4 +272,3 @@ class GameLogger {
 // Global instances
 window.configManager = new ConfigManager();
 window.gameLogger = new GameLogger(window.configManager);
-

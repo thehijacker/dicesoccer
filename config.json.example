@@ -1,5 +1,5 @@
 {
-  "websocket-server": "ws://localhost:3000",
+  "websocket-server": "ws://localhost:7860",
   "log-enabled": false,
   "log-script": "logger.php",
   "debug-mode": false

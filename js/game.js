@@ -10,8 +10,8 @@ class GameState {
         this.orientation = localStorage.getItem('dicesoccer_orientation') || 'portrait';
         this.twoPlayerMode = localStorage.getItem('dicesoccer_twoPlayerMode') === 'true';
         this.hintsEnabled = localStorage.getItem('dicesoccer_hints') !== 'off';
-        this.fastAI = localStorage.getItem('dicesoccer_fastAI') !== 'false'; // Default true
-        this.autoDice = localStorage.getItem('dicesoccer_autoDice') !== 'false'; // Default true
+        this.fastAI = localStorage.getItem('dicesoccer_fastAI') !== 'false';
+        this.autoDice = localStorage.getItem('dicesoccer_autoDice') !== 'false';
         this.isMultiplayer = false;
         this.gameMode = 'local'; // can be local, ai, multiplayer
         
@@ -135,7 +135,7 @@ class SoundManager {
         if (sound) {
             sound.currentTime = 0;
             sound.play().catch(err => {
-                console.log('Sound play failed:', err);
+                console.error('Sound play failed:', err);
             });
         }
     }
@@ -392,7 +392,7 @@ class DiceSoccerGame {
     }
 
     handleCellClick(row, col) {
-        console.log(`🖱️ handleCellClick(${row}, ${col}) - isRolling: ${this.isRolling}, isMoving: ${this.isMoving}, currentPlayer: ${this.currentPlayer}, localPlayer: ${multiplayerManager?.localPlayer}, waitingForMove: ${this.waitingForMove}`);
+        debugLog(`🖱️ handleCellClick(${row}, ${col}) - isRolling: ${this.isRolling}, isMoving: ${this.isMoving}, currentPlayer: ${this.currentPlayer}, localPlayer: ${multiplayerManager?.localPlayer}, waitingForMove: ${this.waitingForMove}`);
         
         // Disable all interactions in spectator mode
         if (gameState.gameMode === 'spectator') {
@@ -411,13 +411,13 @@ class DiceSoccerGame {
         
         // In multiplayer, only allow clicks when it's local player's turn
         if (gameState.gameMode === 'multiplayer' && multiplayerManager.localPlayer !== this.currentPlayer) {
-            console.log(`❌ Not local player's turn. localPlayer=${multiplayerManager.localPlayer}, currentPlayer=${this.currentPlayer}`);
+            debugLog(`❌ Not local player's turn. localPlayer=${multiplayerManager.localPlayer}, currentPlayer=${this.currentPlayer}`);
             return; // Not local player's turn
         }
         
         // Check if dice has been rolled
         if (!this.waitingForMove) {
-            console.log(`❌ Dice not rolled yet (waitingForMove=${this.waitingForMove})`);
+            debugLog(`❌ Dice not rolled yet (waitingForMove=${this.waitingForMove})`);
             this.showMessage(translationManager.get('rollDiceFirst'));
             return;
         }
@@ -590,10 +590,7 @@ class DiceSoccerGame {
         if (gameState.gameMode === 'spectator') {
             return;
         }
-        
-        // Collapse menu if expanded
-        if (window.collapseMenuButton) window.collapseMenuButton();
-        
+
         // Generate dice value IMMEDIATELY (before animation)
         this.diceValue = Math.floor(Math.random() * 6) + 1;
         
@@ -1062,7 +1059,7 @@ class DiceSoccerGame {
         
         // Send multiplayer event if in multiplayer mode
         if (gameState.gameMode === 'multiplayer' && multiplayerManager) {
-            console.log(`📤 Sending playerMoved event: from (${fromRow},${fromCol}) to (${toRow},${toCol}), current player: ${this.currentPlayer}`);
+            debugLog(`📤 Sending playerMoved event: from (${fromRow},${fromCol}) to (${toRow},${toCol}), current player: ${this.currentPlayer}`);
             multiplayerManager.sendEvent({
                 type: 'playerMoved',
                 fromRow,
@@ -1222,9 +1219,9 @@ class DiceSoccerGame {
     }
 
     switchPlayer() {
-        console.log(`🔄 switchPlayer() called. Current player before switch: ${this.currentPlayer}`);
+        debugLog(`🔄 switchPlayer() called. Current player before switch: ${this.currentPlayer}`);
         this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
-        console.log(`🔄 switchPlayer() - New current player: ${this.currentPlayer}, Local player: ${multiplayerManager?.localPlayer}`);
+        debugLog(`🔄 switchPlayer() - New current player: ${this.currentPlayer}, Local player: ${multiplayerManager?.localPlayer}`);
         this.waitingForMove = false;
         this.isMoving = false; // Reset moving flag
         this.diceValue = 0;
@@ -1365,7 +1362,7 @@ class DiceSoccerGame {
                         player: { row: move.fromRow, col: move.fromCol }, 
                         move: { row: move.toRow, col: move.toCol }
                     };
-                    console.log('Hard AI: Found immediate goal opportunity!');
+                    debugLog('Hard AI: Found immediate goal opportunity!');
                     break;
                 }
             }
@@ -1378,7 +1375,7 @@ class DiceSoccerGame {
                         const distanceToMiddle = Math.abs(move.toRow - middleRow);
                         // Piece is close to goal and close to middle row
                         if (move.toCol <= 2 && distanceToMiddle <= 1) {
-                            console.log(`Hard AI: Found near-goal opportunity at (${move.fromRow},${move.fromCol}) -> (${move.toRow},${move.toCol})`);
+                            debugLog(`Hard AI: Found near-goal opportunity at (${move.fromRow},${move.fromCol}) -> (${move.toRow},${move.toCol})`);
                             if (!bestPlayerMove || move.toCol < bestPlayerMove.move.col) {
                                 bestPlayerMove = { 
                                     player: { row: move.fromRow, col: move.fromCol }, 
@@ -1392,7 +1389,7 @@ class DiceSoccerGame {
             
             // If no immediate goal or near-goal found, use Minimax
             if (!bestPlayerMove) {
-                console.log('Hard AI: Evaluating moves for dice value:', this.diceValue);
+                debugLog('Hard AI: Evaluating moves for dice value:', this.diceValue);
                 
                 for (const move of possibleMoves) {
                     // 1. Simulate AI's move
@@ -1435,7 +1432,7 @@ class DiceSoccerGame {
                         finalScore += 5000; // Reduced from 15000
                     }
 
-                    console.log(`  Move from (${move.fromRow},${move.fromCol}) to (${move.toRow},${move.toCol}): minimax=${score}, pieceBonus=${pieceAdvancementBonus}, destBonus=${destinationBonus}, forward=${movingForward?400:0}, opensPath=${opensPathToOwnGoal?'YES':'NO'}, blocking=${isBlocking?5000:0}, TOTAL=${finalScore}`);
+                    debugLog(`Move from (${move.fromRow},${move.fromCol}) to (${move.toRow},${move.toCol}): minimax=${score}, pieceBonus=${pieceAdvancementBonus}, destBonus=${destinationBonus}, forward=${movingForward?400:0}, opensPath=${opensPathToOwnGoal?'YES':'NO'}, blocking=${isBlocking?5000:0}, TOTAL=${finalScore}`);
 
                     if (finalScore > bestScore) {
                         bestScore = finalScore;
@@ -1446,7 +1443,7 @@ class DiceSoccerGame {
                     }
                 }
                 
-                console.log(`Hard AI: Selected move from (${bestPlayerMove.player.row},${bestPlayerMove.player.col}) to (${bestPlayerMove.move.row},${bestPlayerMove.move.col}) with score ${bestScore}`);
+                debugLog(`Hard AI: Selected move from (${bestPlayerMove.player.row},${bestPlayerMove.player.col}) to (${bestPlayerMove.move.row},${bestPlayerMove.move.col}) with score ${bestScore}`);
             }
 
             // If no move was found (should be rare), fall back to the old method
@@ -1888,7 +1885,7 @@ class DiceSoccerGame {
                         
                         if (hasDirectPath) {
                             // This move opens a dangerous path!
-                            console.log(`  WARNING: Moving from (${fromRow},${fromCol}) opens path for opponent at (${checkRow},${behindCol}) to goal!`);
+                            debugLog(`WARNING: Moving from (${fromRow},${fromCol}) opens path for opponent at (${checkRow},${behindCol}) to goal!`);
                             return true;
                         }
                     }
@@ -2735,9 +2732,9 @@ class DiceSoccerGame {
         this.gameStartTime = Date.now();
         this.currentGameStartTime = Date.now();
         
-        console.log('DiceSoccerGame.start() - gameState.gameMode:', gameState.gameMode);
-        console.log('DiceSoccerGame.start() - window.gameLogger exists:', !!window.gameLogger);
-        
+        debugLog('DiceSoccerGame.start() - gameState.gameMode:', gameState.gameMode);
+        debugLog('DiceSoccerGame.start() - window.gameLogger exists:', !!window.gameLogger);
+
         // Start logging for local and AI games (multiplayer is logged in startMultiplayerGame)
         if (window.gameLogger && (gameState.gameMode === 'local' || gameState.gameMode === 'ai')) {
             const player1Name = gameState.player1Name;
@@ -2749,7 +2746,7 @@ class DiceSoccerGame {
                 player2Name = `AI (${difficulty})`;
             }
             
-            console.log('Starting game log:', gameState.gameMode, player1Name, player2Name);
+            debugLog('Starting game log:', gameState.gameMode, player1Name, player2Name);
             window.gameLogger.startGameLog(player1Name, player2Name, null, gameState.gameMode);
         }
         
@@ -2803,12 +2800,12 @@ class DiceSoccerGame {
                 // In multiplayer, check if it's local player's turn
                 if (gameState.gameMode === 'multiplayer') {
                     if (multiplayerManager.localPlayer !== effectivePlayer) {
-                        console.log(`Player 1 dice clicked, but not my turn (I'm P${multiplayerManager.localPlayer}, current is P${this.currentPlayer})`);
+                        debugLog(`Player 1 dice clicked, but not my turn (I'm P${multiplayerManager.localPlayer}, current is P${this.currentPlayer})`);
                         return; // Not local player's turn
                     }
                     // For guest, also check if board has been initialized
                     if (!multiplayerManager.isHost && this.board.every(row => row.every(cell => cell === null))) {
-                        console.log('Guest: Board not initialized yet');
+                        debugLog('Guest: Board not initialized yet');
                         return;
                     }
                 }
@@ -2825,12 +2822,12 @@ class DiceSoccerGame {
                 // In multiplayer, check if it's local player's turn
                 if (gameState.gameMode === 'multiplayer') {
                     if (multiplayerManager.localPlayer !== effectivePlayer) {
-                        console.log(`Player 2 dice clicked, but not my turn (I'm P${multiplayerManager.localPlayer}, current is P${this.currentPlayer})`);
+                        debugLog(`Player 2 dice clicked, but not my turn (I'm P${multiplayerManager.localPlayer}, current is P${this.currentPlayer})`);
                         return; // Not local player's turn
                     }
                     // For guest, also check if board has been initialized
                     if (!multiplayerManager.isHost && this.board.every(row => row.every(cell => cell === null))) {
-                        console.log('Guest: Board not initialized yet');
+                        debugLog('Guest: Board not initialized yet');
                         return;
                     }
                 }
@@ -2913,7 +2910,7 @@ class DiceSoccerGame {
                 }
             }
             
-            console.log(`🔵 Host sending initialPositions with my color: ${gameState.player1Shirt}`);
+            debugLog(`🔵 Host sending initialPositions with my color: ${gameState.player1Shirt}`);
             
             multiplayerManager.sendEvent({
                 type: 'initialPositions',
@@ -2922,7 +2919,7 @@ class DiceSoccerGame {
             });
         } else {
             // Guest sends their color to host
-            console.log(`🟠 Guest sending my color to host: ${gameState.player1Shirt}`);
+            debugLog(`🟠 Guest sending my color to host: ${gameState.player1Shirt}`);
             
             multiplayerManager.sendEvent({
                 type: 'guestColor',
@@ -2935,7 +2932,7 @@ class DiceSoccerGame {
         switch (event.type) {
             case 'initialPositions':
                 // Guest or spectator receives initial board and host's color
-                console.log(`📥 Guest/Spectator received initialPositions with host color: ${event.myColor}`);
+                debugLog(`📥 Guest/Spectator received initialPositions with host color: ${event.myColor}`);
                 
                 // Spectators should not send events back
                 if (gameState.gameMode === 'spectator') {
@@ -2952,7 +2949,7 @@ class DiceSoccerGame {
                     });
                     this.renderBoard();
                     
-                    console.log(`✅ Spectator colors set: Host P1=${hostColor}, Guest P2=${guestColor || hostColor}`);
+                    debugLog(`✅ Spectator colors set: Host P1=${hostColor}, Guest P2=${guestColor || hostColor}`);
                     break;
                 }
                 
@@ -2980,7 +2977,7 @@ class DiceSoccerGame {
                     myColor: myColor
                 });
                 
-                console.log(`✅ Guest colors set: My P1=${myColor}, Opponent P2=${opponentColor}`);
+                debugLog(`✅ Guest colors set: My P1=${myColor}, Opponent P2=${opponentColor}`);
                 break;
                 
             case 'guestColor':
@@ -2990,7 +2987,7 @@ class DiceSoccerGame {
                     break;
                 }
                 
-                console.log(`📥 Host received guest color: ${event.myColor}`);
+                debugLog(`📥 Host received guest color: ${event.myColor}`);
                 
                 const guestColor = event.myColor || 'blue';
                 const hostMyColor = gameState.player1Shirt;
@@ -3000,7 +2997,7 @@ class DiceSoccerGame {
                 if (guestColor === hostMyColor) {
                     // Same color - host picks a random different one for guest
                     finalGuestColor = getRandomDifferentShirtColor(hostMyColor);
-                    console.log(`⚠️ Color conflict! Both have ${hostMyColor}. Host assigning random color for guest: ${finalGuestColor}`);
+                    debugLog(`⚠️ Color conflict! Both have ${hostMyColor}. Host assigning random color for guest: ${finalGuestColor}`);
                 }
                 
                 // Host sees their color as P1, guest's color as P2
@@ -3015,18 +3012,18 @@ class DiceSoccerGame {
                     });
                 }
                 
-                console.log(`✅ Host colors set: My P1=${hostMyColor}, Guest P2=${finalGuestColor}`);
+                debugLog(`✅ Host colors set: My P1=${hostMyColor}, Guest P2=${finalGuestColor}`);
                 break;
                 
             case 'colorCorrected':
                 // Guest receives corrected opponent color from host (in case of conflict)
-                console.log(`📥 Guest received color correction: opponent now ${event.correctedColor}`);
+                debugLog(`📥 Guest received color correction: opponent now ${event.correctedColor}`);
                 
                 // Update opponent's color (P2 from guest's perspective)
                 gameState.setMultiplayerColors(gameState.getPlayer1Shirt(), event.correctedColor);
                 this.renderBoard();
                 
-                console.log(`✅ Guest updated opponent color to: ${event.correctedColor}`);
+                debugLog(`✅ Guest updated opponent color to: ${event.correctedColor}`);
                 break;
                 
             case 'diceRolled':
@@ -3101,7 +3098,7 @@ class DiceSoccerGame {
                     // Check for goal
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
-                        console.log('Goal detected from opponent move!');
+                        debugLog('Goal detected from opponent move!');
                         // Don't call handleGoal - opponent already sent goal event
                     } else if (gameState.gameMode !== 'spectator') {
                         // Switch to local player's turn (not for spectators)
@@ -3123,7 +3120,7 @@ class DiceSoccerGame {
                     // Check for goal
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
-                        console.log('Goal detected from opponent move!');
+                        debugLog('Goal detected from opponent move!');
                         // Don't call handleGoal - opponent already sent goal event
                     } else if (gameState.gameMode !== 'spectator') {
                         // Switch to local player's turn (not for spectators)
@@ -3196,18 +3193,18 @@ class DiceSoccerGame {
                     this.waitingForMove = false;
                     this.diceValue = 0;
                     
-                    console.log(`📍 playerMoved completed. Checking for goal: toCol=${event.toCol}, piece.player=${piece.player}`);
+                    debugLog(`📍 playerMoved completed. Checking for goal: toCol=${event.toCol}, piece.player=${piece.player}`);
                     
                     // Check for goal
                     const middleRow = Math.floor(this.rows / 2);
                     if ((event.toCol === 0 && piece.player === 2) || (event.toCol === this.cols - 1 && piece.player === 1)) {
-                        console.log('⚽ Goal detected from opponent move!');
+                        debugLog('⚽ Goal detected from opponent move!');
                         // Don't call handleGoal here - opponent already sent goal event
                         // Just update the scores when we receive the goal event
                         debugLog('Waiting for goal event from opponent...');
                     } else if (gameState.gameMode !== 'spectator') {
                         // Only switch player if not spectating (spectators just watch)
-                        console.log('🔄 No goal, switching player after opponent move');
+                        debugLog('🔄 No goal, switching player after opponent move');
                         setTimeout(() => this.switchPlayer(), 200);
                     } else {
                         // Spectators just update UI

@@ -12,25 +12,23 @@ The `config.json` file in the root directory controls the logging behavior:
 
 ```json
 {
-  "multiplayer-server": "php",
-  "php-server": "multiplayer-server.php",
-  "nodejs-server": "",
-  "python-server": "",
-  "log-enabled": true
+  "websocket-server": "ws://localhost:7860",
+  "log-enabled": false,
+  "log-script": "logger.php",
+  "debug-mode": false
 }
 ```
 
 **Options:**
-- `multiplayer-server`: Server type to use ("php", "nodejs", or "python")
-- `php-server`: URL to PHP multiplayer server
-- `nodejs-server`: URL to Node.js multiplayer server (future)
-- `python-server`: URL to Python multiplayer server (future)
+- `websocket-server`: Websocket URL to multiplayer server
 - `log-enabled`: Enable/disable game logging (true/false)
+- `log-script`: URL to the logger.php script (can be external URL)
+- `debug-mode`: Enable/disable debug mode (true/false)
 
 ## Log Files
 
 ### Location
-All log files are stored in the `multiplayer-logs/` directory.
+All log files are stored in the `logs/` directory.
 
 ### Naming Convention
 Log files are named using the format:
@@ -51,10 +49,10 @@ Each log file contains:
    
 2. **Player Information**
    - Player names
-   - IP addresses (for multiplayer)
    - Device type (Mobile, Tablet, Desktop)
    - Device name (for mobile devices)
    - Operating System (Windows, macOS, iOS, Android, etc.)
+   - Windoww resolution
    - Browser and version
    
 3. **Game Events**
@@ -81,6 +79,7 @@ Player 1: John
 Player 1 Device: Desktop
 Player 1 OS: Windows 10/11
 Player 1 Browser: Chrome 120.0.6099.130
+Player 1 Resolution: 824x629
 Player 2: AI (hard)
 Player 2: AI Opponent
 
@@ -219,7 +218,6 @@ The logging system automatically detects and logs:
 
 Log files contain:
 - Player names (as entered by users)
-- IP addresses
 - User agent strings
 - Device and browser information
 - Game statistics and timestamps
@@ -234,7 +232,7 @@ Log files contain:
 ## Manual Log Management
 
 Logs can be managed manually:
-1. Access the `multiplayer-logs/` directory on the server
+1. Access the `logs/` directory on the server
 2. Log files are plain text and can be viewed/edited with any text editor
 3. Delete old logs manually to manage disk space
 4. Consider implementing automated cleanup scripts
@@ -248,160 +246,6 @@ Logs can be managed manually:
 - Web-based log viewer dashboard
 - Export logs to CSV/JSON format
 
-## Configuration
-
-### config.json
-
-The `config.json` file in the root directory controls the logging behavior:
-
-```json
-{
-  "multiplayer-server": "php",
-  "php-server": "multiplayer-server.php",
-  "nodejs-server": "",
-  "python-server": "",
-  "log-enabled": true
-}
-```
-
-**Options:**
-- `multiplayer-server`: Server type to use ("php", "nodejs", or "python")
-- `php-server`: URL to PHP multiplayer server
-- `nodejs-server`: URL to Node.js multiplayer server (future)
-- `python-server`: URL to Python multiplayer server (future)
-- `log-enabled`: Enable/disable game logging (true/false)
-
-## Log Files
-
-### Location
-All log files are stored in the `multiplayer-logs/` directory.
-
-### Naming Convention
-Log files are named using the format:
-```
-YYYY-MM-DD_HHmmss_RANDOMID.log
-```
-
-Example: `2025-11-02_143025_a3f2b8c1.log`
-
-### Log File Structure
-
-Each log file contains:
-
-1. **Header Information**
-   - Log ID (8-character random string)
-   - Start time
-   
-2. **Player Information**
-   - Player 1 (Host) name and IP address
-   - Player 2 (Guest) name and IP address
-   
-3. **Game Events**
-   - Timestamped events during gameplay
-   - Dice rolls, moves, goals, etc.
-   
-4. **Final Results** (when game completes)
-   - End time
-   - Winner
-   - Final score
-   - Player statistics (moves, thinking time)
-   - Total game time
-
-### Example Log File
-
-```
-=== DICE SOCCER MULTIPLAYER GAME LOG ===
-Log ID: a3f2b8c1
-Start Time: 2025-11-02 14:30:25
-
---- PLAYER INFORMATION ---
-Player 1 (Host): John
-Player 1 IP: 192.168.1.100
-Player 2 (Guest): Sarah
-Player 2 IP: 192.168.1.101
-
---- GAME DATA ---
-Status: In Progress
-
---- GAME EVENTS ---
-[2025-11-02 14:30:30] DICE_ROLLED: Player 1 rolled 4
-[2025-11-02 14:30:35] PLAYER_MOVED: Player 1 moved from (2,1) to (2,2)
-[2025-11-02 14:30:40] DICE_ROLLED: Player 2 rolled 6
-...
-
---- GAME COMPLETED ---
-End Time: 2025-11-02 14:45:12
-End Reason: Completed
-
---- FINAL RESULTS ---
-Winner: John
-Final Score: 3 - 1
-
---- STATISTICS ---
-Player 1 Total Moves: 45
-Player 1 Thinking Time: 5:23
-Player 2 Total Moves: 38
-Player 2 Thinking Time: 4:51
-Total Game Time: 14:47
-
-=== END OF LOG ===
-```
-
-## API Endpoints
-
-### multiplayer-logger.php
-
-The PHP logging script accepts POST requests with the following actions:
-
-#### 1. Start Game Log
-```json
-{
-  "action": "start",
-  "player1Name": "John",
-  "player2Name": "Sarah",
-  "player1IP": "192.168.1.100",
-  "player2IP": "192.168.1.101",
-  "startTime": "2025-11-02 14:30:25"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "logId": "a3f2b8c1",
-  "logFilename": "2025-11-02_143025_a3f2b8c1.log"
-}
-```
-
-#### 2. Log Event
-```json
-{
-  "action": "event",
-  "logId": "a3f2b8c1",
-  "eventType": "DICE_ROLLED",
-  "eventData": "Player 1 rolled 4"
-}
-```
-
-#### 3. End Game Log
-```json
-{
-  "action": "end",
-  "logId": "a3f2b8c1",
-  "endTime": "2025-11-02 14:45:12",
-  "winner": "John",
-  "player1Score": 3,
-  "player2Score": 1,
-  "player1Moves": 45,
-  "player2Moves": 38,
-  "player1ThinkingTime": "5:23",
-  "player2ThinkingTime": "4:51",
-  "totalGameTime": "14:47",
-  "reason": "Completed"
-}
-```
-
 ## Implementation Details
 
 ### JavaScript Classes
@@ -413,7 +257,6 @@ The PHP logging script accepts POST requests with the following actions:
 
 #### GameLogger
 - Handles all logging operations
-- Automatically fetches player IP addresses
 - Tracks game session with unique log ID
 - Formats time data for readability
 
@@ -425,7 +268,7 @@ The PHP logging script accepts POST requests with the following actions:
 
 2. **Game Start** (`app.js`)
    - Creates log file when multiplayer game starts (host only)
-   - Records player names and IP addresses
+   - Records player names
 
 3. **Game End** (`game.js`)
    - Writes final statistics when game completes
@@ -434,14 +277,13 @@ The PHP logging script accepts POST requests with the following actions:
 ## Requirements
 
 - PHP 7.0 or higher (for logging functionality)
-- Write permissions on the `multiplayer-logs/` directory
+- Write permissions on the `logs/` directory
 - If PHP is not available, logging is automatically disabled
 
 ## Privacy Considerations
 
 Log files contain:
 - Player names (as entered by users)
-- IP addresses
 - Game statistics and timestamps
 
 **Important:** Ensure compliance with local privacy laws and regulations. Consider:
@@ -453,7 +295,7 @@ Log files contain:
 ## Manual Log Management
 
 Logs can only be edited or deleted manually:
-1. Access the `multiplayer-logs/` directory on the server
+1. Access the `logs/` directory on the server
 2. Log files are plain text and can be viewed/edited with any text editor
 3. Delete old logs manually to manage disk space
 4. There is no web interface for log management by design
