@@ -8,7 +8,7 @@
  * - Connection management
 */
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 const http = require('http');
 const socketIO = require('socket.io');
@@ -139,6 +139,56 @@ io.on('connection', (socket) => {
                 return callback({ success: false, error: 'Player not found' });
             }
             
+            // Check if player is still in an active game
+            const gameId = playerGames.get(playerId);
+            if (gameId && games.has(gameId)) {
+                const game = games.get(gameId);
+                console.log(`⚠️ ${player.playerName} trying to enter lobby while still in game ${gameId}, ending game`);
+                
+                // Get opponent
+                const opponentId = game.host.playerId === playerId ? game.guest.playerId : game.host.playerId;
+                const opponent = players.get(opponentId);
+                
+                // Notify opponent that game ended
+                if (opponent) {
+                    const opponentSocket = io.sockets.sockets.get(opponent.socketId);
+                    if (opponentSocket) {
+                        opponentSocket.emit('gameEvent', {
+                            type: 'gameEnded',
+                            reason: 'opponent_left',
+                            timestamp: Date.now()
+                        });
+                    }
+                    opponent.status = 'available';
+                    opponent.inGame = false;
+                    playerGames.delete(opponentId);
+                }
+                
+                // Clean up any spectators
+                if (game.spectators && game.spectators.size > 0) {
+                    for (const spectatorId of game.spectators) {
+                        const spectator = players.get(spectatorId);
+                        if (spectator) {
+                            const spectatorSocket = io.sockets.sockets.get(spectator.socketId);
+                            if (spectatorSocket) {
+                                spectatorSocket.emit('gameEvent', {
+                                    type: 'gameEnded',
+                                    reason: 'player_left',
+                                    timestamp: Date.now()
+                                });
+                            }
+                            spectator.status = 'available';
+                            spectator.inLobby = true;
+                        }
+                    }
+                    game.spectators.clear();
+                }
+                
+                // Clean up game
+                games.delete(gameId);
+                playerGames.delete(playerId);
+            }
+            
             // Update player name if provided (player may have changed their name)
             if (data.playerName && data.playerName !== player.playerName) {
                 console.log(`📝 Player name updated: ${player.playerName} -> ${data.playerName}`);
@@ -147,6 +197,7 @@ io.on('connection', (socket) => {
             
             player.inLobby = true;
             player.status = 'available';
+            player.inGame = false;
             player.lastSeen = Date.now();
             
             socket.join('lobby');

@@ -2709,12 +2709,31 @@ class DiceSoccerGame {
         const player2Panel = document.querySelector('.player2-panel');
         
         if (player1Panel && player2Panel) {
-            if (this.currentPlayer === 1) {
-                player1Panel.classList.add('active-player');
-                player2Panel.classList.remove('active-player');
+            // In multiplayer, guest sees the board flipped:
+            // - Guest controls Player 2 but sees themselves in the Player 1 panel (bottom)
+            // - Host controls Player 1 and sees themselves in the Player 1 panel (bottom)
+            const isGuest = gameState.gameMode === 'multiplayer' && multiplayerManager && multiplayerManager.localPlayer === 2;
+            
+            if (isGuest) {
+                // Guest perspective: flip the highlighting
+                if (this.currentPlayer === 2) {
+                    // It's guest's turn (they are Player 2), highlight Player 1 panel (where they see themselves)
+                    player1Panel.classList.add('active-player');
+                    player2Panel.classList.remove('active-player');
+                } else {
+                    // It's opponent's turn (Player 1), highlight Player 2 panel (where they see opponent)
+                    player1Panel.classList.remove('active-player');
+                    player2Panel.classList.add('active-player');
+                }
             } else {
-                player1Panel.classList.remove('active-player');
-                player2Panel.classList.add('active-player');
+                // Host/local/AI perspective: normal highlighting
+                if (this.currentPlayer === 1) {
+                    player1Panel.classList.add('active-player');
+                    player2Panel.classList.remove('active-player');
+                } else {
+                    player1Panel.classList.remove('active-player');
+                    player2Panel.classList.add('active-player');
+                }
             }
         }
     }
