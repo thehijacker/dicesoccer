@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.0.0-spectator-v8';
+const APP_VERSION = '2.0.0';
 
 // Global config
 let appConfig = {
@@ -1584,10 +1584,14 @@ async function startSpectating(game) {
         document.getElementById('player1NameDisplay').textContent = game.player1;
         document.getElementById('player2NameDisplay').textContent = game.player2;
         
-        // Show network icon for multiplayer spectating
-        const networkIcon = document.getElementById('networkIcon');
-        if (networkIcon) {
-            networkIcon.style.display = 'inline';
+        // Show network icons for both players when spectating
+        const networkIconPlayer1 = document.getElementById('networkIconPlayer1');
+        const networkIconPlayer2 = document.getElementById('networkIconPlayer2');
+        if (networkIconPlayer1) {
+            networkIconPlayer1.style.display = 'inline';
+        }
+        if (networkIconPlayer2) {
+            networkIconPlayer2.style.display = 'inline';
         }
         
         // Show game screen
@@ -1677,10 +1681,14 @@ async function exitSpectatorMode() {
         multiplayerManager.onEvent = null;
     }
     
-    // Hide network icon and spectator count
-    const networkIcon = document.getElementById('networkIcon');
-    if (networkIcon) {
-        networkIcon.style.display = 'none';
+    // Hide network icons and spectator count
+    const networkIconPlayer1 = document.getElementById('networkIconPlayer1');
+    const networkIconPlayer2 = document.getElementById('networkIconPlayer2');
+    if (networkIconPlayer1) {
+        networkIconPlayer1.style.display = 'none';
+    }
+    if (networkIconPlayer2) {
+        networkIconPlayer2.style.display = 'none';
     }
     
     const spectatorCountDiv = document.getElementById('spectatorCount');
@@ -2039,10 +2047,14 @@ function startMultiplayerGame(role, opponent) {
         document.getElementById('player2NameDisplay').textContent = gameState.player2Name;
     }
     
-    // Show network icon for multiplayer
-    const networkIcon = document.getElementById('networkIcon');
-    if (networkIcon) {
-        networkIcon.style.display = 'inline';
+    // Show network icon only for Player 2 (the opponent) when playing
+    const networkIconPlayer1 = document.getElementById('networkIconPlayer1');
+    const networkIconPlayer2 = document.getElementById('networkIconPlayer2');
+    if (networkIconPlayer1) {
+        networkIconPlayer1.style.display = 'none'; // Hide for Player 1 (local player)
+    }
+    if (networkIconPlayer2) {
+        networkIconPlayer2.style.display = 'inline'; // Show for Player 2 (opponent)
     }
     
     showScreen('gameScreen');
@@ -2105,10 +2117,14 @@ function showScreen(screenId) {
             updateOrientationDisplay(gameState.orientation);
         }
         
-        // Hide network icon when returning to menu
-        const networkIcon = document.getElementById('networkIcon');
-        if (networkIcon) {
-            networkIcon.style.display = 'none';
+        // Hide network icons when returning to menu
+        const networkIconPlayer1 = document.getElementById('networkIconPlayer1');
+        const networkIconPlayer2 = document.getElementById('networkIconPlayer2');
+        if (networkIconPlayer1) {
+            networkIconPlayer1.style.display = 'none';
+        }
+        if (networkIconPlayer2) {
+            networkIconPlayer2.style.display = 'none';
         }
     }
 }
