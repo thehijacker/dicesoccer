@@ -115,61 +115,7 @@ class DatabaseManager {
             getRefreshToken: this.db.prepare('SELECT * FROM refresh_tokens WHERE token_id = ? AND is_revoked = 0'),
             revokeToken: this.db.prepare('UPDATE refresh_tokens SET is_revoked = 1 WHERE token_id = ?'),
             revokeUserTokens: this.db.prepare('UPDATE refresh_tokens SET is_revoked = 1 WHERE user_id = ?'),
-            cleanExpiredTokens: this.db.prepare('DELETE FROM refresh_tokens WHERE expires_at < ?'),
-            
-            // Game queries
-            saveGame: this.db.prepare(`
-                INSERT INTO games (game_id, player1_id, player2_id, winner_id, score_p1, score_p2, 
-                                   total_moves, game_duration, started_at, ended_at, week_number, is_ranked, game_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `),
-            getGameById: this.db.prepare('SELECT * FROM games WHERE game_id = ?'),
-            getUserGames: this.db.prepare(`
-                SELECT * FROM games 
-                WHERE (player1_id = ? OR player2_id = ?) AND is_ranked = 1
-                ORDER BY ended_at DESC 
-                LIMIT ?
-            `),
-            
-            // Stats queries
-            getWeeklyStats: this.db.prepare('SELECT * FROM weekly_stats WHERE user_id = ? AND week_number = ?'),
-            upsertWeeklyStats: this.db.prepare(`
-                INSERT INTO weekly_stats (user_id, week_number, games_played, games_won, games_lost, 
-                                          total_score_for, total_score_against, elo_rating, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id, week_number) DO UPDATE SET
-                    games_played = games_played + excluded.games_played,
-                    games_won = games_won + excluded.games_won,
-                    games_lost = games_lost + excluded.games_lost,
-                    total_score_for = total_score_for + excluded.total_score_for,
-                    total_score_against = total_score_against + excluded.total_score_against,
-                    elo_rating = excluded.elo_rating,
-                    updated_at = excluded.updated_at
-            `),
-            getWeeklyLeaderboard: this.db.prepare(`
-                SELECT ws.*, u.username, u.profile_data
-                FROM weekly_stats ws
-                JOIN users u ON ws.user_id = u.user_id
-                WHERE ws.week_number = ? AND u.is_guest = 0 AND ws.games_played >= ?
-                ORDER BY ws.elo_rating DESC
-                LIMIT ?
-            `),
-            
-            getAllTimeStats: this.db.prepare('SELECT * FROM alltime_stats WHERE user_id = ?'),
-            upsertAllTimeStats: this.db.prepare(`
-                INSERT INTO alltime_stats (user_id, total_games, total_wins, total_losses, 
-                                           total_score_for, total_score_against, current_elo, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id) DO UPDATE SET
-                    total_games = total_games + excluded.total_games,
-                    total_wins = total_wins + excluded.total_wins,
-                    total_losses = total_losses + excluded.total_losses,
-                    total_score_for = total_score_for + excluded.total_score_for,
-                    total_score_against = total_score_against + excluded.total_score_against,
-                    current_elo = excluded.current_elo,
-                    last_game_at = excluded.updated_at,
-                    updated_at = excluded.updated_at
-            `)
+            cleanExpiredTokens: this.db.prepare('DELETE FROM refresh_tokens WHERE expires_at < ?')
         };
 
         console.log('✅ Prepared statements ready');
