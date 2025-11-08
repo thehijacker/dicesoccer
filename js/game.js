@@ -2652,7 +2652,7 @@ class DiceSoccerGame {
         }
     }
 
-    endGame() {
+    async endGame() {
         this.totalGameTime = Date.now() - this.gameStartTime;
         
         const player1Name = gameState.player1Name || translationManager.get('player1');
@@ -2694,7 +2694,7 @@ class DiceSoccerGame {
         
         // Record multiplayer game for ELO and stats (only for registered users)
         if (gameState.gameMode === 'multiplayer' && window.authClient && multiplayerManager) {
-            this.recordMultiplayerGame(winner);
+            await this.recordMultiplayerGame(winner);
         }
         
         // Spectators don't see winner modal - show temporary notification and stay watching
@@ -2714,13 +2714,32 @@ class DiceSoccerGame {
         
         document.getElementById('winnerMessage').textContent = `${winner} ${translationManager.get('wins')}!`;
 
-        const statsHTML = `
+        let statsHTML = `
             <p style="font-size: 1.5em; margin: 10px 0; text-align: center;"><strong>${this.player1Score}:${this.player2Score}</strong></p>
             <p><strong>${player1Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player1ThinkingTime)}</p>
             <p><strong>${player2Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player2ThinkingTime)}</p>
             <p><strong>${translationManager.get('totalMoves')}:</strong> ${totalMoves}</p>
             <p><strong>${translationManager.get('totalTime')}:</strong> ${this.formatTime(this.totalGameTime)}</p>
         `;
+        
+        // Add ELO changes if available (multiplayer ranked games)
+        if (this.eloChanges) {
+            const myChange = this.eloChanges.player1;
+            const changeColor = myChange.change >= 0 ? '#4CAF50' : '#f44336';
+            const changeSign = myChange.change >= 0 ? '+' : '';
+            
+            statsHTML += `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ddd;">
+                    <p style="font-weight: bold; color: ${changeColor}; font-size: 1.2em;">
+                        ${translationManager.get('eloRating') || 'ELO Rating'}: ${myChange.newElo} 
+                        (${changeSign}${myChange.change})
+                    </p>
+                </div>
+            `;
+            
+            // Clear for next game
+            this.eloChanges = null;
+        }
         
         document.getElementById('finalStatsContent').innerHTML = statsHTML;
         document.getElementById('goalModal').classList.remove('active');
