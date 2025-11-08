@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  dicesoccer:
+    image: ghcr.io/thehijacker/dicesoccer:dev
+    container_name: dicesoccer
+    volumes:
+      - /mnt/usb_1/Docker/Dicesoccer/config.json:/var/www/html/config.json
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    networks:
+      - dicesoccer-network
+
+  dicesoccer-ws:
+    image: ghcr.io/thehijacker/dicesoccer-websocket:dev
+    container_name: dicesoccer-ws
+    environment:
+      # Server Configuration
+      - PORT=7860
+      - NODE_ENV=production
+      - CORS_ORIGIN=*
+      
+      # CRITICAL: JWT Secret - Generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+      # This MUST be set to a secure random string in production!
+      - JWT_SECRET=${JWT_SECRET:-CHANGE_THIS_TO_A_SECURE_RANDOM_STRING}
+      
+      # Database path inside container
+      - DB_PATH=/app/data/dicesoccer.db
+      
+      # Security Configuration
+      - MAX_FAILED_ATTEMPTS=5
+      - LOCKOUT_DURATION_MINUTES=15
+      - RATE_LIMIT_WINDOW_SECONDS=60
+      - RATE_LIMIT_MAX_ATTEMPTS=5
+      
+      # Token Configuration
+      - JWT_ACCESS_EXPIRY=15m
+      - JWT_REFRESH_EXPIRY=7d
+      
+      # Backup Configuration
+      - BACKUP_ENABLED=true
+      - BACKUP_INTERVAL_HOURS=24
+      - BACKUP_PATH=/app/backups/
+    volumes:
+      # Persist database across container restarts
+      - /mnt/usb_1/Docker/Dicesoccer/websocket-data:/app/data
+      # Persist backups
+      - /mnt/usb_1/Docker/Dicesoccer/websocket-backups:/app/backups
+    ports:
+      - "3123:7860"
+    restart: unless-stopped
+    networks:
+      - dicesoccer-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:7860', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  dicesoccer-network:
+    driver: bridge

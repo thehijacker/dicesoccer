@@ -15,6 +15,24 @@ const socketIO = require('socket.io');
 const cors = require('cors');
 const crypto = require('crypto');
 
+// Import authentication and database managers
+const authManager = require('./auth-manager');
+const dbManager = require('./database/db-manager');
+
+// Initialize database
+try {
+    dbManager.initialize();
+    console.log('✅ Database initialized successfully');
+    
+    // Start token cleanup job (every hour)
+    setInterval(() => {
+        authManager.cleanupExpiredTokens();
+    }, 60 * 60 * 1000);
+} catch (error) {
+    console.error('❌ Failed to initialize database:', error);
+    process.exit(1);
+}
+
 // Configuration
 const PORT = process.env.PORT || 7860;
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
@@ -125,6 +143,153 @@ io.on('connection', (socket) => {
             callback({ success: false, error: error.message });
         }
     });
+    
+    // === AUTHENTICATION ENDPOINTS ===
+    
+    // Register new user
+    socket.on('register', async (data, callback) => {
+        try {
+            console.log('📝 Registration attempt:', data.username);
+            const result = await authManager.register({
+                username: data.username,
+                password: data.password,
+                email: data.email
+            });
+            
+            if (result.success) {
+                console.log(`✅ User registered: ${data.username}`);
+            }
+            
+            callback(result);
+        } catch (error) {
+            console.error('Registration error:', error);
+            callback({ success: false, error: 'Registration failed' });
+        }
+    });
+    
+    // Login user
+    socket.on('login', async (data, callback) => {
+        try {
+            console.log('🔐 Login attempt:', data.username);
+            
+            // Get user agent and IP from socket
+            const userAgent = socket.handshake.headers['user-agent'];
+            const ipAddress = socket.handshake.address;
+            
+            const result = await authManager.login({
+                username: data.username,
+                password: data.password,
+                userAgent,
+                ipAddress
+            });
+            
+            if (result.success) {
+                console.log(`✅ User logged in: ${data.username}`);
+                
+                // Store authenticated user info in socket
+                socket.userId = result.user.userId;
+                socket.username = result.user.username;
+                socket.isAuthenticated = true;
+            }
+            
+            callback(result);
+        } catch (error) {
+            console.error('Login error:', error);
+            callback({ success: false, error: 'Login failed' });
+        }
+    });
+    
+    // Refresh access token
+    socket.on('refreshToken', async (data, callback) => {
+        try {
+            const result = await authManager.refreshToken({
+                refreshToken: data.refreshToken
+            });
+            
+            if (result.success) {
+                socket.userId = result.user.userId;
+                socket.username = result.user.username;
+                socket.isAuthenticated = true;
+            }
+            
+            callback(result);
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            callback({ success: false, error: 'Token refresh failed' });
+        }
+    });
+    
+    // Logout user
+    socket.on('logout', async (data, callback) => {
+        try {
+            const result = await authManager.logout({
+                refreshToken: data.refreshToken
+            });
+            
+            if (result.success) {
+                socket.isAuthenticated = false;
+                socket.userId = null;
+                socket.username = null;
+                console.log('✅ User logged out');
+            }
+            
+            callback(result);
+        } catch (error) {
+            console.error('Logout error:', error);
+            callback({ success: false, error: 'Logout failed' });
+        }
+    });
+    
+    // Create guest user
+    socket.on('createGuest', (data, callback) => {
+        try {
+            const result = authManager.createGuestUser(data.guestName);
+            
+            if (result.success) {
+                socket.userId = result.user.userId;
+                socket.username = result.user.username;
+                socket.isGuest = true;
+                console.log(`✅ Guest user created: ${result.user.username}`);
+            }
+            
+            callback(result);
+        } catch (error) {
+            console.error('Guest creation error:', error);
+            callback({ success: false, error: 'Failed to create guest user' });
+        }
+    });
+    
+    // Verify access token (for auto-login)
+    socket.on('verifyToken', (data, callback) => {
+        try {
+            const result = authManager.verifyAccessToken(data.accessToken);
+            
+            if (result.valid) {
+                socket.userId = result.userId;
+                socket.username = result.username;
+                socket.isAuthenticated = true;
+                
+                callback({
+                    success: true,
+                    user: {
+                        userId: result.userId,
+                        username: result.username
+                    }
+                });
+            } else {
+                callback({
+                    success: false,
+                    error: result.error,
+                    expired: result.expired
+                });
+            }
+        } catch (error) {
+            console.error('Token verification error:', error);
+            callback({ success: false, error: 'Token verification failed' });
+        }
+    });
+    
+    // === END AUTHENTICATION ENDPOINTS ===
     
     // Enter lobby
     socket.on('enterLobby', (data, callback) => {

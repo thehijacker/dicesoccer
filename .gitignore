@@ -1,6 +1,18 @@
 # Ignore production config.json
 config.json
 
+# Docker environment files
+.env
+.env.docker
+
+# WebSocket Server
+websocket-server/.env
+websocket-server/database/*.db
+websocket-server/database/*.db-shm
+websocket-server/database/*.db-wal
+websocket-server/backups/
+websocket-server/node_modules/
+
 # Misc folder
 misc/*
 
