@@ -226,8 +226,8 @@ class AuthUI {
             if (window.gameState) {
                 window.gameState.player1Name = username;
             }
-            // Store in localStorage for persistence (use the same key as GameState)
-            localStorage.setItem('dicesoccer_player1', username);
+            // DON'T store authenticated names in localStorage - they should be loaded from auth on each page load
+            // Manual names are stored separately when user clicks the button
             console.log('✅ Updated Player 1 name to:', username);
         }
     }

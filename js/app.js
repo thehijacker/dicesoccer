@@ -436,7 +436,66 @@ function registerServiceWorker() {
     }
 }
 
-function initializeApp() {
+// Initialize auth client and update UI with authenticated name
+async function initializeAuthAndUpdateUI() {
+    // First, load saved names from localStorage (defaults)
+    let player1Name = gameState.player1Name;
+    let player2Name = gameState.player2Name;
+    
+    // Try to initialize auth client if not already done
+    if (window.authClient && !window.authClient.socket && appConfig['websocket-server']) {
+        try {
+            debugLog('🔐 Initializing auth client for auto-login...');
+            const authSocket = io(appConfig['websocket-server'], {
+                transports: ['websocket', 'polling'],
+                timeout: 5000
+            });
+            
+            // Wait for connection with timeout
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    debugLog('⚠️ Auth connection timeout');
+                    resolve(); // Don't block UI
+                }, 3000);
+                
+                authSocket.on('connect', async () => {
+                    clearTimeout(timeout);
+                    try {
+                        await window.authClient.initialize(authSocket);
+                        debugLog('✅ Auth auto-login complete');
+                        resolve();
+                    } catch (err) {
+                        debugLog('⚠️ Auth initialization error:', err);
+                        resolve(); // Don't block UI
+                    }
+                });
+                
+                authSocket.on('connect_error', () => {
+                    clearTimeout(timeout);
+                    debugLog('⚠️ Auth connection failed');
+                    resolve(); // Don't block UI
+                });
+            });
+        } catch (err) {
+            debugLog('⚠️ Auth initialization error:', err);
+        }
+    }
+    
+    // Now check if authenticated and override the name
+    if (window.authClient && window.authClient.currentUser) {
+        player1Name = window.authClient.getUserDisplayName();
+        gameState.player1Name = player1Name;
+        debugLog('👤 Using authenticated name:', player1Name);
+    }
+    
+    // Update UI
+    document.getElementById('player1Name').textContent = player1Name;
+    document.getElementById('player2Name').textContent = player2Name;
+    
+    debugLog('✅ Player names initialized:', player1Name, player2Name);
+}
+
+async function initializeApp() {
     // Apply translations
     translationManager.updateUI();
     
@@ -446,9 +505,8 @@ function initializeApp() {
         versionElement.textContent = `v${APP_VERSION}`;
     }
 
-    // Load saved player names
-    document.getElementById('player1Name').textContent = gameState.player1Name;
-    document.getElementById('player2Name').textContent = gameState.player2Name;
+    // Initialize auth and update player names
+    await initializeAuthAndUpdateUI();
 
     // Update shirt icons
     updateShirtIcon(1, gameState.player1Shirt);
@@ -2065,16 +2123,15 @@ async function handleLogout() {
         await window.authClient.logout();
     }
     
-    // Reset player name to default
+    // Reset player name to manual/default name from localStorage
     const player1NameEl = document.getElementById('player1Name');
     if (player1NameEl) {
-        const defaultName = translationManager.get('player1');
-        player1NameEl.textContent = defaultName;
-        // Use the same localStorage key as GameState
-        localStorage.removeItem('dicesoccer_player1');
-        // Also update gameState
+        // Load the manual name from localStorage (or default)
+        const manualName = localStorage.getItem('dicesoccer_player1') || translationManager.get('player1');
+        player1NameEl.textContent = manualName;
+        // Update gameState
         if (window.gameState) {
-            window.gameState.player1Name = defaultName;
+            window.gameState.player1Name = manualName;
         }
     }
     
