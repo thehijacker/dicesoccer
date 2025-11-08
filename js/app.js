@@ -173,20 +173,20 @@ document.addEventListener('DOMContentLoaded', () => {
     setViewportHeight();
     
     // Load configuration first, then initialize
-    window.configManager.loadConfig().then(() => {
-        window.gameLogger.initialize().then(() => {
-            // Initialize authentication client
-            if (window.authClient) {
-                window.authClient.initialize().then(() => {
-                    // Initialize stats client after auth
-                    if (window.statsClient && window.authClient.socket) {
-                        window.statsClient.initialize(window.authClient.socket);
-                    }
-                });
+    window.configManager.loadConfig().then(async () => {
+        await window.gameLogger.initialize();
+        
+        // Initialize authentication client and WAIT for it
+        if (window.authClient) {
+            await window.authClient.initialize();
+            // Initialize stats client after auth
+            if (window.statsClient && window.authClient.socket) {
+                window.statsClient.initialize(window.authClient.socket);
             }
-            
-            initializeApp();
-        });
+        }
+        
+        // NOW initialize app after auth is complete
+        await initializeApp();
     });
     
     registerServiceWorker();
@@ -442,59 +442,20 @@ async function initializeAuthAndUpdateUI() {
     let player1Name = gameState.player1Name;
     let player2Name = gameState.player2Name;
     
-    // Try to initialize auth client if not already done
-    if (window.authClient && !window.authClient.socket && appConfig['websocket-server']) {
-        try {
-            debugLog('🔐 Initializing auth client for auto-login...');
-            const authSocket = io(appConfig['websocket-server'], {
-                transports: ['websocket', 'polling'],
-                timeout: 10000 // Increase timeout
-            });
-            
-            // Wait for connection with longer timeout
-            await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    debugLog('⚠️ Auth connection timeout');
-                    resolve(); // Don't block UI
-                }, 8000); // Increase to 8 seconds
-                
-                authSocket.on('connect', async () => {
-                    clearTimeout(timeout);
-                    try {
-                        // WAIT for auth initialization to complete (including auto-login)
-                        await window.authClient.initialize(authSocket);
-                        debugLog('✅ Auth auto-login complete');
-                        
-                        // NOW update the player name if authenticated as registered user
-                        if (window.authClient && window.authClient.currentUser && !window.authClient.isGuest) {
-                            const username = window.authClient.getUserDisplayName();
-                            player1Name = username;
-                            gameState.player1Name = username;
-                            debugLog('👤 Updated to authenticated registered user name:', username);
-                        } else if (window.authClient && window.authClient.isGuest) {
-                            debugLog('👤 Guest user - keeping manual name for local games');
-                        }
-                        
-                        resolve(); // NOW we resolve after auth is complete
-                    } catch (err) {
-                        debugLog('⚠️ Auth initialization error:', err);
-                        resolve(); // Don't block UI
-                    }
-                });
-                
-                authSocket.on('connect_error', () => {
-                    clearTimeout(timeout);
-                    debugLog('⚠️ Auth connection failed');
-                    resolve(); // Don't block UI
-                });
-            });
-        } catch (err) {
-            debugLog('⚠️ Auth initialization error:', err);
-        }
+    // Auth client should already be initialized by DOMContentLoaded handler
+    // Just check if authenticated and update the name accordingly
+    if (window.authClient && window.authClient.currentUser && !window.authClient.isGuest) {
+        // Registered user - use their username
+        player1Name = window.authClient.getUserDisplayName();
+        gameState.player1Name = player1Name;
+        debugLog('👤 Using authenticated registered user name:', player1Name);
+    } else if (window.authClient && window.authClient.isGuest) {
+        // Guest - keep manual name for local/AI games
+        debugLog('👤 Guest user - keeping manual name for local games:', player1Name);
+    } else {
+        // Not authenticated - use manual name
+        debugLog('👤 Not authenticated - using manual name:', player1Name);
     }
-    
-    // Note: We already updated player1Name above if authenticated
-    // No need to check again here
     
     // Update UI
     document.getElementById('player1Name').textContent = player1Name;
