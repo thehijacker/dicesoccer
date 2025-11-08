@@ -20,9 +20,36 @@ class AuthClient {
 
     /**
      * Initialize authentication client
+     * @param {Object} socket - Socket.IO socket instance (optional, will create if not provided)
      */
-    async initialize(socket) {
-        this.socket = socket;
+    async initialize(socket = null) {
+        if (!socket) {
+            // Create socket connection if not provided
+            const serverUrl = window.configManager?.getWebSocketServerUrl() || 'ws://localhost:7860';
+            console.log('🔌 Connecting to auth server:', serverUrl);
+            this.socket = io(serverUrl);
+            
+            // Wait for connection
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Connection timeout'));
+                }, 5000);
+                
+                this.socket.on('connect', () => {
+                    clearTimeout(timeout);
+                    console.log('✅ Connected to auth server');
+                    resolve();
+                });
+                
+                this.socket.on('connect_error', (error) => {
+                    clearTimeout(timeout);
+                    console.error('❌ Connection failed:', error.message);
+                    reject(error);
+                });
+            });
+        } else {
+            this.socket = socket;
+        }
         
         // Try to auto-login with stored tokens
         await this.attemptAutoLogin();
@@ -373,4 +400,131 @@ class AuthClient {
 }
 
 // Create global auth client instance
-const authClient = new AuthClient();
+window.authClient = new AuthClient();
+
+// Testing helper - available in console as window.testAuth
+window.testAuth = {
+    /**
+     * Initialize and test connection
+     * Usage: await testAuth.init('http://192.168.28.53:3123')
+     */
+    async init(serverUrl = null) {
+        try {
+            if (serverUrl) {
+                // Override config temporarily
+                if (window.configManager) {
+                    window.configManager.config['websocket-server'] = serverUrl;
+                }
+            }
+            
+            console.log('🔄 Initializing auth client...');
+            await window.authClient.initialize();
+            console.log('✅ Auth client initialized');
+            console.log('📊 Auth state:', {
+                authenticated: window.authClient.isAuthenticated,
+                user: window.authClient.currentUser,
+                isGuest: window.authClient.isGuest
+            });
+            return true;
+        } catch (error) {
+            console.error('❌ Init failed:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Register new user
+     * Usage: await testAuth.register('testuser', 'Test123456', 'test@test.com')
+     */
+    async register(username, password, email) {
+        try {
+            console.log('🔄 Registering user:', username);
+            const result = await window.authClient.register(username, password, email);
+            console.log('✅ Registration successful:', result);
+            return result;
+        } catch (error) {
+            console.error('❌ Registration failed:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Login existing user
+     * Usage: await testAuth.login('testuser', 'Test123456')
+     */
+    async login(username, password) {
+        try {
+            console.log('🔄 Logging in:', username);
+            const result = await window.authClient.login(username, password);
+            console.log('✅ Login successful:', result);
+            return result;
+        } catch (error) {
+            console.error('❌ Login failed:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Create guest user
+     * Usage: await testAuth.guest('MyGuestName')
+     */
+    async guest(displayName = null) {
+        try {
+            console.log('🔄 Creating guest user:', displayName || '(auto)');
+            const result = await window.authClient.createGuest(displayName);
+            console.log('✅ Guest created:', result);
+            return result;
+        } catch (error) {
+            console.error('❌ Guest creation failed:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Logout current user
+     * Usage: await testAuth.logout()
+     */
+    async logout() {
+        try {
+            console.log('🔄 Logging out...');
+            await window.authClient.logout();
+            console.log('✅ Logged out');
+            return true;
+        } catch (error) {
+            console.error('❌ Logout failed:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Get current auth state
+     * Usage: testAuth.status()
+     */
+    status() {
+        console.log('📊 Authentication Status:');
+        console.log('  Authenticated:', window.authClient.isAuthenticated);
+        console.log('  Guest:', window.authClient.isGuest);
+        console.log('  User:', window.authClient.currentUser);
+        console.log('  Display Name:', window.authClient.getUserDisplayName());
+        return {
+            authenticated: window.authClient.isAuthenticated,
+            guest: window.authClient.isGuest,
+            user: window.authClient.currentUser,
+            displayName: window.authClient.getUserDisplayName()
+        };
+    },
+
+    /**
+     * Clear stored tokens
+     * Usage: testAuth.clearTokens()
+     */
+    clearTokens() {
+        localStorage.removeItem('ds_access_token');
+        localStorage.removeItem('ds_refresh_token');
+        console.log('✅ Tokens cleared');
+    }
+};
+
+console.log('🎮 Dice Soccer Auth Client loaded');
+console.log('💡 Test auth with: testAuth.init("http://192.168.28.53:3123")');
+
