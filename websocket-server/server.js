@@ -15,9 +15,14 @@ const socketIO = require('socket.io');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs');
 
 // Import translation system
-const translationsPath = path.join(__dirname, '../js/translations.js');
+// Try Docker path first (/app/js/translations.js), then local path (../js/translations.js)
+let translationsPath = path.join(__dirname, 'js/translations.js');
+if (!fs.existsSync(translationsPath)) {
+    translationsPath = path.join(__dirname, '../js/translations.js');
+}
 const { translationManager } = require(translationsPath);
 
 // Import authentication and database managers

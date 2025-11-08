@@ -8,9 +8,14 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const dbManager = require('./database/db-manager');
 const path = require('path');
+const fs = require('fs');
 
 // Import translation system
-const translationsPath = path.join(__dirname, '../js/translations.js');
+// Try Docker path first (/app/js/translations.js), then local path (../js/translations.js)
+let translationsPath = path.join(__dirname, 'js/translations.js');
+if (!fs.existsSync(translationsPath)) {
+    translationsPath = path.join(__dirname, '../js/translations.js');
+}
 const { translationManager } = require(translationsPath);
 
 // Configuration
