@@ -11,16 +11,20 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 # Copy package files
-COPY package*.json ./
+COPY websocket-server/package*.json ./
 
 # Install dependencies (including bcrypt, better-sqlite3)
 RUN npm install --omit=dev && npm cache clean --force
 
 # Copy application files
-COPY server.js ./
-COPY auth-manager.js ./
-COPY stats-manager.js ./
-COPY database/ ./database/
+COPY websocket-server/server.js ./
+COPY websocket-server/auth-manager.js ./
+COPY websocket-server/stats-manager.js ./
+COPY websocket-server/database/ ./database/
+
+# Copy translations.js from js directory (shared with client)
+RUN mkdir -p /app/js
+COPY js/translations.js ./js/translations.js
 
 # Create directories for data persistence
 RUN mkdir -p /app/data /app/backups && \

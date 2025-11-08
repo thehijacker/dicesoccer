@@ -7,6 +7,7 @@ on:
       - "dev"
     paths:
       - 'websocket-server/**'
+      - 'js/translations.js'
       - '.github/workflows/docker-publish-websocket.yml'
   release:
     types: [ published ]
@@ -47,7 +48,7 @@ jobs:
       - name: Build and push WebSocket Server Docker image
         uses: docker/build-push-action@v4
         with:
-          context: ./websocket-server
+          context: .
           file: ./websocket-server/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
