@@ -41,16 +41,31 @@ class WebSocketMultiplayerManager {
             console.log('♻️ Reusing existing socket connection from authClient');
             this.socket = existingSocket;
             this.connected = true;
-            this.setupEventHandlers();
             
-            // Still need to call 'init' event to register as player
+            // Get or generate player ID
+            this.playerId = localStorage.getItem('dicesoccer_mp_playerid');
+            if (!this.playerId) {
+                this.playerId = this.generateId();
+                localStorage.setItem('dicesoccer_mp_playerid', this.playerId);
+            }
+            
+            // Get the authenticated player name
+            const playerName = window.authClient?.getUserDisplayName() || 'Player';
+            
+            // Initialize player on server with the existing authenticated socket
             return new Promise((resolve, reject) => {
-                const playerName = window.authClient?.getUserDisplayName() || 'Player';
-                this.socket.emit('init', { playerName }, (response) => {
+                this.socket.emit('init', { 
+                    playerId: this.playerId,
+                    playerName: playerName 
+                }, (response) => {
                     if (response.success) {
                         this.playerId = response.playerId;
                         localStorage.setItem('dicesoccer_mp_playerid', this.playerId);
                         console.log(`✅ Player initialized: ${playerName} (${this.playerId})`);
+                        
+                        // Set up multiplayer-specific event handlers (challenges, game events, etc.)
+                        this.setupMultiplayerEventHandlers();
+                        
                         if (typeof window.hideConnectionModal === 'function') {
                             window.hideConnectionModal();
                         }
@@ -364,6 +379,75 @@ class WebSocketMultiplayerManager {
         } catch (error) {
             reject(error);
         }
+    }
+
+    // Setup multiplayer event handlers (for when reusing auth socket)
+    setupMultiplayerEventHandlers() {
+        // Event handlers for multiplayer functionality
+        this.socket.on('challenge', (data) => {
+            wsDebugLog('⚔️ Received challenge:', data);
+            if (window.handleIncomingChallenge) {
+                window.handleIncomingChallenge(data);
+            }
+        });
+
+        this.socket.on('challengeAccepted', (data) => {
+            wsDebugLog('🎮 Challenge accepted:', data);
+            this.gameId = data.gameId;
+            this.role = data.role;
+            this.isHost = (data.role === 'host');
+            this.localPlayer = this.isHost ? 1 : 2;
+            this.opponentInfo = data.opponent;
+            this.isInGame = true;
+
+            if (this.onEvent) {
+                this.onEvent({
+                    type: 'challengeAccepted',
+                    ...data
+                });
+            }
+        });
+
+        this.socket.on('challengeDeclined', (data) => {
+            wsDebugLog('❌ Challenge declined:', data);
+            if (window.handleChallengeDeclined) {
+                window.handleChallengeDeclined(data);
+            }
+        });
+
+        this.socket.on('challengeCancelled', (data) => {
+            console.log('🚫 WebSocket received challengeCancelled event:', data);
+            wsDebugLog('🚫 Challenge cancelled:', data);
+            if (window.handleChallengeCancelled) {
+                console.log('✅ Calling window.handleChallengeCancelled');
+                window.handleChallengeCancelled(data);
+            } else {
+                console.error('❌ window.handleChallengeCancelled is not defined!');
+            }
+        });
+
+        this.socket.on('lobbyUpdate', () => {
+            if (window.refreshLobby) {
+                window.refreshLobby();
+            }
+        });
+
+        this.socket.on('gameEvent', (event) => {
+            wsDebugLog('📨 Received game event:', event.type);
+            if (this.onEvent) {
+                this.onEvent(event);
+            }
+        });
+
+        this.socket.on('serverShutdown', (data) => {
+            console.warn('⚠️ Server shutting down:', data.message);
+            const isLocalOrAIGame = gameState && (gameState.gameMode === 'local' || gameState.gameMode === 'ai');
+            if (!isLocalOrAIGame) {
+                if (typeof window.showConnectionLost === 'function') {
+                    window.showConnectionLost();
+                }
+            }
+        });
     }
 
     // === LOBBY SYSTEM METHODS ===

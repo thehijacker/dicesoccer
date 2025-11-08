@@ -48,7 +48,7 @@ try {
 // Configuration
 const PORT = process.env.PORT || 7860;
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-const HEARTBEAT_TIMEOUT = 60000; // 60 seconds
+const HEARTBEAT_TIMEOUT = 150000; // 2.5 minutes - allow time for winner modal
 const LOBBY_CLEANUP_INTERVAL = 60000; // 1 minute
 
 // Data structures
@@ -77,8 +77,8 @@ const io = socketIO(server, {
         methods: ['GET', 'POST'],
         credentials: true
     },
-    pingTimeout: 60000,
-    pingInterval: 25000
+    pingTimeout: 120000,  // 2 minutes - allow time for winner modal, stats review
+    pingInterval: 30000   // 30 seconds - ping more frequently
 });
 
 console.log('🚀 Dice Soccer WebSocket Server starting...');
@@ -138,8 +138,6 @@ io.on('connection', (socket) => {
             const userId = socket.userId || null; // Set by auth middleware if authenticated
             const username = socket.username || null;
             
-            console.log(`🔍 [INIT] Socket ${socket.id} - userId: ${userId}, username: ${username}, isAuthenticated: ${socket.isAuthenticated}`);
-            
             // Store player info
             players.set(playerId, {
                 playerId,
@@ -155,7 +153,7 @@ io.on('connection', (socket) => {
             
             lobbySockets.set(socket.id, playerId);
             
-            console.log(`👤 Player initialized: ${playerName} (${playerId}) with userId: ${userId || 'none'}`);
+            console.log(`👤 Player initialized: ${playerName} (${playerId})${userId ? ` [User: ${username}]` : ''}`);
             
             callback({ success: true, playerId });
         } catch (error) {
@@ -251,21 +249,12 @@ io.on('connection', (socket) => {
                 
                 // Update player info with userId and username
                 const playerId = lobbySockets.get(socket.id);
-                console.log(`🔍 [LOGIN] Socket: ${socket.id}, PlayerId from map: ${playerId}`);
                 if (playerId) {
                     const player = players.get(playerId);
-                    console.log(`🔍 [LOGIN] Player object before update:`, JSON.stringify(player, null, 2));
                     if (player) {
                         player.userId = result.user.userId;
                         player.username = result.user.username;
-                        console.log(`✅ Updated player ${playerId} with userId: ${result.user.userId}, username: ${result.user.username}`);
-                        console.log(`🔍 [LOGIN] Player object after update:`, JSON.stringify(player, null, 2));
-                    } else {
-                        console.log(`❌ [LOGIN] Player ${playerId} not found in players Map`);
                     }
-                } else {
-                    console.log(`❌ [LOGIN] No playerId found for socket ${socket.id} in lobbySockets`);
-                    console.log(`🔍 [LOGIN] lobbySockets Map size: ${lobbySockets.size}`);
                 }
             }
             
@@ -709,20 +698,6 @@ io.on('connection', (socket) => {
             accepter.status = 'in-game';
             accepter.inLobby = false;
             accepter.inGame = true;
-            
-            // Debug: Check player data before sending
-            console.log('🔍 Challenger data:', {
-                playerId: challenger.playerId,
-                playerName: challenger.playerName,
-                userId: challenger.userId,
-                username: challenger.username
-            });
-            console.log('🔍 Accepter data:', {
-                playerId: accepter.playerId,
-                playerName: accepter.playerName,
-                userId: accepter.userId,
-                username: accepter.username
-            });
             
             // Remove challenge
             challenges.delete(challengeId);

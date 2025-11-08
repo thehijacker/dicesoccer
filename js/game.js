@@ -2694,9 +2694,7 @@ class DiceSoccerGame {
         
         // Record multiplayer game for ELO and stats (only for registered users)
         if (gameState.gameMode === 'multiplayer' && window.authClient && multiplayerManager) {
-            console.log('🎮 Recording multiplayer game...');
             await this.recordMultiplayerGame(winner);
-            console.log('✅ Game recorded, eloChanges:', this.eloChanges);
         }
         
         // Spectators don't see winner modal - show temporary notification and stay watching
@@ -2726,12 +2724,11 @@ class DiceSoccerGame {
         
         // Add ELO changes if available (multiplayer ranked games)
         if (this.eloChanges) {
-            console.log('✅ Displaying ELO changes in winner modal:', this.eloChanges);
             const myChange = this.eloChanges.player1;
             const changeColor = myChange.change >= 0 ? '#4CAF50' : '#f44336';
             const changeSign = myChange.change >= 0 ? '+' : '';
             
-            statsHTML += `
+            const eloHTML = `
                 <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ddd;">
                     <p style="font-weight: bold; color: ${changeColor}; font-size: 1.2em;">
                         ${translationManager.get('eloRating') || 'ELO Rating'}: ${myChange.newElo} 
@@ -2739,11 +2736,10 @@ class DiceSoccerGame {
                     </p>
                 </div>
             `;
+            statsHTML += eloHTML;
             
             // Clear for next game
             this.eloChanges = null;
-        } else {
-            console.log('ℹ️ No ELO changes to display (unranked or guest game)');
         }
         
         document.getElementById('finalStatsContent').innerHTML = statsHTML;
@@ -2787,18 +2783,11 @@ class DiceSoccerGame {
     async recordMultiplayerGame(winnerName) {
         // Only record if both players are registered (not guests)
         if (!window.authClient || !window.authClient.isAuthenticated || window.authClient.isGuest) {
-            console.log('⚠️ Game not recorded: Guest or not authenticated');
             return;
         }
         
-        console.log('📋 Checking opponent info:', {
-            opponentUserId: multiplayerManager.opponentUserId,
-            opponentUsername: multiplayerManager.opponentUsername,
-            multiplayerManager: multiplayerManager
-        });
-        
         if (!multiplayerManager || !multiplayerManager.opponentUserId) {
-            console.log('⚠️ Game not recorded: Missing opponent info');
+            console.warn('⚠️ Game not recorded: Missing opponent info');
             return;
         }
         
@@ -2829,25 +2818,11 @@ class DiceSoccerGame {
             gameMode: 'multiplayer'
         };
         
-        console.log('📊 Recording game to server:', gameData);
-        
         try {
             const result = await multiplayerManager.recordGame(gameData);
             
-            if (result.success) {
-                if (result.ranked) {
-                    console.log('✅ Ranked game recorded successfully');
-                    
-                    // Store ELO changes to display in winner modal
-                    if (result.eloChanges) {
-                        this.eloChanges = result.eloChanges;
-                        console.log('📈 ELO Changes received:', result.eloChanges);
-                    }
-                } else {
-                    console.log('ℹ️ Game completed (unranked)');
-                }
-            } else {
-                console.error('❌ Failed to record game:', result.error);
+            if (result.success && result.ranked && result.eloChanges) {
+                this.eloChanges = result.eloChanges;
             }
         } catch (error) {
             console.error('❌ Error recording game:', error);
@@ -3617,13 +3592,23 @@ class DiceSoccerGame {
                 const player2Name = gameState.player2Name || translationManager.get('player2');
                 const totalMoves = this.player1Score >= 3 ? this.player1Moves : this.player2Moves;
                 
-                const statsHTML = `
+                let statsHTML = `
                     <p style="font-size: 1.5em; margin: 10px 0; text-align: center;"><strong>${this.player1Score}:${this.player2Score}</strong></p>
                     <p><strong>${player1Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player1ThinkingTime)}</p>
                     <p><strong>${player2Name}:</strong> ${translationManager.get('thinkingTime')}: ${this.formatTime(this.player2ThinkingTime)}</p>
                     <p><strong>${translationManager.get('totalMoves')}:</strong> ${totalMoves}</p>
                     <p><strong>${translationManager.get('totalTime')}:</strong> ${this.formatTime(this.totalGameTime)}</p>
                 `;
+                
+                // Re-add ELO changes if they were displayed (this.eloChanges was cleared in endGame)
+                // Check if the modal already has ELO displayed and preserve it
+                const currentContent = document.getElementById('finalStatsContent').innerHTML;
+                if (currentContent.includes('ELO Rating')) {
+                    const eloMatch = currentContent.match(/<div style="margin-top: 15px.*?<\/div>/s);
+                    if (eloMatch) {
+                        statsHTML += eloMatch[0];
+                    }
+                }
                 
                 document.getElementById('finalStatsContent').innerHTML = statsHTML;
                 debugLog(`Updated stats display - P1 moves: ${this.player1Moves}, P2 moves: ${this.player2Moves}`);
