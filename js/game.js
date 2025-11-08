@@ -2724,6 +2724,7 @@ class DiceSoccerGame {
         
         // Add ELO changes if available (multiplayer ranked games)
         if (this.eloChanges) {
+            console.log('✅ Displaying ELO changes in winner modal:', this.eloChanges);
             const myChange = this.eloChanges.player1;
             const changeColor = myChange.change >= 0 ? '#4CAF50' : '#f44336';
             const changeSign = myChange.change >= 0 ? '+' : '';
@@ -2739,6 +2740,8 @@ class DiceSoccerGame {
             
             // Clear for next game
             this.eloChanges = null;
+        } else {
+            console.log('ℹ️ No ELO changes to display (unranked or guest game)');
         }
         
         document.getElementById('finalStatsContent').innerHTML = statsHTML;
@@ -2827,10 +2830,10 @@ class DiceSoccerGame {
                 if (result.ranked) {
                     console.log('✅ Ranked game recorded successfully');
                     
-                    // Store ELO changes to display after winner modal
+                    // Store ELO changes to display in winner modal
                     if (result.eloChanges) {
                         this.eloChanges = result.eloChanges;
-                        console.log('📈 ELO Changes:', result.eloChanges);
+                        console.log('📈 ELO Changes received:', result.eloChanges);
                     }
                 } else {
                     console.log('ℹ️ Game completed (unranked)');

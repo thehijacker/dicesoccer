@@ -217,7 +217,7 @@ document.addEventListener('keydown', (e) => {
     
     // DEBUG: Ctrl+Shift+E to instantly end multiplayer game with random result
     if (appConfig['debug-mode'] && e.ctrlKey && e.shiftKey && e.key === 'E') {
-        if (gameState.gameMode === 'multiplayer' && currentGame) {
+        if (gameState.gameMode === 'multiplayer' && currentGame && multiplayerManager) {
             e.preventDefault();
             console.log('🎮 DEBUG: Force ending multiplayer game...');
             
@@ -228,9 +228,31 @@ document.addEventListener('keydown', (e) => {
             ];
             const randomScore = scores[Math.floor(Math.random() * scores.length)];
             
-            // Set the scores
-            currentGame.player1Score = randomScore[0];
-            currentGame.player2Score = randomScore[1];
+            // For host: set scores directly
+            // For guest: need to flip perspective (guest sees themselves as P1)
+            let score1, score2;
+            if (multiplayerManager.isHost) {
+                score1 = randomScore[0];
+                score2 = randomScore[1];
+            } else {
+                // Guest perspective: flip scores
+                score1 = randomScore[1];
+                score2 = randomScore[0];
+            }
+            
+            console.log(`   Setting scores: ${score1}-${score2} (host perspective)`);
+            
+            // Send score update to opponent
+            multiplayerManager.sendEvent({
+                type: 'scoreUpdate',
+                scoringPlayer: score1 > currentGame.player1Score ? 1 : 2,
+                score1: score1,
+                score2: score2
+            });
+            
+            // Update local scores
+            currentGame.player1Score = score1;
+            currentGame.player2Score = score2;
             
             // Set random stats
             currentGame.player1Moves = Math.floor(Math.random() * 20) + 10;
@@ -238,10 +260,10 @@ document.addEventListener('keydown', (e) => {
             currentGame.player1ThinkingTime = Math.floor(Math.random() * 60000) + 30000; // 30-90s
             currentGame.player2ThinkingTime = Math.floor(Math.random() * 60000) + 30000;
             
-            console.log(`   Final score: ${randomScore[0]}-${randomScore[1]}`);
-            
-            // End the game
-            currentGame.endGame();
+            // End the game after a brief delay
+            setTimeout(() => {
+                currentGame.endGame();
+            }, 500);
         }
     }
 });
