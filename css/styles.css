@@ -1910,6 +1910,40 @@ input:checked + .toggle-label::before {
     margin-bottom: 15px;
 }
 
+.lobby-user-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: #f0f7ff;
+    border: 1px solid #2196F3;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    flex-shrink: 0;
+}
+
+.lobby-user-info {
+    font-size: 14px;
+    color: #1976D2;
+    font-weight: 600;
+}
+
+.lobby-logout-btn {
+    padding: 6px 12px;
+    background: #757575;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.3s ease;
+}
+
+.lobby-logout-btn:hover {
+    background: #616161;
+}
+
 .lobby-sections-wrapper {
     display: flex;
     flex-direction: column;

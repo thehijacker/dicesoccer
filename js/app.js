@@ -757,6 +757,10 @@ function setupEventListeners() {
         closeLobby();
     });
 
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        await handleLogout();
+    });
+
     // Spectate modal handlers
     document.getElementById('confirmSpectateBtn')?.addEventListener('click', () => {
         if (window.spectateGameInfo) {
@@ -1442,6 +1446,9 @@ async function proceedToLobby() {
         // Open lobby modal
         openModal('lobbyModal');
         
+        // Update user status display
+        updateLobbyUserStatus();
+        
         // Initial refresh
         await refreshLobby();
         
@@ -2015,6 +2022,51 @@ async function closeLobby() {
     await multiplayerManager.leaveLobby();
     
     closeModal('lobbyModal');
+}
+
+function updateLobbyUserStatus() {
+    const userInfoEl = document.getElementById('lobbyUserInfo');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if (!userInfoEl || !logoutBtn) return;
+    
+    if (window.authClient && window.authClient.currentUser) {
+        const username = window.authClient.currentUser.username;
+        const isGuest = window.authClient.isGuest;
+        
+        if (isGuest) {
+            userInfoEl.textContent = `Playing as Guest: ${username}`;
+            logoutBtn.textContent = 'Exit';
+        } else {
+            userInfoEl.textContent = `Logged in as: ${username}`;
+            logoutBtn.textContent = 'Logout';
+        }
+        logoutBtn.style.display = 'block';
+    } else {
+        userInfoEl.textContent = 'Not logged in';
+        logoutBtn.style.display = 'none';
+    }
+}
+
+async function handleLogout() {
+    // Close lobby first
+    await closeLobby();
+    
+    // Logout from auth client
+    if (window.authClient) {
+        await window.authClient.logout();
+    }
+    
+    // Reset player name to default
+    const player1NameEl = document.getElementById('player1Name');
+    if (player1NameEl) {
+        const defaultName = translationManager.get('player1');
+        player1NameEl.textContent = defaultName;
+        localStorage.removeItem('ds_player1_name');
+    }
+    
+    // Show a message
+    console.log('👋 Logged out successfully');
 }
 
 function getTimeAgo(timestamp) {
