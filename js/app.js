@@ -163,6 +163,22 @@ function handleGameplayOrientationChange() {
     }
 }
 
+// Update multiplayer button state based on availability
+function updateMultiplayerButtonState(available) {
+    const multiplayerBtn = document.getElementById('multiplayerBtn');
+    if (!multiplayerBtn) return;
+    
+    if (available) {
+        multiplayerBtn.style.opacity = '1';
+        multiplayerBtn.style.pointerEvents = 'auto';
+        multiplayerBtn.title = '';
+    } else {
+        multiplayerBtn.style.opacity = '0.5';
+        multiplayerBtn.style.pointerEvents = 'none';
+        multiplayerBtn.title = translationManager.get('multiplayerUnavailable');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Prevent context menu on right-click and long-press
     document.addEventListener('contextmenu', (e) => {
@@ -176,16 +192,27 @@ document.addEventListener('DOMContentLoaded', () => {
     window.configManager.loadConfig().then(async () => {
         await window.gameLogger.initialize();
         
-        // Initialize authentication client and WAIT for it
+        // Initialize authentication client (but don't block if it fails)
+        let multiplayerAvailable = false;
         if (window.authClient) {
-            await window.authClient.initialize();
-            // Initialize stats client after auth
-            if (window.statsClient && window.authClient.socket) {
-                window.statsClient.initialize(window.authClient.socket);
+            try {
+                await window.authClient.initialize();
+                // Initialize stats client after auth
+                if (window.statsClient && window.authClient.socket) {
+                    window.statsClient.initialize(window.authClient.socket);
+                }
+                multiplayerAvailable = true;
+                console.log('✅ Multiplayer features available');
+            } catch (error) {
+                console.warn('⚠️ Multiplayer unavailable (playing offline):', error.message);
+                // Continue anyway - game works offline
             }
         }
         
-        // NOW initialize app after auth is complete
+        // Update multiplayer button state
+        updateMultiplayerButtonState(multiplayerAvailable);
+        
+        // NOW initialize app after auth attempt (whether successful or not)
         await initializeApp();
     });
     
@@ -779,6 +806,11 @@ function setupEventListeners() {
 
     // Multiplayer lobby
     document.getElementById('multiplayerBtn').addEventListener('click', () => {
+        // Check if multiplayer is available
+        if (!window.authClient || !window.authClient.socket || !window.authClient.socket.connected) {
+            alert(translationManager.get('multiplayerUnavailable') || 'Multiplayer is currently unavailable. Please check your connection.');
+            return;
+        }
         openLobby();
     });
 

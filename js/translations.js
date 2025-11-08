@@ -68,6 +68,7 @@ const translations = {
         waitingForOpponent: "Waiting for opponent to reconnect",
         backToLobby: "Back to Lobby",
         connectionLost: "Connection lost",
+        multiplayerUnavailable: "Multiplayer is currently unavailable. Please check your connection.",
 
         // Lobby
         welcomeToMultiplayer: "Welcome to Multiplayer",
@@ -258,6 +259,7 @@ const translations = {
         waitingForOpponent: "Čakanje na ponovno povezavo nasprotnika",
         backToLobby: "Nazaj v ložo",
         connectionLost: "Povezava izgubljena",
+        multiplayerUnavailable: "Spletno igranje trenutno ni na voljo. Prosim preverite svojo povezavo.",
 
         // Lobby
         welcomeToMultiplayer: "Dobrodošli v spletnem igranju",
@@ -1134,7 +1136,12 @@ class TranslationManager {
     }
 
     detectLanguage() {
-        // Try to get saved language from localStorage
+        // Server-side: default to English
+        if (typeof window === 'undefined') {
+            return 'en';
+        }
+        
+        // Browser-side: try to get saved language from localStorage
         const savedLang = localStorage.getItem('dicesoccer_language');
         if (savedLang && this.translations[savedLang]) {
             return savedLang;
@@ -1169,7 +1176,12 @@ class TranslationManager {
     setLanguage(lang) {
         if (this.translations[lang]) {
             this.currentLanguage = lang;
-            localStorage.setItem('dicesoccer_language', lang);
+            
+            // Only use localStorage in browser environment
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('dicesoccer_language', lang);
+            }
+            
             this.updateUI();
             
             // Notify server of language change (browser only)
