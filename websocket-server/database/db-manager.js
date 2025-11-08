@@ -19,13 +19,36 @@ class DatabaseManager {
      */
     initialize() {
         try {
+            console.log(`📂 Database path: ${this.dbPath}`);
+            
             // Ensure database directory exists
             const dbDir = path.dirname(this.dbPath);
+            console.log(`📂 Checking directory: ${dbDir}`);
+            
             if (!fs.existsSync(dbDir)) {
-                fs.mkdirSync(dbDir, { recursive: true });
+                console.log(`📁 Creating directory: ${dbDir}`);
+                try {
+                    fs.mkdirSync(dbDir, { recursive: true, mode: 0o755 });
+                    console.log(`✅ Directory created: ${dbDir}`);
+                } catch (mkdirError) {
+                    console.error(`❌ Failed to create directory: ${mkdirError.message}`);
+                    throw mkdirError;
+                }
+            } else {
+                console.log(`✅ Directory exists: ${dbDir}`);
+                
+                // Check if directory is writable
+                try {
+                    fs.accessSync(dbDir, fs.constants.W_OK);
+                    console.log(`✅ Directory is writable`);
+                } catch (accessError) {
+                    console.error(`❌ Directory is not writable: ${accessError.message}`);
+                    throw new Error(`Database directory is not writable: ${dbDir}`);
+                }
             }
 
             // Open database connection
+            console.log(`🔌 Opening database connection...`);
             this.db = new Database(this.dbPath, { verbose: console.log });
             
             // Enable WAL mode for better concurrency
