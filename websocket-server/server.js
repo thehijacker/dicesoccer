@@ -249,13 +249,21 @@ io.on('connection', (socket) => {
                 
                 // Update player info with userId and username
                 const playerId = lobbySockets.get(socket.id);
+                console.log(`🔍 [LOGIN] Socket: ${socket.id}, PlayerId from map: ${playerId}`);
                 if (playerId) {
                     const player = players.get(playerId);
+                    console.log(`🔍 [LOGIN] Player object before update:`, JSON.stringify(player, null, 2));
                     if (player) {
                         player.userId = result.user.userId;
                         player.username = result.user.username;
-                        console.log(`✅ Updated player ${playerId} with userId: ${result.user.userId}`);
+                        console.log(`✅ Updated player ${playerId} with userId: ${result.user.userId}, username: ${result.user.username}`);
+                        console.log(`🔍 [LOGIN] Player object after update:`, JSON.stringify(player, null, 2));
+                    } else {
+                        console.log(`❌ [LOGIN] Player ${playerId} not found in players Map`);
                     }
+                } else {
+                    console.log(`❌ [LOGIN] No playerId found for socket ${socket.id} in lobbySockets`);
+                    console.log(`🔍 [LOGIN] lobbySockets Map size: ${lobbySockets.size}`);
                 }
             }
             
@@ -699,6 +707,20 @@ io.on('connection', (socket) => {
             accepter.status = 'in-game';
             accepter.inLobby = false;
             accepter.inGame = true;
+            
+            // Debug: Check player data before sending
+            console.log('🔍 Challenger data:', {
+                playerId: challenger.playerId,
+                playerName: challenger.playerName,
+                userId: challenger.userId,
+                username: challenger.username
+            });
+            console.log('🔍 Accepter data:', {
+                playerId: accepter.playerId,
+                playerName: accepter.playerName,
+                userId: accepter.userId,
+                username: accepter.username
+            });
             
             // Remove challenge
             challenges.delete(challengeId);
