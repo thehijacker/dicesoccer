@@ -56,13 +56,16 @@ class AuthUI {
         console.log('🔐 checkAuth called');
         console.log('  - authClient exists:', !!window.authClient);
         console.log('  - isAuthenticated:', window.authClient?.isAuthenticated);
+        console.log('  - isGuest:', window.authClient?.isGuest);
         console.log('  - currentUser:', window.authClient?.currentUser);
         
         this.onAuthComplete = callback;
         
-        if (window.authClient && window.authClient.isAuthenticated) {
-            // Already authenticated
-            console.log('✅ User already authenticated:', window.authClient.currentUser.username);
+        // Check if authenticated (registered user) OR guest user
+        if (window.authClient && (window.authClient.isAuthenticated || window.authClient.isGuest)) {
+            // Already authenticated or playing as guest
+            const userType = window.authClient.isGuest ? 'guest' : 'registered user';
+            console.log(`✅ User already authenticated as ${userType}:`, window.authClient.currentUser.username);
             if (this.onAuthComplete) this.onAuthComplete();
             return true;
         }
@@ -247,13 +250,21 @@ class AuthUI {
             // Guests use their guest name only in multiplayer, not in local/AI games
             const isGuest = window.authClient && window.authClient.isGuest;
             
+            console.log('🔄 updatePlayerNameInMenu called:');
+            console.log('  - username:', username);
+            console.log('  - isGuest:', isGuest);
+            console.log('  - current gameState.player1Name:', window.gameState?.player1Name);
+            
             if (!isGuest) {
                 player1NameEl.textContent = username;
                 // Also update gameState so it's used in all games
                 if (window.gameState) {
                     window.gameState.player1Name = username;
+                    console.log('✅ Updated Player 1 name to:', username);
+                    console.log('  - gameState.player1Name is now:', window.gameState.player1Name);
+                } else {
+                    console.warn('⚠️ gameState not available');
                 }
-                console.log('✅ Updated Player 1 name to:', username);
             } else {
                 console.log('👤 Guest user - not updating main menu name (keeping manual name for local games)');
             }
