@@ -38,6 +38,8 @@ class AuthClient {
                 this.socket.on('connect', () => {
                     clearTimeout(timeout);
                     console.log('✅ Connected to auth server');
+                    // Send current language to server
+                    this.sendLanguageToServer();
                     resolve();
                 });
                 
@@ -49,12 +51,25 @@ class AuthClient {
             });
         } else {
             this.socket = socket;
+            // Send current language to server for existing socket
+            this.sendLanguageToServer();
         }
         
         // Try to auto-login with stored tokens
         await this.attemptAutoLogin();
         
         return this.isAuthenticated;
+    }
+
+    /**
+     * Send current language preference to server
+     */
+    sendLanguageToServer() {
+        if (this.socket && window.translationManager) {
+            const language = window.translationManager.getCurrentLanguage();
+            this.socket.emit('setLanguage', { language });
+            console.log('🌐 Sent language to server:', language);
+        }
     }
 
     /**

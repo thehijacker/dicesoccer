@@ -14,6 +14,11 @@ const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
+
+// Import translation system
+const translationsPath = path.join(__dirname, '../js/translations.js');
+const { translationManager } = require(translationsPath);
 
 // Import authentication and database managers
 const authManager = require('./auth-manager');
@@ -83,9 +88,36 @@ const io = socketIO(server, {
 
 console.log('🚀 Dice Soccer WebSocket Server starting...');
 
+/**
+ * Helper function to translate error messages for clients
+ * @param {string} errorKey - Translation key (e.g., 'usernameRequired')
+ * @param {string} language - Client language (e.g., 'en', 'si')
+ * @returns {string} - Translated error message
+ */
+function translateError(errorKey, language = 'en') {
+    // Set language temporarily for translation
+    const originalLang = translationManager.currentLanguage;
+    translationManager.setLanguage(language);
+    const translated = translationManager.get(errorKey);
+    translationManager.setLanguage(originalLang);
+    return translated;
+}
+
 // Socket.IO connection handler
 io.on('connection', (socket) => {
     console.log(`✅ Client connected: ${socket.id}`);
+    
+    // Default language for this socket
+    socket.language = 'en';
+    
+    // Set language preference for socket
+    socket.on('setLanguage', (data) => {
+        const { language } = data;
+        if (language && (language === 'en' || language === 'si')) {
+            socket.language = language;
+            console.log(`🌐 Socket ${socket.id} language set to: ${language}`);
+        }
+    });
     
     // Initialize player on connection
     socket.on('init', (data, callback) => {
@@ -214,12 +246,15 @@ io.on('connection', (socket) => {
             
             if (result.success) {
                 console.log(`✅ User registered: ${data.username}`);
+            } else if (result.error) {
+                // Translate error message
+                result.error = translateError(result.error, socket.language);
             }
             
             callback(result);
         } catch (error) {
             console.error('Registration error:', error);
-            callback({ success: false, error: 'Registration failed' });
+            callback({ success: false, error: translateError('registrationFailed', socket.language) });
         }
     });
     
@@ -258,10 +293,15 @@ io.on('connection', (socket) => {
                 }
             }
             
+            // Translate error if login failed
+            if (!result.success && result.error) {
+                result.error = translateError(result.error, socket.language);
+            }
+            
             callback(result);
         } catch (error) {
             console.error('Login error:', error);
-            callback({ success: false, error: 'Login failed' });
+            callback({ success: false, error: translateError('loginFailed', socket.language) });
         }
     });
     
@@ -287,12 +327,14 @@ io.on('connection', (socket) => {
                         console.log(`✅ Updated player ${playerId} with userId: ${result.user.userId} (auto-login)`);
                     }
                 }
+            } else if (result.error) {
+                result.error = translateError(result.error, socket.language);
             }
             
             callback(result);
         } catch (error) {
             console.error('Token refresh error:', error);
-            callback({ success: false, error: 'Token refresh failed' });
+            callback({ success: false, error: translateError('tokenInvalid', socket.language) });
         }
     });
     
@@ -338,12 +380,14 @@ io.on('connection', (socket) => {
                         console.log(`✅ Updated player ${playerId} with guest userId: ${result.user.userId}`);
                     }
                 }
+            } else if (result.error) {
+                result.error = translateError(result.error, socket.language);
             }
             
             callback(result);
         } catch (error) {
             console.error('Guest creation error:', error);
-            callback({ success: false, error: 'Failed to create guest user' });
+            callback({ success: false, error: translateError('failedToCreateGuest', socket.language) });
         }
     });
     
@@ -378,13 +422,13 @@ io.on('connection', (socket) => {
             } else {
                 callback({
                     success: false,
-                    error: result.error,
+                    error: translateError(result.error, socket.language),
                     expired: result.expired
                 });
             }
         } catch (error) {
             console.error('Token verification error:', error);
-            callback({ success: false, error: 'Token verification failed' });
+            callback({ success: false, error: translateError('tokenInvalid', socket.language) });
         }
     });
     

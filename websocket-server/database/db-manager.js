@@ -49,7 +49,7 @@ class DatabaseManager {
 
             // Open database connection
             console.log(`🔌 Opening database connection...`);
-            this.db = new Database(this.dbPath, { verbose: console.log });
+            this.db = new Database(this.dbPath);
             
             // Enable WAL mode for better concurrency
             this.db.pragma('journal_mode = WAL');

@@ -155,7 +155,7 @@ class AuthUI {
             if (this.onAuthComplete) this.onAuthComplete();
         } catch (error) {
             console.error('❌ Guest creation failed:', error);
-            this.showError('loginError', 'Failed to create guest user');
+            this.showError('loginError', translationManager.get('failedToCreateGuest'));
         }
     }
 
@@ -167,7 +167,7 @@ class AuthUI {
         const password = document.getElementById('loginPassword').value;
         
         if (!username || !password) {
-            this.showError('loginError', 'Please enter username and password');
+            this.showError('loginError', translationManager.get('pleaseEnterUsernamePassword'));
             return;
         }
         
@@ -193,7 +193,7 @@ class AuthUI {
             if (this.onAuthComplete) this.onAuthComplete();
         } catch (error) {
             console.error('❌ Login failed:', error);
-            this.showError('loginError', error.message || 'Login failed');
+            this.showError('loginError', error.message || translationManager.get('loginFailed'));
         }
     }
 
@@ -206,17 +206,17 @@ class AuthUI {
         const password = document.getElementById('registerPassword').value;
         
         if (!username) {
-            this.showError('registerError', 'Please enter a username');
+            this.showError('registerError', translationManager.get('pleaseEnterUsername'));
             return;
         }
         
         if (username.length < 3 || username.length > 20) {
-            this.showError('registerError', 'Username must be 3-20 characters');
+            this.showError('registerError', translationManager.get('usernameMustBe'));
             return;
         }
         
         if (!password || password.length < 8) {
-            this.showError('registerError', 'Password must be at least 8 characters');
+            this.showError('registerError', translationManager.get('passwordMustBe'));
             return;
         }
         
@@ -234,7 +234,7 @@ class AuthUI {
             if (this.onAuthComplete) this.onAuthComplete();
         } catch (error) {
             console.error('❌ Registration failed:', error);
-            this.showError('registerError', error.message || 'Registration failed');
+            this.showError('registerError', error.message || translationManager.get('registrationFailed'));
         }
     }
 
@@ -297,20 +297,20 @@ class AuthUI {
         strengthEl.style.display = 'block';
         
         if (strength <= 1) {
-            text = 'Weak';
+            text = translationManager.get('weak');
             color = '#f44336';
         } else if (strength <= 3) {
-            text = 'Fair';
+            text = translationManager.get('fair');
             color = '#FF9800';
         } else if (strength <= 4) {
-            text = 'Good';
+            text = translationManager.get('good');
             color = '#4CAF50';
         } else {
-            text = 'Strong';
+            text = translationManager.get('strong');
             color = '#2196F3';
         }
         
-        strengthEl.textContent = `Password strength: ${text}`;
+        strengthEl.textContent = `${translationManager.get('passwordStrength')}: ${text}`;
         strengthEl.style.color = color;
     }
 

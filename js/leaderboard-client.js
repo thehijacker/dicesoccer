@@ -105,19 +105,19 @@ class LeaderboardClient {
      */
     async loadWeeklyLeaderboard() {
         const listEl = document.getElementById('weeklyLeaderboardList');
-        listEl.innerHTML = '<div class="loading-spinner"></div><p>Loading...</p>';
+        listEl.innerHTML = `<div class="loading-spinner"></div><p>${translationManager.get('loading')}</p>`;
         
         try {
             const leaderboard = await window.statsClient.getWeeklyLeaderboard();
             
             // Update week number
-            document.getElementById('currentWeekNumber').textContent = `Week ${leaderboard.weekNumber}`;
+            document.getElementById('currentWeekNumber').textContent = `${translationManager.get('week')} ${leaderboard.weekNumber}`;
             
             // Render leaderboard
             listEl.innerHTML = this.renderLeaderboard(leaderboard.players, true);
         } catch (error) {
             console.error('Failed to load weekly leaderboard:', error);
-            listEl.innerHTML = '<p class="error-message">Failed to load leaderboard</p>';
+            listEl.innerHTML = `<p class="error-message">${translationManager.get('failedToLoadLeaderboard')}</p>`;
         }
     }
 
@@ -126,7 +126,7 @@ class LeaderboardClient {
      */
     async loadAlltimeLeaderboard() {
         const listEl = document.getElementById('alltimeLeaderboardList');
-        listEl.innerHTML = '<div class="loading-spinner"></div><p>Loading...</p>';
+        listEl.innerHTML = `<div class="loading-spinner"></div><p>${translationManager.get('loading')}</p>`;
         
         try {
             const leaderboard = await window.statsClient.getAllTimeLeaderboard();
@@ -135,7 +135,7 @@ class LeaderboardClient {
             listEl.innerHTML = this.renderLeaderboard(leaderboard.players, false);
         } catch (error) {
             console.error('Failed to load all-time leaderboard:', error);
-            listEl.innerHTML = '<p class="error-message">Failed to load leaderboard</p>';
+            listEl.innerHTML = `<p class="error-message">${translationManager.get('failedToLoadLeaderboard')}</p>`;
         }
     }
 
@@ -144,7 +144,8 @@ class LeaderboardClient {
      */
     renderLeaderboard(players, isWeekly) {
         if (!players || players.length === 0) {
-            return '<p class="no-data-message">No players yet. Be the first!</p>';
+            // make translatable
+            return `<p class="no-data-message">${translationManager.get('noPlayersYet')}</p>`;
         }
         
         let html = '<div class="leaderboard-table">';

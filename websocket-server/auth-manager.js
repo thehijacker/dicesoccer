@@ -7,6 +7,11 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const dbManager = require('./database/db-manager');
+const path = require('path');
+
+// Import translation system
+const translationsPath = path.join(__dirname, '../js/translations.js');
+const { translationManager } = require(translationsPath);
 
 // Configuration
 const SALT_ROUNDS = 12;
@@ -41,15 +46,20 @@ class AuthManager {
      */
     validateUsername(username) {
         if (!username || typeof username !== 'string') {
-            return { valid: false, error: 'Username is required' };
+            return { valid: false, error: 'usernameRequired' };
         }
         
-        if (username.length < 3 || username.length > 20) {
-            return { valid: false, error: 'Username must be 3-20 characters long' };
+        if (username.length < 3) {
+            return { valid: false, error: 'usernameTooShort' };
         }
         
-        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-            return { valid: false, error: 'Username can only contain letters, numbers, and underscores' };
+        if (username.length > 20) {
+            return { valid: false, error: 'usernameTooLong' };
+        }
+        
+        // Allow letters, numbers, spaces, and underscores
+        if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
+            return { valid: false, error: 'usernameInvalidChars' };
         }
         
         return { valid: true };
@@ -60,20 +70,20 @@ class AuthManager {
      */
     validatePassword(password) {
         if (!password || typeof password !== 'string') {
-            return { valid: false, error: 'Password is required' };
+            return { valid: false, error: 'passwordRequired' };
         }
         
         if (password.length < 8) {
-            return { valid: false, error: 'Password must be at least 8 characters long' };
+            return { valid: false, error: 'passwordTooShort' };
         }
         
         if (password.length > 72) {
-            return { valid: false, error: 'Password must be less than 72 characters' };
+            return { valid: false, error: 'passwordTooLong' };
         }
         
         // Check for complexity (at least one number and one letter)
         if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-            return { valid: false, error: 'Password must contain at least one letter and one number' };
+            return { valid: false, error: 'passwordComplexity' };
         }
         
         return { valid: true };
@@ -88,12 +98,12 @@ class AuthManager {
         }
         
         if (typeof email !== 'string') {
-            return { valid: false, error: 'Invalid email format' };
+            return { valid: false, error: 'emailInvalid' };
         }
         
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            return { valid: false, error: 'Invalid email format' };
+            return { valid: false, error: 'emailInvalid' };
         }
         
         return { valid: true };
@@ -148,14 +158,14 @@ class AuthManager {
             // Check if username already exists
             const existingUser = dbManager.statements.getUserByUsername.get(username);
             if (existingUser) {
-                return { success: false, error: 'Username already taken' };
+                return { success: false, error: 'usernameAlreadyTaken' };
             }
             
             // Check if email already exists (if provided)
             if (email) {
                 const existingEmail = dbManager.statements.getUserByEmail.get(email);
                 if (existingEmail) {
-                    return { success: false, error: 'Email already registered' };
+                    return { success: false, error: 'emailAlreadyRegistered' };
                 }
             }
             
@@ -213,15 +223,14 @@ class AuthManager {
             const user = dbManager.statements.getUserByUsername.get(username);
             
             if (!user) {
-                return { success: false, error: 'Invalid username or password' };
+                return { success: false, error: 'invalidCredentials' };
             }
             
             // Check if account is locked
             if (user.locked_until > Date.now()) {
-                const waitMinutes = Math.ceil((user.locked_until - Date.now()) / 60000);
                 return { 
                     success: false, 
-                    error: `Account locked. Try again in ${waitMinutes} minutes.` 
+                    error: 'accountLocked'
                 };
             }
             
@@ -240,18 +249,11 @@ class AuthManager {
                 
                 dbManager.statements.updateFailedAttempts.run(failedAttempts, lockedUntil, user.user_id);
                 
-                const remainingAttempts = MAX_FAILED_ATTEMPTS - failedAttempts;
-                if (remainingAttempts > 0) {
-                    return { 
-                        success: false, 
-                        error: `Invalid username or password. ${remainingAttempts} attempts remaining.` 
-                    };
-                } else {
-                    return { 
-                        success: false, 
-                        error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' 
-                    };
-                }
+                // Always return same error for security
+                return { 
+                    success: false, 
+                    error: 'invalidCredentials'
+                };
             }
             
             // Successful login - reset failed attempts
@@ -352,7 +354,7 @@ class AuthManager {
             }
             
             if (decoded.type !== 'refresh') {
-                return { success: false, error: 'Invalid token type' };
+                return { success: false, error: 'tokenInvalid' };
             }
             
             // Check if token exists and is not revoked
@@ -360,12 +362,12 @@ class AuthManager {
             const storedToken = dbManager.statements.getRefreshToken.get(decoded.tokenId);
             
             if (!storedToken || storedToken.token_hash !== tokenHash) {
-                return { success: false, error: 'Token not found or revoked' };
+                return { success: false, error: 'tokenInvalid' };
             }
             
             // Check if token is expired
             if (storedToken.expires_at < Date.now()) {
-                return { success: false, error: 'Refresh token expired' };
+                return { success: false, error: 'tokenExpired' };
             }
             
             // Verify user still exists in database (security check)
@@ -374,7 +376,7 @@ class AuthManager {
                 console.warn(`⚠️ User no longer exists: ${decoded.username} (${decoded.userId})`);
                 // Revoke the token
                 dbManager.statements.revokeToken.run(decoded.tokenId);
-                return { success: false, error: 'User account not found' };
+                return { success: false, error: 'userNotFound' };
             }
             
             // Generate new access token
@@ -397,7 +399,7 @@ class AuthManager {
             
         } catch (error) {
             console.error('❌ Token refresh error:', error);
-            return { success: false, error: 'Token refresh failed' };
+            return { success: false, error: 'tokenInvalid' };
         }
     }
 
@@ -439,14 +441,14 @@ class AuthManager {
             const decoded = jwt.verify(token, JWT_SECRET);
             
             if (decoded.type !== 'access') {
-                return { valid: false, error: 'Invalid token type' };
+                return { valid: false, error: 'tokenInvalid' };
             }
             
             // Verify user still exists in database (security check)
             const user = dbManager.statements.getUserById.get(decoded.userId);
             if (!user) {
                 console.warn(`⚠️ User no longer exists: ${decoded.username} (${decoded.userId})`);
-                return { valid: false, error: 'User account not found' };
+                return { valid: false, error: 'userNotFound' };
             }
             
             return {
@@ -457,9 +459,9 @@ class AuthManager {
             
         } catch (error) {
             if (error.name === 'TokenExpiredError') {
-                return { valid: false, error: 'Token expired', expired: true };
+                return { valid: false, error: 'tokenExpired', expired: true };
             }
-            return { valid: false, error: 'Invalid token' };
+            return { valid: false, error: 'tokenInvalid' };
         }
     }
 

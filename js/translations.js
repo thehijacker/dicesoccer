@@ -84,6 +84,40 @@ const translations = {
         registerDescription: "Create a new account",
         createAccount: "Create an Account",
         emailOptional: "Email (optional)",
+        
+        // Auth errors
+        failedToCreateGuest: "Failed to create guest user",
+        pleaseEnterUsernamePassword: "Please enter username and password",
+        loginFailed: "Login failed",
+        pleaseEnterUsername: "Please enter a username",
+        usernameMustBe: "Username must be 3-20 characters",
+        passwordMustBe: "Password must be at least 8 characters",
+        registrationFailed: "Registration failed",
+        
+        // Server validation errors
+        usernameRequired: "Username is required",
+        usernameTooShort: "Username must be at least 3 characters long",
+        usernameTooLong: "Username must be less than 20 characters",
+        usernameInvalidChars: "Username can only contain letters, numbers, spaces, and underscores",
+        passwordRequired: "Password is required",
+        passwordTooShort: "Password must be at least 8 characters long",
+        passwordTooLong: "Password must be less than 72 characters",
+        passwordComplexity: "Password must contain at least one letter and one number",
+        emailInvalid: "Invalid email format",
+        usernameAlreadyTaken: "Username already taken",
+        emailAlreadyRegistered: "Email already registered",
+        invalidCredentials: "Invalid username or password",
+        accountLocked: "Account temporarily locked due to too many failed attempts. Try again later.",
+        tokenExpired: "Session expired. Please login again.",
+        tokenInvalid: "Invalid session token",
+        userNotFound: "User not found",
+        
+        // Password strength
+        passwordStrength: "Password strength",
+        weak: "Weak",
+        fair: "Fair",
+        good: "Good",
+        strong: "Strong",
 
         leaderboards: "Leaderboards",
         viewLeaderboard: "View Leaderboard",
@@ -98,6 +132,10 @@ const translations = {
         winLoss: "W-L",
         winPercent: "WIN%",
         goalDiff: "GOAL DIFF",
+        week: "Week",
+        loading: "Loading...",
+        failedToLoadLeaderboard: "Failed to load leaderboard",
+        noPlayersYet: "No players yet. Be the first!",
 
         multiplayerLobby: "Multiplayer Lobby",
         availablePlayers: "Available Players",
@@ -236,6 +274,46 @@ const translations = {
         registerDescription: "Ustvari nov račun",
         createAccount: "Ustvari račun",
         emailOptional: "E-pošta (neobvezno)",
+        
+        // Auth errors
+        failedToCreateGuest: "Ustvarjanje gostujočega uporabnika ni uspelo",
+        pleaseEnterUsernamePassword: "Prosim vnesite uporabniško ime in geslo",
+        loginFailed: "Prijava ni uspela",
+        pleaseEnterUsername: "Prosim vnesite uporabniško ime",
+        usernameMustBe: "Uporabniško ime mora biti dolgo 3-20 znakov",
+        passwordMustBe: "Geslo mora biti dolgo vsaj 8 znakov",
+        registrationFailed: "Registracija ni uspela",
+        
+        // Server validation errors
+        usernameRequired: "Uporabniško ime je obvezno",
+        usernameTooShort: "Uporabniško ime mora biti dolgo vsaj 3 znake",
+        usernameTooLong: "Uporabniško ime mora biti krajše od 20 znakov",
+        usernameInvalidChars: "Uporabniško ime lahko vsebuje samo črke, številke, presledke in podčrtaje",
+        passwordRequired: "Geslo je obvezno",
+        passwordTooShort: "Geslo mora biti dolgo vsaj 8 znakov",
+        passwordTooLong: "Geslo mora biti krajše od 72 znakov",
+        passwordComplexity: "Geslo mora vsebovati vsaj eno črko in eno številko",
+        emailInvalid: "Neveljavna oblika e-pošte",
+        usernameAlreadyTaken: "Uporabniško ime je že zasedeno",
+        emailAlreadyRegistered: "E-pošta je že registrirana",
+        invalidCredentials: "Napačno uporabniško ime ali geslo",
+        accountLocked: "Račun je začasno zaklenjen zaradi preveč neuspelih poskusov. Poskusite kasneje.",
+        tokenExpired: "Seja je potekla. Prosim prijavite se ponovno.",
+        tokenInvalid: "Neveljavna seja",
+        userNotFound: "Uporabnik ni najden",
+        
+        // Password strength
+        passwordStrength: "Moč gesla",
+        weak: "Šibko",
+        fair: "Srednje",
+        good: "Dobro",
+        strong: "Močno",
+        password: "Geslo",
+        back: "Nazaj",
+        register: "Registracija",
+        registerDescription: "Ustvari nov račun",
+        createAccount: "Ustvari račun",
+        emailOptional: "E-pošta (neobvezno)",
         viewLeaderboard: "Poglej lestvico",
 
         leaderboards: "Lestvice",
@@ -251,6 +329,10 @@ const translations = {
         winLoss: "Z-P",
         winPercent: "ZMAGE%",
         goalDiff: "GOL RAZ",
+        week: "Teden",
+        loading: "Nalaganje...",
+        failedToLoadLeaderboard: "Ni uspelo naložiti lestvice",
+        noPlayersYet: "Nobenih igralcev še ni. Bodite prvi!",
 
         multiplayerLobby: "Igralci v loži",
         availablePlayers: "Razpoložljivi igralci",
@@ -1089,6 +1171,12 @@ class TranslationManager {
             this.currentLanguage = lang;
             localStorage.setItem('dicesoccer_language', lang);
             this.updateUI();
+            
+            // Notify server of language change (browser only)
+            if (typeof window !== 'undefined' && window.authClient && window.authClient.socket) {
+                window.authClient.socket.emit('setLanguage', { language: lang });
+                console.log('🌐 Language changed, notified server:', lang);
+            }
         }
     }
 
@@ -1109,6 +1197,11 @@ class TranslationManager {
     }
 
     updateUI() {
+        // Skip DOM operations if running in Node.js (server-side)
+        if (typeof document === 'undefined') {
+            return;
+        }
+        
         // Update all elements with data-translate attribute
         document.querySelectorAll('[data-translate]').forEach(element => {
             const key = element.getAttribute('data-translate');
@@ -1141,3 +1234,8 @@ class TranslationManager {
 
 // Create global translation manager instance
 const translationManager = new TranslationManager();
+
+// Export for Node.js (server-side) and keep global for browser
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { translations, TranslationManager, translationManager };
+}
