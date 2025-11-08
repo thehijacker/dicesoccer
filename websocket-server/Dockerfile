@@ -19,6 +19,7 @@ RUN npm install --omit=dev && npm cache clean --force
 # Copy application files
 COPY server.js ./
 COPY auth-manager.js ./
+COPY stats-manager.js ./
 COPY database/ ./database/
 
 # Create directories for data persistence
