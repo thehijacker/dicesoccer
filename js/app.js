@@ -448,22 +448,34 @@ async function initializeAuthAndUpdateUI() {
             debugLog('🔐 Initializing auth client for auto-login...');
             const authSocket = io(appConfig['websocket-server'], {
                 transports: ['websocket', 'polling'],
-                timeout: 5000
+                timeout: 10000 // Increase timeout
             });
             
-            // Wait for connection with timeout
+            // Wait for connection with longer timeout
             await new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
                     debugLog('⚠️ Auth connection timeout');
                     resolve(); // Don't block UI
-                }, 3000);
+                }, 8000); // Increase to 8 seconds
                 
                 authSocket.on('connect', async () => {
                     clearTimeout(timeout);
                     try {
+                        // WAIT for auth initialization to complete (including auto-login)
                         await window.authClient.initialize(authSocket);
                         debugLog('✅ Auth auto-login complete');
-                        resolve();
+                        
+                        // NOW update the player name if authenticated as registered user
+                        if (window.authClient && window.authClient.currentUser && !window.authClient.isGuest) {
+                            const username = window.authClient.getUserDisplayName();
+                            player1Name = username;
+                            gameState.player1Name = username;
+                            debugLog('👤 Updated to authenticated registered user name:', username);
+                        } else if (window.authClient && window.authClient.isGuest) {
+                            debugLog('👤 Guest user - keeping manual name for local games');
+                        }
+                        
+                        resolve(); // NOW we resolve after auth is complete
                     } catch (err) {
                         debugLog('⚠️ Auth initialization error:', err);
                         resolve(); // Don't block UI
@@ -481,16 +493,8 @@ async function initializeAuthAndUpdateUI() {
         }
     }
     
-    // Now check if authenticated and override the name
-    // ONLY for registered users, not guests - guests should use manual name for local games
-    if (window.authClient && window.authClient.currentUser && !window.authClient.isGuest) {
-        player1Name = window.authClient.getUserDisplayName();
-        gameState.player1Name = player1Name;
-        debugLog('👤 Using authenticated registered user name:', player1Name);
-    } else if (window.authClient && window.authClient.isGuest) {
-        debugLog('👤 Guest user - keeping manual name for local games:', player1Name);
-        // Guest name will be used only in multiplayer, not in local/AI games
-    }
+    // Note: We already updated player1Name above if authenticated
+    // No need to check again here
     
     // Update UI
     document.getElementById('player1Name').textContent = player1Name;
