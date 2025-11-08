@@ -8,8 +8,9 @@ const fs = require('fs');
 const path = require('path');
 
 class DatabaseManager {
-    constructor(dbPath = path.join(__dirname, 'dicesoccer.db')) {
-        this.dbPath = dbPath;
+    constructor(dbPath = null) {
+        // Use DB_PATH environment variable if set, otherwise default to ./database/dicesoccer.db
+        this.dbPath = dbPath || process.env.DB_PATH || path.join(__dirname, 'dicesoccer.db');
         this.db = null;
     }
 
