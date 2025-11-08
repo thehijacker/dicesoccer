@@ -175,6 +175,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load configuration first, then initialize
     window.configManager.loadConfig().then(() => {
         window.gameLogger.initialize().then(() => {
+            // Initialize authentication client
+            if (window.authClient) {
+                window.authClient.initialize().then(() => {
+                    // Initialize stats client after auth
+                    if (window.statsClient && window.authClient.socket) {
+                        window.statsClient.initialize(window.authClient.socket);
+                    }
+                });
+            }
+            
             initializeApp();
         });
     });

@@ -110,6 +110,12 @@
                 <span class="menu-text" data-translate="multiplayer">Multiplayer</span>
             </div>
 
+            <!-- Leaderboard -->
+            <div class="menu-item" id="leaderboardBtn">
+                <img src="images/win128.png" alt="Leaderboard" class="menu-icon">
+                <span class="menu-text" data-translate="leaderboard">Leaderboard</span>
+            </div>
+
             <!-- Settings -->
             <div class="menu-item expandable" id="settingsItem">
                 <img src="images/settings128.png" alt="Settings" class="menu-icon">
@@ -435,12 +441,60 @@
         </div>
     </div>
 
+    <!-- Leaderboard Modal -->
+    <div id="leaderboardModal" class="modal">
+        <div class="modal-content leaderboard-modal-content">
+            <h2 data-translate="leaderboards">Leaderboards</h2>
+            
+            <!-- Leaderboard Tabs -->
+            <div class="leaderboard-tabs">
+                <button class="leaderboard-tab active" data-tab="weekly">
+                    <span data-translate="weeklyLeaderboard">Weekly</span>
+                </button>
+                <button class="leaderboard-tab" data-tab="alltime">
+                    <span data-translate="alltimeLeaderboard">All-Time</span>
+                </button>
+            </div>
+            
+            <!-- Weekly Leaderboard Content -->
+            <div id="weeklyLeaderboard" class="leaderboard-content active">
+                <div class="leaderboard-header">
+                    <h3 data-translate="thisWeek">This Week</h3>
+                    <span class="week-number" id="currentWeekNumber"></span>
+                </div>
+                
+                <div class="leaderboard-list" id="weeklyLeaderboardList">
+                    <div class="loading-spinner"></div>
+                    <p data-translate="loadingLeaderboard">Loading leaderboard...</p>
+                </div>
+            </div>
+            
+            <!-- All-Time Leaderboard Content -->
+            <div id="alltimeLeaderboard" class="leaderboard-content">
+                <div class="leaderboard-header">
+                    <h3 data-translate="allTime">All-Time Champions</h3>
+                </div>
+                
+                <div class="leaderboard-list" id="alltimeLeaderboardList">
+                    <div class="loading-spinner"></div>
+                    <p data-translate="loadingLeaderboard">Loading leaderboard...</p>
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="close-modal-btn" id="refreshLeaderboardBtn" data-translate="refresh">Refresh</button>
+                <button class="close-modal-btn" id="closeLeaderboardBtn" data-translate="close">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="js/tsparticles.confetti.bundle.min.js"></script>
     <script src="js/translations.js"></script>
     <script src="js/config.js"></script>
     <script src="js/auth-client.js"></script>
     <script src="js/stats-client.js"></script>
+    <script src="js/leaderboard-client.js"></script>
     <script src="js/game.js"></script>
     <script src="js/multiplayer-websocket.js"></script>
     <script src="js/app.js"></script>
