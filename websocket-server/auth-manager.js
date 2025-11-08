@@ -368,6 +368,15 @@ class AuthManager {
                 return { success: false, error: 'Refresh token expired' };
             }
             
+            // Verify user still exists in database (security check)
+            const user = dbManager.statements.getUserById.get(decoded.userId);
+            if (!user) {
+                console.warn(`⚠️ User no longer exists: ${decoded.username} (${decoded.userId})`);
+                // Revoke the token
+                dbManager.statements.revokeToken.run(decoded.tokenId);
+                return { success: false, error: 'User account not found' };
+            }
+            
             // Generate new access token
             const accessToken = jwt.sign(
                 { userId: decoded.userId, username: decoded.username, type: 'access' },
@@ -431,6 +440,13 @@ class AuthManager {
             
             if (decoded.type !== 'access') {
                 return { valid: false, error: 'Invalid token type' };
+            }
+            
+            // Verify user still exists in database (security check)
+            const user = dbManager.statements.getUserById.get(decoded.userId);
+            if (!user) {
+                console.warn(`⚠️ User no longer exists: ${decoded.username} (${decoded.userId})`);
+                return { valid: false, error: 'User account not found' };
             }
             
             return {
