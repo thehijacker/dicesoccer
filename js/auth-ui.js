@@ -137,6 +137,9 @@ class AuthUI {
             console.log('🎮 Creating guest user:', guestName);
             await window.authClient.createGuest(guestName);
             
+            // Update player name in menu
+            this.updatePlayerNameInMenu(guestName);
+            
             this.hide();
             if (this.onAuthComplete) this.onAuthComplete();
         } catch (error) {
@@ -215,8 +218,13 @@ class AuthUI {
         const player1NameEl = document.getElementById('player1Name');
         if (player1NameEl && username) {
             player1NameEl.textContent = username;
+            // Also update gameState so it's used in all games
+            if (window.gameState) {
+                window.gameState.player1Name = username;
+            }
             // Store in localStorage for persistence
             localStorage.setItem('ds_player1_name', username);
+            console.log('✅ Updated Player 1 name to:', username);
         }
     }
 

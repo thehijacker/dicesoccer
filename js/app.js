@@ -1428,11 +1428,19 @@ async function proceedToLobby() {
         return;
     }
     
-    // Use authenticated username or default player name
-    let playerName = gameState.player1Name || translationManager.get('player1');
-    if (window.authClient && window.authClient.isAuthenticated) {
-        playerName = window.authClient.getUserDisplayName() || playerName;
+    // ALWAYS use authenticated username for multiplayer (guest or registered)
+    let playerName = null;
+    if (window.authClient && window.authClient.currentUser) {
+        playerName = window.authClient.getUserDisplayName();
     }
+    
+    // Fallback to default if somehow not authenticated (shouldn't happen)
+    if (!playerName) {
+        console.warn('⚠️ No authenticated user found, using default name');
+        playerName = gameState.player1Name || translationManager.get('player1');
+    }
+    
+    console.log('🎮 Entering lobby as:', playerName);
     
     try {
         // Enter lobby

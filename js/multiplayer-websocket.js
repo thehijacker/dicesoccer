@@ -117,7 +117,7 @@ class WebSocketMultiplayerManager {
                 reconnectionAttempts: this.maxReconnectAttempts
             });
 
-            this.socket.on('connect', () => {
+            this.socket.on('connect', async () => {
                 wsDebugLog('✅ Connected to WebSocket server');
                 this.connected = true;
                 this.reconnectAttempts = 0;
@@ -129,9 +129,42 @@ class WebSocketMultiplayerManager {
 
                 // Start heartbeat to prevent timeout
                 this.startHeartbeat();
+                
+                // Initialize auth client with this socket if not already initialized
+                if (window.authClient && !window.authClient.socket) {
+                    wsDebugLog('🔐 Initializing auth client with socket');
+                    try {
+                        await window.authClient.initialize(this.socket);
+                        wsDebugLog('✅ Auth client initialized');
+                        // Update player name in menu if auto-login succeeded
+                        if (window.authClient.isAuthenticated && window.authUI) {
+                            const username = window.authClient.getUserDisplayName();
+                            if (username) {
+                                window.authUI.updatePlayerNameInMenu(username);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('⚠️ Auth client initialization failed:', err);
+                    }
+                }
+                
+                // Initialize stats client with this socket
+                if (window.statsClient && !window.statsClient.socket) {
+                    wsDebugLog('📊 Initializing stats client with socket');
+                    window.statsClient.initialize(this.socket);
+                }
 
+                // Get the authenticated player name (or fallback to manual name)
+                let playerName = 'Player';
+                if (window.authClient && window.authClient.currentUser) {
+                    playerName = window.authClient.getUserDisplayName();
+                } else {
+                    playerName = gameState?.player1Name || 'Player';
+                }
+                
+                wsDebugLog('👤 Initializing player on server as:', playerName);
+                
                 // Initialize player on server
-                const playerName = gameState?.player1Name || 'Player';
                 this.socket.emit('init', { 
                     playerId: this.playerId, 
                     playerName: playerName 
