@@ -137,8 +137,12 @@ class AuthUI {
             console.log('🎮 Creating guest user:', guestName);
             await window.authClient.createGuest(guestName);
             
-            // Update player name in menu
-            this.updatePlayerNameInMenu(guestName);
+            // Get the actual display name from the auth client (server might have modified it)
+            const actualName = window.authClient.getUserDisplayName();
+            console.log('✅ Guest created with display name:', actualName);
+            
+            // Update player name in menu with the actual name
+            this.updatePlayerNameInMenu(actualName);
             
             this.hide();
             if (this.onAuthComplete) this.onAuthComplete();
@@ -222,8 +226,8 @@ class AuthUI {
             if (window.gameState) {
                 window.gameState.player1Name = username;
             }
-            // Store in localStorage for persistence
-            localStorage.setItem('ds_player1_name', username);
+            // Store in localStorage for persistence (use the same key as GameState)
+            localStorage.setItem('dicesoccer_player1', username);
             console.log('✅ Updated Player 1 name to:', username);
         }
     }

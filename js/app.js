@@ -2070,7 +2070,12 @@ async function handleLogout() {
     if (player1NameEl) {
         const defaultName = translationManager.get('player1');
         player1NameEl.textContent = defaultName;
-        localStorage.removeItem('ds_player1_name');
+        // Use the same localStorage key as GameState
+        localStorage.removeItem('dicesoccer_player1');
+        // Also update gameState
+        if (window.gameState) {
+            window.gameState.player1Name = defaultName;
+        }
     }
     
     // Show a message
