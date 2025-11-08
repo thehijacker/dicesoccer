@@ -35,7 +35,34 @@ class WebSocketMultiplayerManager {
     }
 
     // Initialize connection
-    async init() {
+    async init(existingSocket = null) {
+        // If we have an existing socket from authClient, reuse it
+        if (existingSocket && existingSocket.connected) {
+            console.log('♻️ Reusing existing socket connection from authClient');
+            this.socket = existingSocket;
+            this.connected = true;
+            this.setupEventHandlers();
+            
+            // Still need to call 'init' event to register as player
+            return new Promise((resolve, reject) => {
+                const playerName = window.authClient?.getUserDisplayName() || 'Player';
+                this.socket.emit('init', { playerName }, (response) => {
+                    if (response.success) {
+                        this.playerId = response.playerId;
+                        localStorage.setItem('dicesoccer_mp_playerid', this.playerId);
+                        console.log(`✅ Player initialized: ${playerName} (${this.playerId})`);
+                        if (typeof window.hideConnectionModal === 'function') {
+                            window.hideConnectionModal();
+                        }
+                        resolve();
+                    } else {
+                        console.error('Init failed:', response.error);
+                        reject(new Error(response.error || 'Initialization failed'));
+                    }
+                });
+            });
+        }
+        
         // Generate or retrieve player ID
         this.playerId = localStorage.getItem('dicesoccer_mp_playerid');
         if (!this.playerId) {

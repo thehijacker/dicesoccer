@@ -138,6 +138,8 @@ io.on('connection', (socket) => {
             const userId = socket.userId || null; // Set by auth middleware if authenticated
             const username = socket.username || null;
             
+            console.log(`🔍 [INIT] Socket ${socket.id} - userId: ${userId}, username: ${username}, isAuthenticated: ${socket.isAuthenticated}`);
+            
             // Store player info
             players.set(playerId, {
                 playerId,
@@ -153,7 +155,7 @@ io.on('connection', (socket) => {
             
             lobbySockets.set(socket.id, playerId);
             
-            console.log(`👤 Player initialized: ${playerName} (${playerId})`);
+            console.log(`👤 Player initialized: ${playerName} (${playerId}) with userId: ${userId || 'none'}`);
             
             callback({ success: true, playerId });
         } catch (error) {

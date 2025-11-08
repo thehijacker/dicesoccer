@@ -1494,7 +1494,9 @@ async function proceedToLobby() {
     // Check if we need to initialize or reconnect
     if (!multiplayerManager.playerId || !multiplayerManager.connected) {
         try {
-            await multiplayerManager.init();
+            // Reuse auth socket if available
+            const authSocket = window.authClient?.socket;
+            await multiplayerManager.init(authSocket);
         } catch (error) {
             console.error('Failed to initialize multiplayer:', error);
             // Check if error was due to cancellation
