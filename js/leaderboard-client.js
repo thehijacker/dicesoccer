@@ -151,16 +151,16 @@ class LeaderboardClient {
         
         // Header
         html += '<div class="leaderboard-row header">';
-        html += '<div class="rank-col">Rank</div>';
-        html += '<div class="player-col">Player</div>';
+        html += `<div class="rank-col">${translationManager.get('rank')}</div>`;
+        html += `<div class="player-col">${translationManager.get('player')}</div>`;
         if (isWeekly) {
-            html += '<div class="elo-col">ELO</div>';
+            html += `<div class="elo-col">${translationManager.get('elo')}</div>`;
         }
-        html += '<div class="games-col">Games</div>';
-        html += '<div class="record-col">W-L-D</div>';
-        html += '<div class="winrate-col">Win%</div>';
+        html += `<div class="games-col">${translationManager.get('games')}</div>`;
+        html += `<div class="record-col">${translationManager.get('winLoss')}</div>`;
+        html += `<div class="winrate-col">${translationManager.get('winPercent')}</div>`;
         if (!isWeekly) {
-            html += '<div class="goals-col">Goal Diff</div>';
+            html += `<div class="goals-col">${translationManager.get('goalDiff')}</div>`;
         }
         html += '</div>';
         
@@ -178,7 +178,7 @@ class LeaderboardClient {
             }
             
             html += `<div class="games-col">${player.games_played}</div>`;
-            html += `<div class="record-col">${player.wins}-${player.losses}-${player.draws}</div>`;
+            html += `<div class="record-col">${player.wins}-${player.losses}</div>`;
             html += `<div class="winrate-col">${player.win_rate}%</div>`;
             
             if (!isWeekly) {

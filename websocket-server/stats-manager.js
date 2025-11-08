@@ -178,7 +178,6 @@ class StatsManager {
                 gamesPlayed: 1,
                 wins: winnerId === player1UserId ? 1 : 0,
                 losses: winnerId === player2UserId ? 1 : 0,
-                draws: !winnerId ? 1 : 0,
                 goalsScored: player1Score,
                 goalsConceded: player2Score,
                 newElo: newPlayer1Elo
@@ -188,7 +187,6 @@ class StatsManager {
                 gamesPlayed: 1,
                 wins: winnerId === player2UserId ? 1 : 0,
                 losses: winnerId === player1UserId ? 1 : 0,
-                draws: !winnerId ? 1 : 0,
                 goalsScored: player2Score,
                 goalsConceded: player1Score,
                 newElo: newPlayer2Elo
@@ -199,7 +197,6 @@ class StatsManager {
                 gamesPlayed: 1,
                 wins: winnerId === player1UserId ? 1 : 0,
                 losses: winnerId === player2UserId ? 1 : 0,
-                draws: !winnerId ? 1 : 0,
                 goalsScored: player1Score,
                 goalsConceded: player2Score
             });
@@ -208,7 +205,6 @@ class StatsManager {
                 gamesPlayed: 1,
                 wins: winnerId === player2UserId ? 1 : 0,
                 losses: winnerId === player1UserId ? 1 : 0,
-                draws: !winnerId ? 1 : 0,
                 goalsScored: player2Score,
                 goalsConceded: player1Score
             });
@@ -280,7 +276,6 @@ class StatsManager {
             SET games_played = games_played + ?,
                 wins = wins + ?,
                 losses = losses + ?,
-                draws = draws + ?,
                 goals_scored = goals_scored + ?,
                 goals_conceded = goals_conceded + ?,
                 elo_rating = ?,
@@ -292,7 +287,6 @@ class StatsManager {
             updates.gamesPlayed,
             updates.wins,
             updates.losses,
-            updates.draws,
             updates.goalsScored,
             updates.goalsConceded,
             updates.newElo,
@@ -317,9 +311,9 @@ class StatsManager {
             // Create initial all-time stats
             const insertStats = this.db.db.prepare(`
                 INSERT INTO alltime_stats (
-                    user_id, username, games_played, wins, losses, draws,
+                    user_id, username, games_played, wins, losses,
                     goals_scored, goals_conceded, last_game_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             insertStats.run(
@@ -328,7 +322,6 @@ class StatsManager {
                 updates.gamesPlayed,
                 updates.wins,
                 updates.losses,
-                updates.draws,
                 updates.goalsScored,
                 updates.goalsConceded,
                 Date.now()
@@ -340,7 +333,6 @@ class StatsManager {
                 SET games_played = games_played + ?,
                     wins = wins + ?,
                     losses = losses + ?,
-                    draws = draws + ?,
                     goals_scored = goals_scored + ?,
                     goals_conceded = goals_conceded + ?,
                     last_game_at = ?
@@ -351,7 +343,6 @@ class StatsManager {
                 updates.gamesPlayed,
                 updates.wins,
                 updates.losses,
-                updates.draws,
                 updates.goalsScored,
                 updates.goalsConceded,
                 Date.now(),
@@ -374,7 +365,6 @@ class StatsManager {
                 games_played,
                 wins,
                 losses,
-                draws,
                 goals_scored,
                 goals_conceded,
                 (goals_scored - goals_conceded) as goal_difference,
@@ -407,7 +397,6 @@ class StatsManager {
                 games_played,
                 wins,
                 losses,
-                draws,
                 goals_scored,
                 goals_conceded,
                 (goals_scored - goals_conceded) as goal_difference,
@@ -469,7 +458,6 @@ class StatsManager {
                 games_played: 0,
                 wins: 0,
                 losses: 0,
-                draws: 0,
                 goals_scored: 0,
                 goals_conceded: 0
             },
@@ -479,7 +467,7 @@ class StatsManager {
                 opponentName: game.player1_user_id === userId ? game.player2_username : game.player1_username,
                 playerScore: game.player1_user_id === userId ? game.player1_score : game.player2_score,
                 opponentScore: game.player1_user_id === userId ? game.player2_score : game.player1_score,
-                result: game.winner_user_id === userId ? 'win' : (game.winner_user_id ? 'loss' : 'draw')
+                result: game.winner_user_id === userId ? 'win' : 'loss'
             }))
         };
     }

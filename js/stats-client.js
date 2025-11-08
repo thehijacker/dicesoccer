@@ -293,7 +293,7 @@ window.testStats = {
                 Username: p.username,
                 ELO: p.elo_rating,
                 Games: p.games_played,
-                'W-L-D': `${p.wins}-${p.losses}-${p.draws}`,
+                'W-L': `${p.wins}-${p.losses}`,
                 'Win%': p.win_rate + '%'
             })));
             return leaderboard;
@@ -317,7 +317,7 @@ window.testStats = {
                 Username: p.username,
                 Games: p.games_played,
                 Wins: p.wins,
-                'W-L-D': `${p.wins}-${p.losses}-${p.draws}`,
+                'W-L': `${p.wins}-${p.losses}`,
                 'Win%': p.win_rate + '%',
                 'Goal Diff': p.goal_difference
             })));

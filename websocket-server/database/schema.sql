@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS weekly_stats (
   games_played INTEGER DEFAULT 0,
   wins INTEGER DEFAULT 0,
   losses INTEGER DEFAULT 0,
-  draws INTEGER DEFAULT 0,
   goals_scored INTEGER DEFAULT 0,
   goals_conceded INTEGER DEFAULT 0,
   elo_rating INTEGER DEFAULT 1200,             -- ELO ranking (1200 = default)
@@ -76,7 +75,6 @@ CREATE TABLE IF NOT EXISTS alltime_stats (
   games_played INTEGER DEFAULT 0,
   wins INTEGER DEFAULT 0,
   losses INTEGER DEFAULT 0,
-  draws INTEGER DEFAULT 0,
   goals_scored INTEGER DEFAULT 0,
   goals_conceded INTEGER DEFAULT 0,
   last_game_at INTEGER,                        -- Last game timestamp
