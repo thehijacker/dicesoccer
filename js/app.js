@@ -228,37 +228,42 @@ document.addEventListener('keydown', (e) => {
             ];
             const randomScore = scores[Math.floor(Math.random() * scores.length)];
             
-            // For host: set scores directly
-            // For guest: need to flip perspective (guest sees themselves as P1)
-            let score1, score2;
+            // Determine scores from TRUE perspective (host=P1, guest=P2)
+            let trueScore1, trueScore2, losingPlayer;
             if (multiplayerManager.isHost) {
-                score1 = randomScore[0];
-                score2 = randomScore[1];
+                // Host perspective: use scores as-is
+                trueScore1 = randomScore[0]; // Host score
+                trueScore2 = randomScore[1]; // Guest score
+                losingPlayer = trueScore1 > trueScore2 ? 2 : 1;
             } else {
-                // Guest perspective: flip scores
-                score1 = randomScore[1];
-                score2 = randomScore[0];
+                // Guest perspective: flip scores (guest sees self as P1 but is actually P2)
+                trueScore1 = randomScore[1]; // Host score (real P1)
+                trueScore2 = randomScore[0]; // Guest score (real P2)
+                losingPlayer = trueScore1 > trueScore2 ? 2 : 1;
             }
             
-            console.log(`   Setting scores: ${score1}-${score2} (host perspective)`);
+            console.log(`   Sending goal event with TRUE scores: ${trueScore1}-${trueScore2}`);
             
-            // Send score update to opponent
+            // Send goal event to opponent with TRUE scores
             multiplayerManager.sendEvent({
-                type: 'scoreUpdate',
-                scoringPlayer: score1 > currentGame.player1Score ? 1 : 2,
-                score1: score1,
-                score2: score2
+                type: 'goal',
+                losingPlayer: losingPlayer,
+                score1: trueScore1,  // Always host score
+                score2: trueScore2,  // Always guest score
+                scoringPlayer: trueScore1 > trueScore2 ? 1 : 2
             });
             
-            // Update local scores
-            currentGame.player1Score = score1;
-            currentGame.player2Score = score2;
+            // Update local scores (from my perspective)
+            currentGame.player1Score = randomScore[0]; // My score (I always see myself as P1)
+            currentGame.player2Score = randomScore[1]; // Opponent score (I see them as P2)
             
             // Set random stats
             currentGame.player1Moves = Math.floor(Math.random() * 20) + 10;
             currentGame.player2Moves = Math.floor(Math.random() * 20) + 10;
             currentGame.player1ThinkingTime = Math.floor(Math.random() * 60000) + 30000; // 30-90s
             currentGame.player2ThinkingTime = Math.floor(Math.random() * 60000) + 30000;
+            
+            currentGame.updateUI();
             
             // End the game after a brief delay
             setTimeout(() => {

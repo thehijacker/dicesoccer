@@ -2694,7 +2694,9 @@ class DiceSoccerGame {
         
         // Record multiplayer game for ELO and stats (only for registered users)
         if (gameState.gameMode === 'multiplayer' && window.authClient && multiplayerManager) {
+            console.log('🎮 Recording multiplayer game...');
             await this.recordMultiplayerGame(winner);
+            console.log('✅ Game recorded, eloChanges:', this.eloChanges);
         }
         
         // Spectators don't see winner modal - show temporary notification and stay watching
