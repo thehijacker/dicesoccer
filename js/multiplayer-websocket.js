@@ -340,6 +340,25 @@ class WebSocketMultiplayerManager {
     }
 
     // === LOBBY SYSTEM METHODS ===
+    
+    // Update player name on the server (for when user logs in/out)
+    async updatePlayerName(playerName) {
+        return new Promise((resolve, reject) => {
+            if (!this.socket || !this.connected) {
+                return reject(new Error('Not connected to server'));
+            }
+
+            this.socket.emit('updatePlayerName', { playerName }, (response) => {
+                if (response.success) {
+                    wsDebugLog('✅ Player name updated on server:', playerName);
+                    resolve(response);
+                } else {
+                    wsDebugLog('❌ Failed to update player name:', response.error);
+                    reject(new Error(response.error));
+                }
+            });
+        });
+    }
 
     async enterLobby(playerName) {
         return new Promise((resolve, reject) => {

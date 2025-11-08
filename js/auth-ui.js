@@ -170,6 +170,17 @@ class AuthUI {
             
             console.log('✅ Login successful');
             this.updatePlayerNameInMenu(username);
+            
+            // Update player name on multiplayer server if connected
+            if (window.multiplayerManager && window.multiplayerManager.connected) {
+                try {
+                    await window.multiplayerManager.updatePlayerName(username);
+                    console.log('✅ Player name updated on server');
+                } catch (err) {
+                    console.warn('⚠️ Failed to update player name on server:', err);
+                }
+            }
+            
             this.hide();
             if (this.onAuthComplete) this.onAuthComplete();
         } catch (error) {
@@ -207,6 +218,17 @@ class AuthUI {
             
             console.log('✅ Registration successful');
             this.updatePlayerNameInMenu(username);
+            
+            // Update player name on multiplayer server if connected
+            if (window.multiplayerManager && window.multiplayerManager.connected) {
+                try {
+                    await window.multiplayerManager.updatePlayerName(username);
+                    console.log('✅ Player name updated on server');
+                } catch (err) {
+                    console.warn('⚠️ Failed to update player name on server:', err);
+                }
+            }
+            
             this.hide();
             if (this.onAuthComplete) this.onAuthComplete();
         } catch (error) {
@@ -221,14 +243,20 @@ class AuthUI {
     updatePlayerNameInMenu(username) {
         const player1NameEl = document.getElementById('player1Name');
         if (player1NameEl && username) {
-            player1NameEl.textContent = username;
-            // Also update gameState so it's used in all games
-            if (window.gameState) {
-                window.gameState.player1Name = username;
+            // Only update UI and gameState for registered users, not guests
+            // Guests use their guest name only in multiplayer, not in local/AI games
+            const isGuest = window.authClient && window.authClient.isGuest;
+            
+            if (!isGuest) {
+                player1NameEl.textContent = username;
+                // Also update gameState so it's used in all games
+                if (window.gameState) {
+                    window.gameState.player1Name = username;
+                }
+                console.log('✅ Updated Player 1 name to:', username);
+            } else {
+                console.log('👤 Guest user - not updating main menu name (keeping manual name for local games)');
             }
-            // DON'T store authenticated names in localStorage - they should be loaded from auth on each page load
-            // Manual names are stored separately when user clicks the button
-            console.log('✅ Updated Player 1 name to:', username);
         }
     }
 

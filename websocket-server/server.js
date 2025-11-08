@@ -156,6 +156,44 @@ io.on('connection', (socket) => {
         }
     });
     
+    // Update player name (when user logs in/out)
+    socket.on('updatePlayerName', (data, callback) => {
+        try {
+            const { playerName } = data;
+            const playerId = lobbySockets.get(socket.id);
+            
+            if (!playerId) {
+                return callback({ success: false, error: 'Not initialized' });
+            }
+            
+            const player = players.get(playerId);
+            if (!player) {
+                return callback({ success: false, error: 'Player not found' });
+            }
+            
+            console.log(`📝 Updating player name: ${player.playerName} → ${playerName}`);
+            player.playerName = playerName;
+            player.lastSeen = Date.now();
+            
+            // Broadcast updated player info to lobby if player is in lobby
+            if (player.inLobby) {
+                io.emit('lobbyUpdate', {
+                    type: 'playerUpdated',
+                    player: {
+                        playerId: player.playerId,
+                        playerName: player.playerName,
+                        status: player.status
+                    }
+                });
+            }
+            
+            callback({ success: true });
+        } catch (error) {
+            console.error('Update player name error:', error);
+            callback({ success: false, error: error.message });
+        }
+    });
+    
     // === AUTHENTICATION ENDPOINTS ===
     
     // Register new user

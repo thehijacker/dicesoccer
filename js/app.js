@@ -482,10 +482,14 @@ async function initializeAuthAndUpdateUI() {
     }
     
     // Now check if authenticated and override the name
-    if (window.authClient && window.authClient.currentUser) {
+    // ONLY for registered users, not guests - guests should use manual name for local games
+    if (window.authClient && window.authClient.currentUser && !window.authClient.isGuest) {
         player1Name = window.authClient.getUserDisplayName();
         gameState.player1Name = player1Name;
-        debugLog('👤 Using authenticated name:', player1Name);
+        debugLog('👤 Using authenticated registered user name:', player1Name);
+    } else if (window.authClient && window.authClient.isGuest) {
+        debugLog('👤 Guest user - keeping manual name for local games:', player1Name);
+        // Guest name will be used only in multiplayer, not in local/AI games
     }
     
     // Update UI
@@ -2133,6 +2137,9 @@ async function handleLogout() {
         if (window.gameState) {
             window.gameState.player1Name = manualName;
         }
+        
+        // Update player name on multiplayer server if we reconnect later
+        // (we just closed the lobby, so no need to update now)
     }
     
     // Show a message
