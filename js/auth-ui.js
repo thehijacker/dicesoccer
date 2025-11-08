@@ -95,8 +95,10 @@ class AuthUI {
      * Hide auth modal
      */
     hide() {
+        console.log('🚪 Hiding auth modal');
         this.authModal.classList.remove('active');
         this.clearForms();
+        console.log('✅ Auth modal hidden');
     }
 
     /**
@@ -144,8 +146,10 @@ class AuthUI {
             const actualName = window.authClient.getUserDisplayName();
             console.log('✅ Guest created with display name:', actualName);
             
-            // Update player name in menu with the actual name
-            this.updatePlayerNameInMenu(actualName);
+            // NOTE: We don't update the main menu player name for guests
+            // Guests use their manual name for local/AI games
+            // and their guest name (actualName) only for multiplayer
+            console.log('👤 Guest login complete - main menu will keep manual name for local games');
             
             this.hide();
             if (this.onAuthComplete) this.onAuthComplete();
@@ -172,7 +176,14 @@ class AuthUI {
             await window.authClient.login({ username, password });
             
             console.log('✅ Login successful');
-            this.updatePlayerNameInMenu(username);
+            
+            try {
+                this.updatePlayerNameInMenu(username);
+            } catch (err) {
+                console.error('⚠️ Error updating player name in menu:', err);
+            }
+            
+            console.log('🚪 About to hide modal and call onAuthComplete');
             
             // Update player name on multiplayer server if connected
             if (window.multiplayerManager && window.multiplayerManager.connected) {
@@ -185,6 +196,7 @@ class AuthUI {
             }
             
             this.hide();
+            console.log('📞 Calling onAuthComplete callback');
             if (this.onAuthComplete) this.onAuthComplete();
         } catch (error) {
             console.error('❌ Login failed:', error);
@@ -244,31 +256,34 @@ class AuthUI {
      * Update Player 1 name in main menu
      */
     updatePlayerNameInMenu(username) {
+        console.log('🔄 updatePlayerNameInMenu called:');
+        console.log('  - username:', username);
+        
         const player1NameEl = document.getElementById('player1Name');
         if (player1NameEl && username) {
             // Only update UI and gameState for registered users, not guests
             // Guests use their guest name only in multiplayer, not in local/AI games
             const isGuest = window.authClient && window.authClient.isGuest;
             
-            console.log('🔄 updatePlayerNameInMenu called:');
-            console.log('  - username:', username);
             console.log('  - isGuest:', isGuest);
             console.log('  - current gameState.player1Name:', window.gameState?.player1Name);
             
             if (!isGuest) {
                 player1NameEl.textContent = username;
                 // Also update gameState so it's used in all games
-                if (window.gameState) {
-                    window.gameState.player1Name = username;
+                if (typeof gameState !== 'undefined') {
+                    gameState.player1Name = username;
                     console.log('✅ Updated Player 1 name to:', username);
-                    console.log('  - gameState.player1Name is now:', window.gameState.player1Name);
+                    console.log('  - gameState.player1Name is now:', gameState.player1Name);
                 } else {
-                    console.warn('⚠️ gameState not available');
+                    console.warn('⚠️ gameState not available yet');
                 }
             } else {
                 console.log('👤 Guest user - not updating main menu name (keeping manual name for local games)');
             }
         }
+        
+        console.log('✅ updatePlayerNameInMenu completed');
     }
 
     /**

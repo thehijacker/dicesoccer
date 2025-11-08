@@ -2098,9 +2098,12 @@ async function handleLogout() {
         // Load the manual name from localStorage (or default)
         const manualName = localStorage.getItem('dicesoccer_player1') || translationManager.get('player1');
         player1NameEl.textContent = manualName;
+        console.log('✅ Reset Player 1 name to:', manualName);
+        
         // Update gameState
-        if (window.gameState) {
-            window.gameState.player1Name = manualName;
+        if (typeof gameState !== 'undefined') {
+            gameState.player1Name = manualName;
+            console.log('✅ Updated gameState.player1Name to:', manualName);
         }
         
         // Update player name on multiplayer server if we reconnect later
@@ -2141,17 +2144,23 @@ function startMultiplayerGame(role, opponent) {
     
     gameState.startGame('multiplayer');
     
+    // Get authenticated player name for multiplayer (guest or registered)
+    let myPlayerName = gameState.player1Name; // Default
+    if (window.authClient && window.authClient.currentUser) {
+        myPlayerName = window.authClient.getUserDisplayName(); // Guest_ABC123 or username
+    }
+    
     // Set player names and roles
     if (role === 'host') {
         // Host controls Player 1, opponent is Player 2
         gameState.player2Name = opponent.playerName;
         multiplayerManager.isHost = true;
         multiplayerManager.localPlayer = 1;
-        debugLog(`Host: I control Player 1 (${gameState.player1Name}), opponent controls Player 2 (${opponent.playerName})`);
+        debugLog(`Host: I control Player 1 (${myPlayerName}), opponent controls Player 2 (${opponent.playerName})`);
         
         // Start game log (host initiates)
         window.gameLogger.startGameLog(
-            gameState.player1Name,
+            myPlayerName,
             opponent.playerName,
             'multiplayer',
             null, // player2UserAgent - not currently exchanged
@@ -2167,7 +2176,7 @@ function startMultiplayerGame(role, opponent) {
         gameState.player2Name = opponent.playerName;
         multiplayerManager.isHost = false;
         multiplayerManager.localPlayer = 2;
-        debugLog(`Guest: I control Player 2 (${gameState.player1Name}), opponent controls Player 1 (${opponent.playerName})`);
+        debugLog(`Guest: I control Player 2 (${myPlayerName}), opponent controls Player 1 (${opponent.playerName})`);
     }
     
     // Update displays - guest will see their own name, host name as opponent
