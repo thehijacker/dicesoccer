@@ -1372,6 +1372,32 @@ window.showConnectionLost = function() {
 };
 
 async function openLobby() {
+    // Check authentication first
+    if (window.authUI) {
+        console.log('🔐 Checking authentication before lobby entry...');
+        const isAuth = await window.authUI.checkAuth(async () => {
+            // Continue with lobby after auth
+            console.log('✅ Auth complete, proceeding to lobby');
+            await proceedToLobby();
+        });
+        
+        if (isAuth) {
+            // Already authenticated, proceed directly
+            console.log('✅ Already authenticated, proceeding to lobby');
+            await proceedToLobby();
+        } else {
+            console.log('🔒 Not authenticated, showing auth modal');
+        }
+        // If not authenticated, checkAuth will show modal and callback will handle it
+        return;
+    }
+    
+    // Fallback if authUI not available
+    console.warn('⚠️ Auth UI not available, proceeding to lobby without auth');
+    await proceedToLobby();
+}
+
+async function proceedToLobby() {
     // Reset connection cancelled flag in multiplayerManager
     if (multiplayerManager.connectionCancelled) {
         multiplayerManager.connectionCancelled = false;
@@ -1398,7 +1424,11 @@ async function openLobby() {
         return;
     }
     
-    const playerName = gameState.player1Name || translationManager.get('player1');
+    // Use authenticated username or default player name
+    let playerName = gameState.player1Name || translationManager.get('player1');
+    if (window.authClient && window.authClient.isAuthenticated) {
+        playerName = window.authClient.getUserDisplayName() || playerName;
+    }
     
     try {
         // Enter lobby

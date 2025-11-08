@@ -29,7 +29,7 @@ class LeaderboardClient {
         });
         
         // Buttons
-        document.getElementById('leaderboardBtn')?.addEventListener('click', () => this.show());
+        document.getElementById('viewLeaderboardBtn')?.addEventListener('click', () => this.show());
         document.getElementById('refreshLeaderboardBtn')?.addEventListener('click', () => this.refresh());
         document.getElementById('closeLeaderboardBtn')?.addEventListener('click', () => this.hide());
         

@@ -110,12 +110,6 @@
                 <span class="menu-text" data-translate="multiplayer">Multiplayer</span>
             </div>
 
-            <!-- Leaderboard -->
-            <div class="menu-item" id="leaderboardBtn">
-                <img src="images/win128.png" alt="Leaderboard" class="menu-icon">
-                <span class="menu-text" data-translate="leaderboard">Leaderboard</span>
-            </div>
-
             <!-- Settings -->
             <div class="menu-item expandable" id="settingsItem">
                 <img src="images/settings128.png" alt="Settings" class="menu-icon">
@@ -376,8 +370,66 @@
             </div>
             
             <div class="lobby-buttons">
+                <button class="close-modal-btn" id="viewLeaderboardBtn" data-translate="viewLeaderboard">Leaderboard</button>
                 <button class="close-modal-btn" id="refreshLobbyBtn" data-translate="refresh">Refresh</button>
                 <button class="close-modal-btn" id="closeLobbyBtn" data-translate="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login/Register Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content auth-modal-content">
+            <h2 data-translate="welcomeToMultiplayer">Welcome to Multiplayer!</h2>
+            <p data-translate="chooseYourOption">Choose how you want to play:</p>
+            
+            <div class="auth-options">
+                <!-- Guest Option -->
+                <button class="auth-option-btn" id="playAsGuestBtn">
+                    <img src="images/network32.png" alt="Guest">
+                    <span data-translate="playAsGuest">Play as Guest</span>
+                    <p class="auth-option-desc" data-translate="guestDescription">Random username, unranked games</p>
+                </button>
+                
+                <!-- Login Option -->
+                <button class="auth-option-btn" id="showLoginBtn">
+                    <img src="images/network32.png" alt="Login">
+                    <span data-translate="login">Login</span>
+                    <p class="auth-option-desc" data-translate="loginDescription">Use your existing account</p>
+                </button>
+                
+                <!-- Register Option -->
+                <button class="auth-option-btn" id="showRegisterBtn">
+                    <img src="images/network32.png" alt="Register">
+                    <span data-translate="register">Register</span>
+                    <p class="auth-option-desc" data-translate="registerDescription">Create account for ranked games</p>
+                </button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form hidden">
+                <h3 data-translate="loginToAccount">Login to Your Account</h3>
+                <input type="text" id="loginUsername" placeholder="Username" data-translate-placeholder="username">
+                <input type="password" id="loginPassword" placeholder="Password" data-translate-placeholder="password">
+                <div class="auth-error" id="loginError"></div>
+                <div class="auth-form-buttons">
+                    <button class="close-modal-btn" id="loginSubmitBtn" data-translate="login">Login</button>
+                    <button class="close-modal-btn secondary" id="backToAuthOptions" data-translate="back">Back</button>
+                </div>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form hidden">
+                <h3 data-translate="createAccount">Create Your Account</h3>
+                <input type="text" id="registerUsername" placeholder="Username" data-translate-placeholder="username" maxlength="20">
+                <input type="email" id="registerEmail" placeholder="Email (optional)" data-translate-placeholder="emailOptional">
+                <input type="password" id="registerPassword" placeholder="Password (8+ characters)" data-translate-placeholder="password">
+                <div class="password-strength" id="passwordStrength"></div>
+                <div class="auth-error" id="registerError"></div>
+                <div class="auth-form-buttons">
+                    <button class="close-modal-btn" id="registerSubmitBtn" data-translate="register">Register</button>
+                    <button class="close-modal-btn secondary" id="backToAuthOptions2" data-translate="back">Back</button>
+                </div>
             </div>
         </div>
     </div>
@@ -493,6 +545,7 @@
     <script src="js/translations.js"></script>
     <script src="js/config.js"></script>
     <script src="js/auth-client.js"></script>
+    <script src="js/auth-ui.js"></script>
     <script src="js/stats-client.js"></script>
     <script src="js/leaderboard-client.js"></script>
     <script src="js/game.js"></script>
