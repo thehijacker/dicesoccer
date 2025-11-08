@@ -61,7 +61,7 @@ class StatsManager {
      * @returns {Object} Result with success status and ELO changes
      */
     async recordGame(gameData) {
-        const {
+        let {
             player1UserId,
             player2UserId,
             player1Username,
@@ -76,6 +76,36 @@ class StatsManager {
         } = gameData;
 
         try {
+            // If userIds not provided, look them up by username (for testing)
+            if (!player1UserId && player1Username) {
+                const user = this.db.getUserByUsername(player1Username);
+                if (user) {
+                    player1UserId = user.user_id;
+                } else {
+                    return {
+                        success: false,
+                        error: `User not found: ${player1Username}`
+                    };
+                }
+            }
+            
+            if (!player2UserId && player2Username) {
+                const user = this.db.getUserByUsername(player2Username);
+                if (user) {
+                    player2UserId = user.user_id;
+                } else {
+                    return {
+                        success: false,
+                        error: `User not found: ${player2Username}`
+                    };
+                }
+            }
+            
+            // Determine winner if not provided
+            if (!winnerId && player1Score !== player2Score) {
+                winnerId = player1Score > player2Score ? player1UserId : player2UserId;
+            }
+            
             // Don't record games with guest users (unranked)
             if (!player1UserId || !player2UserId || 
                 player1UserId.startsWith('guest_') || player2UserId.startsWith('guest_')) {

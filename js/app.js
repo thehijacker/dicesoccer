@@ -2295,3 +2295,69 @@ function startNewGame() {
     currentGame = new DiceSoccerGame();
     currentGame.start();
 }
+
+/**
+ * DEBUG FUNCTION: Test game recording and ELO calculation
+ * Usage in browser console:
+ *   window.testRecordGame('player1', 'player2', 3, 1)  // player1 wins 3-1
+ *   window.testRecordGame('alice', 'bob', 2, 3)        // bob wins 3-2
+ * 
+ * Both players must exist in the database (be registered users)
+ * Call this from anywhere - lobby, main menu, or during a game
+ */
+window.testRecordGame = async function(player1Username, player2Username, player1Score, player2Score) {
+    console.log('🧪 Testing game recording...');
+    
+    if (!window.authClient) {
+        console.error('❌ Auth client not available');
+        return;
+    }
+    
+    if (!window.multiplayerManager || !window.multiplayerManager.connected) {
+        console.error('❌ Not connected to multiplayer server. Please open lobby first.');
+        return;
+    }
+    
+    // Get user IDs from the server by username
+    // We'll need to query the auth system for these users
+    try {
+        // For testing, we'll use a simple approach: record the game with usernames
+        // The server will need to look up the user IDs
+        const gameData = {
+            player1Username: player1Username,
+            player2Username: player2Username,
+            player1Score: player1Score,
+            player2Score: player2Score,
+            winnerId: null, // Will be determined by server based on scores
+            gameDurationMs: 120000, // 2 minutes fake duration
+            player1Moves: Math.floor(Math.random() * 20) + 10,
+            player2Moves: Math.floor(Math.random() * 20) + 10,
+            gameMode: 'multiplayer'
+        };
+        
+        console.log('📊 Recording test game:', gameData);
+        
+        const result = await window.multiplayerManager.recordGame(gameData);
+        
+        if (result.success) {
+            if (result.ranked) {
+                console.log('✅ Test game recorded successfully!');
+                console.log('📈 ELO Changes:', result.eloChanges);
+                
+                if (result.eloChanges) {
+                    console.log(`   ${player1Username}: ${result.eloChanges.player1.oldElo} → ${result.eloChanges.player1.newElo} (${result.eloChanges.player1.change >= 0 ? '+' : ''}${result.eloChanges.player1.change})`);
+                    console.log(`   ${player2Username}: ${result.eloChanges.player2.oldElo} → ${result.eloChanges.player2.newElo} (${result.eloChanges.player2.change >= 0 ? '+' : ''}${result.eloChanges.player2.change})`);
+                }
+            } else {
+                console.log('ℹ️ Game recorded as unranked');
+            }
+        } else {
+            console.error('❌ Failed to record game:', result.error);
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('❌ Error recording test game:', error);
+        return { success: false, error: error.message };
+    }
+};

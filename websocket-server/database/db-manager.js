@@ -166,6 +166,18 @@ class DatabaseManager {
         };
         return stats;
     }
+
+    /**
+     * Get user by username
+     */
+    getUserByUsername(username) {
+        try {
+            return this.statements.getUserByUsername.get(username);
+        } catch (error) {
+            console.error('Error getting user by username:', error);
+            return null;
+        }
+    }
 }
 
 // Export singleton instance
