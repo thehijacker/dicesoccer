@@ -18,16 +18,28 @@ const crypto = require('crypto');
 // Import authentication and database managers
 const authManager = require('./auth-manager');
 const dbManager = require('./database/db-manager');
+const StatsManager = require('./stats-manager');
 
-// Initialize database
+// Initialize database and stats manager
+let statsManager;
+
 try {
     dbManager.initialize();
     console.log('✅ Database initialized successfully');
+    
+    // Initialize stats manager
+    statsManager = new StatsManager(dbManager);
+    console.log('✅ Stats manager initialized');
     
     // Start token cleanup job (every hour)
     setInterval(() => {
         authManager.cleanupExpiredTokens();
     }, 60 * 60 * 1000);
+    
+    // Weekly stats cleanup (every day at 2 AM - simplified)
+    setInterval(() => {
+        statsManager.cleanupOldWeeklyStats();
+    }, 24 * 60 * 60 * 1000);
 } catch (error) {
     console.error('❌ Failed to initialize database:', error);
     process.exit(1);
@@ -290,6 +302,88 @@ io.on('connection', (socket) => {
     });
     
     // === END AUTHENTICATION ENDPOINTS ===
+    
+    // === GAME STATISTICS ENDPOINTS ===
+    
+    // Record completed game
+    socket.on('recordGame', async (data, callback) => {
+        try {
+            const result = await statsManager.recordGame(data);
+            callback(result);
+        } catch (error) {
+            console.error('Record game error:', error);
+            callback({ 
+                success: false, 
+                error: 'Failed to record game' 
+            });
+        }
+    });
+    
+    // Get player statistics
+    socket.on('getPlayerStats', async (data, callback) => {
+        try {
+            const { userId } = data;
+            
+            if (!userId) {
+                return callback({ 
+                    success: false, 
+                    error: 'User ID is required' 
+                });
+            }
+            
+            const stats = await statsManager.getPlayerStats(userId);
+            callback({
+                success: true,
+                stats
+            });
+        } catch (error) {
+            console.error('Get player stats error:', error);
+            callback({ 
+                success: false, 
+                error: 'Failed to get player stats' 
+            });
+        }
+    });
+    
+    // Get weekly leaderboard
+    socket.on('getWeeklyLeaderboard', async (data, callback) => {
+        try {
+            const { weekNumber, limit } = data || {};
+            const leaderboard = await statsManager.getWeeklyLeaderboard(weekNumber, limit);
+            
+            callback({
+                success: true,
+                leaderboard
+            });
+        } catch (error) {
+            console.error('Get weekly leaderboard error:', error);
+            callback({ 
+                success: false, 
+                error: 'Failed to get leaderboard' 
+            });
+        }
+    });
+    
+    // Get all-time leaderboard
+    socket.on('getAllTimeLeaderboard', async (data, callback) => {
+        try {
+            const { limit } = data || {};
+            const leaderboard = await statsManager.getAllTimeLeaderboard(limit);
+            
+            callback({
+                success: true,
+                leaderboard
+            });
+        } catch (error) {
+            console.error('Get all-time leaderboard error:', error);
+            callback({ 
+                success: false, 
+                error: 'Failed to get leaderboard' 
+            });
+        }
+    });
+    
+    // === END GAME STATISTICS ENDPOINTS ===
     
     // Enter lobby
     socket.on('enterLobby', (data, callback) => {

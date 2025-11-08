@@ -439,7 +439,7 @@ window.testAuth = {
     async register(username, password, email) {
         try {
             console.log('🔄 Registering user:', username);
-            const result = await window.authClient.register(username, password, email);
+            const result = await window.authClient.register({ username, password, email });
             console.log('✅ Registration successful:', result);
             return result;
         } catch (error) {
@@ -455,7 +455,7 @@ window.testAuth = {
     async login(username, password) {
         try {
             console.log('🔄 Logging in:', username);
-            const result = await window.authClient.login(username, password);
+            const result = await window.authClient.login({ username, password });
             console.log('✅ Login successful:', result);
             return result;
         } catch (error) {
