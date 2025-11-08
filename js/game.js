@@ -2791,6 +2791,12 @@ class DiceSoccerGame {
             return;
         }
         
+        console.log('📋 Checking opponent info:', {
+            opponentUserId: multiplayerManager.opponentUserId,
+            opponentUsername: multiplayerManager.opponentUsername,
+            multiplayerManager: multiplayerManager
+        });
+        
         if (!multiplayerManager || !multiplayerManager.opponentUserId) {
             console.log('⚠️ Game not recorded: Missing opponent info');
             return;

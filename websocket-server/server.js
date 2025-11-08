@@ -246,6 +246,17 @@ io.on('connection', (socket) => {
                 socket.userId = result.user.userId;
                 socket.username = result.user.username;
                 socket.isAuthenticated = true;
+                
+                // Update player info with userId and username
+                const playerId = lobbySockets.get(socket.id);
+                if (playerId) {
+                    const player = players.get(playerId);
+                    if (player) {
+                        player.userId = result.user.userId;
+                        player.username = result.user.username;
+                        console.log(`✅ Updated player ${playerId} with userId: ${result.user.userId}`);
+                    }
+                }
             }
             
             callback(result);
@@ -266,6 +277,17 @@ io.on('connection', (socket) => {
                 socket.userId = result.user.userId;
                 socket.username = result.user.username;
                 socket.isAuthenticated = true;
+                
+                // Update player info with userId and username
+                const playerId = lobbySockets.get(socket.id);
+                if (playerId) {
+                    const player = players.get(playerId);
+                    if (player) {
+                        player.userId = result.user.userId;
+                        player.username = result.user.username;
+                        console.log(`✅ Updated player ${playerId} with userId: ${result.user.userId} (auto-login)`);
+                    }
+                }
             }
             
             callback(result);
@@ -306,6 +328,17 @@ io.on('connection', (socket) => {
                 socket.username = result.user.username;
                 socket.isGuest = true;
                 console.log(`✅ Guest user created: ${result.user.username}`);
+                
+                // Update player info with userId and username
+                const playerId = lobbySockets.get(socket.id);
+                if (playerId) {
+                    const player = players.get(playerId);
+                    if (player) {
+                        player.userId = result.user.userId;
+                        player.username = result.user.username;
+                        console.log(`✅ Updated player ${playerId} with guest userId: ${result.user.userId}`);
+                    }
+                }
             }
             
             callback(result);
@@ -324,6 +357,17 @@ io.on('connection', (socket) => {
                 socket.userId = result.userId;
                 socket.username = result.username;
                 socket.isAuthenticated = true;
+                
+                // Update player info with userId and username
+                const playerId = lobbySockets.get(socket.id);
+                if (playerId) {
+                    const player = players.get(playerId);
+                    if (player) {
+                        player.userId = result.userId;
+                        player.username = result.username;
+                        console.log(`✅ Updated player ${playerId} with userId: ${result.userId} (verifyToken)`);
+                    }
+                }
                 
                 callback({
                     success: true,
