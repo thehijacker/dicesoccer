@@ -134,10 +134,16 @@ io.on('connection', (socket) => {
                 return callback({ success: true, playerId, reconnected: true });
             }
             
+            // Get auth info from socket (if authenticated)
+            const userId = socket.userId || null; // Set by auth middleware if authenticated
+            const username = socket.username || null;
+            
             // Store player info
             players.set(playerId, {
                 playerId,
                 playerName,
+                userId, // null for guests/unauthenticated
+                username, // null for guests/unauthenticated
                 socketId: socket.id,
                 status: 'online',
                 lastSeen: Date.now(),
@@ -667,7 +673,9 @@ io.on('connection', (socket) => {
                     hintsEnabled: challenge.hintsEnabled,
                     opponent: {
                         playerId: accepter.playerId,
-                        playerName: accepter.playerName
+                        playerName: accepter.playerName,
+                        userId: accepter.userId,
+                        username: accepter.username
                     }
                 });
             }
@@ -685,7 +693,9 @@ io.on('connection', (socket) => {
                 hintsEnabled: challenge.hintsEnabled,
                 opponent: {
                     playerId: challenger.playerId,
-                    playerName: challenger.playerName
+                    playerName: challenger.playerName,
+                    userId: challenger.userId,
+                    username: challenger.username
                 }
             });
         } catch (error) {

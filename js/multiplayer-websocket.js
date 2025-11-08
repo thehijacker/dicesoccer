@@ -360,6 +360,27 @@ class WebSocketMultiplayerManager {
         });
     }
 
+    /**
+     * Record completed game to server for stats and ELO
+     */
+    async recordGame(gameData) {
+        return new Promise((resolve, reject) => {
+            if (!this.socket || !this.connected) {
+                return reject(new Error('Not connected to server'));
+            }
+
+            this.socket.emit('recordGame', gameData, (response) => {
+                if (response.success) {
+                    wsDebugLog('✅ Game recorded:', response);
+                    resolve(response);
+                } else {
+                    wsDebugLog('❌ Failed to record game:', response.error);
+                    reject(new Error(response.error));
+                }
+            });
+        });
+    }
+
     async enterLobby(playerName) {
         return new Promise((resolve, reject) => {
             if (!this.socket || !this.connected) {

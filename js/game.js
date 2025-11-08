@@ -2692,6 +2692,11 @@ class DiceSoccerGame {
             );
         }
         
+        // Record multiplayer game for ELO and stats (only for registered users)
+        if (gameState.gameMode === 'multiplayer' && window.authClient && multiplayerManager) {
+            this.recordMultiplayerGame(winner);
+        }
+        
         // Spectators don't see winner modal - show temporary notification and stay watching
         if (gameState.gameMode === 'spectator') {
             debugLog('👁️ Spectator: game ended, showing winner notification');
@@ -2749,6 +2754,73 @@ class DiceSoccerGame {
             winnerModal.style.transform = 'rotate(180deg)';
         } else {
             winnerModal.style.transform = '';
+        }
+    }
+
+    /**
+     * Record multiplayer game to server for ELO and stats
+     */
+    async recordMultiplayerGame(winnerName) {
+        // Only record if both players are registered (not guests)
+        if (!window.authClient || !window.authClient.isAuthenticated || window.authClient.isGuest) {
+            console.log('⚠️ Game not recorded: Guest or not authenticated');
+            return;
+        }
+        
+        if (!multiplayerManager || !multiplayerManager.opponentUserId) {
+            console.log('⚠️ Game not recorded: Missing opponent info');
+            return;
+        }
+        
+        // Determine winner user ID
+        let winnerId = null;
+        const player1Name = gameState.player1Name || translationManager.get('player1');
+        
+        if (winnerName === player1Name) {
+            // I won (I'm always player1 in my view)
+            winnerId = window.authClient.currentUser.userId;
+        } else {
+            // Opponent won
+            winnerId = multiplayerManager.opponentUserId;
+        }
+        
+        // Prepare game data
+        const gameData = {
+            player1UserId: window.authClient.currentUser.userId,
+            player2UserId: multiplayerManager.opponentUserId,
+            player1Username: window.authClient.currentUser.username,
+            player2Username: multiplayerManager.opponentUsername,
+            player1Score: this.player1Score,
+            player2Score: this.player2Score,
+            winnerId: winnerId,
+            gameDurationMs: this.totalGameTime,
+            player1Moves: this.player1Moves,
+            player2Moves: this.player2Moves,
+            gameMode: 'multiplayer'
+        };
+        
+        console.log('📊 Recording game to server:', gameData);
+        
+        try {
+            const result = await multiplayerManager.recordGame(gameData);
+            
+            if (result.success) {
+                if (result.ranked) {
+                    console.log('✅ Ranked game recorded successfully');
+                    
+                    // Store ELO changes to display after winner modal
+                    if (result.eloChanges) {
+                        this.eloChanges = result.eloChanges;
+                        console.log('📈 ELO Changes:', result.eloChanges);
+                    }
+                } else {
+                    console.log('ℹ️ Game completed (unranked)');
+                }
+            } else {
+                console.error('❌ Failed to record game:', result.error);
+            }
+        } catch (error) {
+            console.error('❌ Error recording game:', error);
         }
     }
 

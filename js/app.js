@@ -2144,6 +2144,12 @@ function startMultiplayerGame(role, opponent) {
     
     gameState.startGame('multiplayer');
     
+    // Store opponent info for game recording
+    multiplayerManager.opponentUserId = opponent.userId;
+    multiplayerManager.opponentUsername = opponent.username;
+    multiplayerManager.opponentPlayerId = opponent.playerId;
+    multiplayerManager.opponentPlayerName = opponent.playerName;
+    
     // Get authenticated player name for multiplayer (guest or registered)
     let myPlayerName = gameState.player1Name; // Default
     if (window.authClient && window.authClient.currentUser) {

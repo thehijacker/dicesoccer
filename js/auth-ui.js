@@ -185,15 +185,8 @@ class AuthUI {
             
             console.log('🚪 About to hide modal and call onAuthComplete');
             
-            // Update player name on multiplayer server if connected
-            if (window.multiplayerManager && window.multiplayerManager.connected) {
-                try {
-                    await window.multiplayerManager.updatePlayerName(username);
-                    console.log('✅ Player name updated on server');
-                } catch (err) {
-                    console.warn('⚠️ Failed to update player name on server:', err);
-                }
-            }
+            // Note: We don't update server name here because proceedToLobby() 
+            // will get the authenticated name when entering the lobby
             
             this.hide();
             console.log('📞 Calling onAuthComplete callback');
@@ -234,15 +227,8 @@ class AuthUI {
             console.log('✅ Registration successful');
             this.updatePlayerNameInMenu(username);
             
-            // Update player name on multiplayer server if connected
-            if (window.multiplayerManager && window.multiplayerManager.connected) {
-                try {
-                    await window.multiplayerManager.updatePlayerName(username);
-                    console.log('✅ Player name updated on server');
-                } catch (err) {
-                    console.warn('⚠️ Failed to update player name on server:', err);
-                }
-            }
+            // Note: We don't update server name here because proceedToLobby() 
+            // will get the authenticated name when entering the lobby
             
             this.hide();
             if (this.onAuthComplete) this.onAuthComplete();
