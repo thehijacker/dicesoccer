@@ -24,70 +24,64 @@ CREATE INDEX IF NOT EXISTS idx_last_login ON users(last_login);
 
 -- Games table: stores completed games for statistics
 CREATE TABLE IF NOT EXISTS games (
-  game_id TEXT PRIMARY KEY,                    -- Same as game_id from active games
-  player1_id TEXT NOT NULL,                    -- user_id
-  player2_id TEXT NOT NULL,                    -- user_id
-  winner_id TEXT,                              -- NULL if draw/abandoned
-  score_p1 INTEGER NOT NULL,                   -- Final score player 1
-  score_p2 INTEGER NOT NULL,                   -- Final score player 2
-  total_moves INTEGER,                         -- Combined moves
-  game_duration INTEGER,                       -- Duration in seconds
-  started_at INTEGER NOT NULL,                 -- Unix timestamp (milliseconds)
-  ended_at INTEGER NOT NULL,                   -- Unix timestamp (milliseconds)
+  game_id TEXT PRIMARY KEY,
   week_number INTEGER NOT NULL,                -- YYYYWW format (e.g., 202445)
-  is_ranked INTEGER DEFAULT 1,                 -- 1=ranked (counts for stats), 0=unranked (guest games)
-  game_data TEXT,                              -- JSON: full game log (optional)
-  FOREIGN KEY (player1_id) REFERENCES users(user_id) ON DELETE CASCADE,
-  FOREIGN KEY (player2_id) REFERENCES users(user_id) ON DELETE CASCADE,
-  FOREIGN KEY (winner_id) REFERENCES users(user_id) ON DELETE SET NULL
+  player1_user_id TEXT NOT NULL,
+  player2_user_id TEXT NOT NULL,
+  player1_username TEXT NOT NULL,
+  player2_username TEXT NOT NULL,
+  player1_score INTEGER NOT NULL,
+  player2_score INTEGER NOT NULL,
+  winner_user_id TEXT,                         -- NULL if draw
+  game_duration_ms INTEGER,                    -- Duration in milliseconds
+  player1_moves INTEGER DEFAULT 0,
+  player2_moves INTEGER DEFAULT 0,
+  game_mode TEXT DEFAULT 'multiplayer',        -- 'multiplayer', 'local', 'ai'
+  completed_at INTEGER NOT NULL,               -- Unix timestamp (milliseconds)
+  FOREIGN KEY (player1_user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (player2_user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (winner_user_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_week ON games(week_number, is_ranked);
-CREATE INDEX IF NOT EXISTS idx_player1 ON games(player1_id, ended_at);
-CREATE INDEX IF NOT EXISTS idx_player2 ON games(player2_id, ended_at);
-CREATE INDEX IF NOT EXISTS idx_winner ON games(winner_id, week_number);
-CREATE INDEX IF NOT EXISTS idx_ended_at ON games(ended_at);
+CREATE INDEX IF NOT EXISTS idx_week ON games(week_number);
+CREATE INDEX IF NOT EXISTS idx_player1 ON games(player1_user_id, completed_at);
+CREATE INDEX IF NOT EXISTS idx_player2 ON games(player2_user_id, completed_at);
+CREATE INDEX IF NOT EXISTS idx_winner ON games(winner_user_id, week_number);
+CREATE INDEX IF NOT EXISTS idx_completed ON games(completed_at);
 
 -- Weekly stats table: pre-aggregated statistics for performance
 CREATE TABLE IF NOT EXISTS weekly_stats (
   user_id TEXT NOT NULL,
+  username TEXT NOT NULL,                      -- Cached username for leaderboards
   week_number INTEGER NOT NULL,                -- YYYYWW format
   games_played INTEGER DEFAULT 0,
-  games_won INTEGER DEFAULT 0,
-  games_lost INTEGER DEFAULT 0,
-  games_drawn INTEGER DEFAULT 0,               -- If implementing draws
-  total_score_for INTEGER DEFAULT 0,           -- Total points scored
-  total_score_against INTEGER DEFAULT 0,       -- Total points conceded
+  wins INTEGER DEFAULT 0,
+  losses INTEGER DEFAULT 0,
+  draws INTEGER DEFAULT 0,
+  goals_scored INTEGER DEFAULT 0,
+  goals_conceded INTEGER DEFAULT 0,
   elo_rating INTEGER DEFAULT 1200,             -- ELO ranking (1200 = default)
-  elo_peak INTEGER DEFAULT 1200,               -- Highest ELO this week
-  rank_position INTEGER,                       -- Position in leaderboard (updated periodically)
-  win_streak INTEGER DEFAULT 0,                -- Current win streak
-  best_win_streak INTEGER DEFAULT 0,           -- Best streak this week
-  updated_at INTEGER NOT NULL,                 -- Last update timestamp
+  last_game_at INTEGER,                        -- Last game timestamp
   PRIMARY KEY (user_id, week_number),
   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_week_rank ON weekly_stats(week_number, rank_position);
-CREATE INDEX IF NOT EXISTS idx_week_elo ON weekly_stats(week_number, elo_rating DESC);
+CREATE INDEX IF NOT EXISTS idx_week_rank ON weekly_stats(week_number, elo_rating DESC);
 CREATE INDEX IF NOT EXISTS idx_user_weeks ON weekly_stats(user_id, week_number DESC);
 
 -- All-time stats table: lifetime statistics
 CREATE TABLE IF NOT EXISTS alltime_stats (
   user_id TEXT PRIMARY KEY,
-  total_games INTEGER DEFAULT 0,
-  total_wins INTEGER DEFAULT 0,
-  total_losses INTEGER DEFAULT 0,
-  total_draws INTEGER DEFAULT 0,
-  current_elo INTEGER DEFAULT 1200,
-  peak_elo INTEGER DEFAULT 1200,
-  peak_elo_date INTEGER,                       -- When peak was reached
-  total_score_for INTEGER DEFAULT 0,
-  total_score_against INTEGER DEFAULT 0,
-  best_win_streak INTEGER DEFAULT 0,
-  current_win_streak INTEGER DEFAULT 0,
-  first_game_at INTEGER,                       -- First game timestamp
+  username TEXT NOT NULL,                      -- Cached username
+  games_played INTEGER DEFAULT 0,
+  wins INTEGER DEFAULT 0,
+  losses INTEGER DEFAULT 0,
+  draws INTEGER DEFAULT 0,
+  goals_scored INTEGER DEFAULT 0,
+  goals_conceded INTEGER DEFAULT 0,
   last_game_at INTEGER,                        -- Last game timestamp
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
