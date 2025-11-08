@@ -82,12 +82,6 @@ CREATE TABLE IF NOT EXISTS alltime_stats (
   last_game_at INTEGER,                        -- Last game timestamp
   FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_alltime_elo ON alltime_stats(current_elo DESC);
-CREATE INDEX IF NOT EXISTS idx_alltime_wins ON alltime_stats(total_wins DESC);
 
 -- Achievements table: available achievements
 CREATE TABLE IF NOT EXISTS achievements (
