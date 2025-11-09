@@ -179,6 +179,31 @@ function updateMultiplayerButtonState(available) {
     }
 }
 
+// Show connection status message to user
+let connectionMessageTimeout = null;
+function showConnectionMessage(message, duration = 3000) {
+    const messageEl = document.getElementById('gameMessage');
+    if (!messageEl) return;
+    
+    // Clear any existing timeout
+    if (connectionMessageTimeout) {
+        clearTimeout(connectionMessageTimeout);
+        connectionMessageTimeout = null;
+    }
+    
+    messageEl.textContent = message;
+    messageEl.classList.remove('hidden');
+    messageEl.style.transform = 'translate(-50%, -50%)'; // Center message
+    
+    // Auto-hide after duration (unless duration is 0 for persistent messages)
+    if (duration > 0) {
+        connectionMessageTimeout = setTimeout(() => {
+            messageEl.classList.add('hidden');
+            connectionMessageTimeout = null;
+        }, duration);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Prevent context menu on right-click and long-press
     document.addEventListener('contextmenu', (e) => {
@@ -210,6 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateMultiplayerButtonState(connected);
                     
                     if (connected) {
+                        // Show reconnection message
+                        showConnectionMessage(translationManager.get('connectionRestored') || 'Connection restored!');
+                        
                         // Try to auto-login with stored tokens when reconnected
                         window.authClient.attemptAutoLogin().then(() => {
                             if (window.authClient.isAuthenticated) {
@@ -225,6 +253,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         }).catch(err => {
                             console.warn('⚠️ Auto-login after reconnection failed:', err);
                         });
+                    } else {
+                        // Show disconnection message
+                        showConnectionMessage(translationManager.get('connectionLost') || 'Connection lost. Reconnecting...', 0);
+                        
+                        // Close lobby if open
+                        const lobbyModal = document.getElementById('lobbyModal');
+                        if (lobbyModal && lobbyModal.classList.contains('active')) {
+                            console.log('🚪 Closing lobby due to disconnection');
+                            closeLobby().catch(() => {});
+                        }
+                        
+                        // Close challenge dialog if open
+                        const challengeDialog = document.getElementById('challengeDialog');
+                        if (challengeDialog && challengeDialog.classList.contains('active')) {
+                            console.log('❌ Closing challenge dialog due to disconnection');
+                            closeModal('challengeDialog');
+                        }
                     }
                 };
                 
@@ -240,7 +285,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         if (connected) {
                             console.log('✅ Multiplayer now available');
+                            showConnectionMessage(translationManager.get('connectionRestored') || 'Connection restored!');
                             window.authClient.attemptAutoLogin().catch(() => {});
+                        } else {
+                            showConnectionMessage(translationManager.get('connectionLost') || 'Connection lost. Reconnecting...', 0);
                         }
                     };
                     
@@ -2185,8 +2233,14 @@ async function closeLobby() {
         lobbyRefreshInterval = null;
     }
     
-    // Leave lobby
-    await multiplayerManager.leaveLobby();
+    // Leave lobby only if connected
+    if (multiplayerManager && multiplayerManager.connected) {
+        try {
+            await multiplayerManager.leaveLobby();
+        } catch (error) {
+            console.warn('⚠️ Failed to leave lobby (possibly disconnected):', error);
+        }
+    }
     
     closeModal('lobbyModal');
 }

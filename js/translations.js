@@ -90,6 +90,8 @@ const translations = {
         playingAsGuest: "Playing as Guest",
         exit: "Exit",
         notLoggedIn: "Not logged in",
+        connectionLost: "Connection lost. Reconnecting...",
+        connectionRestored: "Connection restored!",
         
         // Auth errors
         failedToCreateGuest: "Failed to create guest user",
@@ -286,6 +288,8 @@ const translations = {
         playingAsGuest: "Igra kot gost",
         exit: "Izhod",
         notLoggedIn: "Niste prijavljeni",
+        connectionLost: "Povezava prekinjena. Ponovno povezovanje...",
+        connectionRestored: "Povezava obnovljena!",
         
         // Auth errors
         failedToCreateGuest: "Ustvarjanje gostujočega uporabnika ni uspelo",

@@ -163,6 +163,10 @@ class WebSocketMultiplayerManager {
                 wsDebugLog('✅ Connected to WebSocket server');
                 this.connected = true;
                 this.reconnectAttempts = 0;
+                
+                // Clear lobby state on reconnect (user will need to manually re-enter)
+                this.isInLobby = false;
+                this.wasInLobby = false;
 
                 // Hide connection modal on successful connection
                 if (typeof window.hideConnectionModal === 'function') {
@@ -260,9 +264,18 @@ class WebSocketMultiplayerManager {
                     // Server disconnected us or connection lost
                     const isInGame = document.getElementById('gameScreen')?.classList.contains('active');
                     const isInLobby = document.getElementById('lobbyModal')?.classList.contains('active');
+                    const isChallengeDialogOpen = document.getElementById('challengeDialog')?.classList.contains('active');
                     
                     // Check if we're in a local or AI game - don't interrupt these
                     const isLocalOrAIGame = gameState && (gameState.gameMode === 'local' || gameState.gameMode === 'ai');
+                    
+                    // Close challenge dialog if open
+                    if (isChallengeDialogOpen) {
+                        wsDebugLog('❌ Closing challenge dialog due to disconnection');
+                        if (typeof window.closeModal === 'function') {
+                            window.closeModal('challengeDialog');
+                        }
+                    }
                     
                     // Only show connection lost if we were using multiplayer features
                     if ((isInGame || isInLobby || this.isInGame || this.isInLobby) && !isLocalOrAIGame) {
