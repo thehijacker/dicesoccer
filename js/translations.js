@@ -85,6 +85,11 @@ const translations = {
         registerDescription: "Create a new account",
         createAccount: "Create an Account",
         emailOptional: "Email (optional)",
+        loggedInAs: "Logged in as",
+        logout: "Logout",
+        playingAsGuest: "Playing as Guest",
+        exit: "Exit",
+        notLoggedIn: "Not logged in",
         
         // Auth errors
         failedToCreateGuest: "Failed to create guest user",
@@ -276,6 +281,11 @@ const translations = {
         registerDescription: "Ustvari nov račun",
         createAccount: "Ustvari račun",
         emailOptional: "E-pošta (neobvezno)",
+        loggedInAs: "Prijavljen kot",
+        logout: "Odjava",
+        playingAsGuest: "Igra kot gost",
+        exit: "Izhod",
+        notLoggedIn: "Niste prijavljeni",
         
         // Auth errors
         failedToCreateGuest: "Ustvarjanje gostujočega uporabnika ni uspelo",

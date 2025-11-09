@@ -203,9 +203,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 multiplayerAvailable = true;
                 console.log('✅ Multiplayer features available');
+                
+                // Set up connection state change callback
+                window.authClient.onConnectionStateChange = (connected) => {
+                    console.log(`🔌 Connection state changed: ${connected ? 'Connected' : 'Disconnected'}`);
+                    updateMultiplayerButtonState(connected);
+                    
+                    if (connected) {
+                        // Try to auto-login with stored tokens when reconnected
+                        window.authClient.attemptAutoLogin().then(() => {
+                            if (window.authClient.isAuthenticated) {
+                                console.log('✅ Auto-logged in after reconnection');
+                                // Update player name display if not in a game
+                                if (!currentGame) {
+                                    const username = window.authClient.currentUser?.username;
+                                    if (username) {
+                                        document.getElementById('playerNameValue').textContent = username;
+                                    }
+                                }
+                            }
+                        }).catch(err => {
+                            console.warn('⚠️ Auto-login after reconnection failed:', err);
+                        });
+                    }
+                };
+                
             } catch (error) {
                 console.warn('⚠️ Multiplayer unavailable (playing offline):', error.message);
                 // Continue anyway - game works offline
+                
+                // Still set up the connection callback for when it does connect
+                if (window.authClient) {
+                    window.authClient.onConnectionStateChange = (connected) => {
+                        console.log(`🔌 Connection state changed: ${connected ? 'Connected' : 'Disconnected'}`);
+                        updateMultiplayerButtonState(connected);
+                        
+                        if (connected) {
+                            console.log('✅ Multiplayer now available');
+                            window.authClient.attemptAutoLogin().catch(() => {});
+                        }
+                    };
+                    
+                    // Start reconnection attempts
+                    window.authClient.startReconnection();
+                }
             }
         }
         
@@ -2161,15 +2202,15 @@ function updateLobbyUserStatus() {
         const isGuest = window.authClient.isGuest;
         
         if (isGuest) {
-            userInfoEl.textContent = `Playing as Guest: ${username}`;
-            logoutBtn.textContent = 'Exit';
+            userInfoEl.textContent = `${translationManager.get('playingAsGuest')}: ${username}`;
+            logoutBtn.textContent = translationManager.get('exit');
         } else {
-            userInfoEl.textContent = `Logged in as: ${username}`;
-            logoutBtn.textContent = 'Logout';
+            userInfoEl.textContent = `${translationManager.get('loggedInAs')}: ${username}`;
+            logoutBtn.textContent = translationManager.get('logout');
         }
         logoutBtn.style.display = 'block';
     } else {
-        userInfoEl.textContent = 'Not logged in';
+        userInfoEl.textContent = translationManager.get('notLoggedIn');
         logoutBtn.style.display = 'none';
     }
 }

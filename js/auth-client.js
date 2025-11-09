@@ -13,9 +13,16 @@ class AuthClient {
         this.isGuest = false;
         this.autoLoginAttempted = false;
         
+        // Reconnection settings
+        this.reconnectInterval = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectDelay = 30000; // 30 seconds max
+        this.isReconnecting = false;
+        
         // Callbacks
         this.onAuthStateChange = null;
         this.onError = null;
+        this.onConnectionStateChange = null; // New callback for connection status
     }
 
     /**
@@ -38,9 +45,27 @@ class AuthClient {
                 this.socket.on('connect', () => {
                     clearTimeout(timeout);
                     console.log('✅ Connected to auth server');
+                    this.reconnectAttempts = 0;
+                    this.isReconnecting = false;
+                    
                     // Send current language to server
                     this.sendLanguageToServer();
+                    
+                    // Notify about connection state
+                    if (this.onConnectionStateChange) {
+                        this.onConnectionStateChange(true);
+                    }
+                    
                     resolve();
+                });
+                
+                this.socket.on('disconnect', () => {
+                    console.warn('⚠️ Disconnected from auth server');
+                    if (this.onConnectionStateChange) {
+                        this.onConnectionStateChange(false);
+                    }
+                    // Start reconnection attempts
+                    this.startReconnection();
                 });
                 
                 this.socket.on('connect_error', (error) => {
@@ -59,6 +84,56 @@ class AuthClient {
         await this.attemptAutoLogin();
         
         return this.isAuthenticated;
+    }
+
+    /**
+     * Start background reconnection attempts
+     */
+    startReconnection() {
+        if (this.isReconnecting) return;
+        
+        this.isReconnecting = true;
+        console.log('🔄 Starting background reconnection...');
+        
+        const attemptReconnect = async () => {
+            if (this.socket && this.socket.connected) {
+                console.log('✅ Already reconnected');
+                this.isReconnecting = false;
+                if (this.reconnectInterval) {
+                    clearInterval(this.reconnectInterval);
+                    this.reconnectInterval = null;
+                }
+                return;
+            }
+            
+            this.reconnectAttempts++;
+            const delay = Math.min(5000 * this.reconnectAttempts, this.maxReconnectDelay);
+            console.log(`🔄 Reconnection attempt ${this.reconnectAttempts} (next in ${delay/1000}s)...`);
+            
+            try {
+                if (this.socket && !this.socket.connected) {
+                    this.socket.connect();
+                    
+                    // If we have stored tokens, try to auto-login
+                    if (localStorage.getItem('dicesoccer_refresh_token')) {
+                        await this.attemptAutoLogin();
+                    }
+                }
+            } catch (error) {
+                console.warn('Reconnection attempt failed:', error.message);
+            }
+        };
+        
+        // Clear any existing interval
+        if (this.reconnectInterval) {
+            clearInterval(this.reconnectInterval);
+        }
+        
+        // Start periodic reconnection attempts
+        this.reconnectInterval = setInterval(attemptReconnect, 10000); // Try every 10 seconds
+        
+        // Try immediately once
+        attemptReconnect();
     }
 
     /**

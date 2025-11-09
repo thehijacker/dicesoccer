@@ -2523,6 +2523,19 @@ input:checked + .toggle-label::before {
     margin-bottom: 20px;
 }
 
+/* Landscape mode: show auth options side-by-side */
+@media (orientation: landscape) and (min-width: 768px) {
+    .auth-options {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .auth-option-btn {
+        flex: 1;
+        max-width: 32%;
+    }
+}
+
 .auth-option-btn {
     padding: 20px;
     background: white;
