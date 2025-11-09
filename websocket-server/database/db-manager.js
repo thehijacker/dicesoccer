@@ -98,6 +98,7 @@ class DatabaseManager {
             // User queries
             getUserById: this.db.prepare('SELECT * FROM users WHERE user_id = ?'),
             getUserByUsername: this.db.prepare('SELECT * FROM users WHERE username = ?'),
+            getUserByUsernameInsensitive: this.db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)'),
             getUserByEmail: this.db.prepare('SELECT * FROM users WHERE email = ?'),
             createUser: this.db.prepare(`
                 INSERT INTO users (user_id, username, password_hash, email, created_at, is_guest)

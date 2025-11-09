@@ -54,18 +54,19 @@ class AuthManager {
             return { valid: false, error: 'usernameRequired' };
         }
         
+        // Trim whitespace
+        username = username.trim();
+        
         if (username.length < 3) {
             return { valid: false, error: 'usernameTooShort' };
         }
         
-        if (username.length > 20) {
+        if (username.length > 15) {
             return { valid: false, error: 'usernameTooLong' };
         }
         
-        // Allow letters, numbers, spaces, and underscores
-        if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
-            return { valid: false, error: 'usernameInvalidChars' };
-        }
+        // Allow any Unicode characters - no restrictions
+        // Users can use their native language (Žan, María, 李明, etc.)
         
         return { valid: true };
     }
@@ -150,6 +151,9 @@ class AuthManager {
                 return { success: false, error: usernameValidation.error };
             }
             
+            // Trim username
+            username = username.trim();
+            
             const passwordValidation = this.validatePassword(password);
             if (!passwordValidation.valid) {
                 return { success: false, error: passwordValidation.error };
@@ -160,8 +164,8 @@ class AuthManager {
                 return { success: false, error: emailValidation.error };
             }
             
-            // Check if username already exists
-            const existingUser = dbManager.statements.getUserByUsername.get(username);
+            // Check if username already exists (case-insensitive)
+            const existingUser = dbManager.statements.getUserByUsernameInsensitive.get(username);
             if (existingUser) {
                 return { success: false, error: 'usernameAlreadyTaken' };
             }
@@ -218,14 +222,17 @@ class AuthManager {
      */
     async login({ username, password, userAgent, ipAddress }) {
         try {
+            // Trim username
+            username = username.trim();
+            
             // Rate limiting check
             const rateLimitCheck = this.checkRateLimit(username);
             if (!rateLimitCheck.allowed) {
                 return { success: false, error: rateLimitCheck.error };
             }
             
-            // Get user from database
-            const user = dbManager.statements.getUserByUsername.get(username);
+            // Get user from database (case-insensitive)
+            const user = dbManager.statements.getUserByUsernameInsensitive.get(username);
             
             if (!user) {
                 return { success: false, error: 'invalidCredentials' };

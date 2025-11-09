@@ -210,7 +210,7 @@ class AuthUI {
             return;
         }
         
-        if (username.length < 3 || username.length > 20) {
+        if (username.length < 3 || username.length > 15) {
             this.showError('registerError', translationManager.get('usernameMustBe'));
             return;
         }
