@@ -51,9 +51,22 @@ class AuthClient {
                     // Send current language to server
                     this.sendLanguageToServer();
                     
+                    // Hide reconnection message
+                    if (typeof window.hideConnectionMessage === 'function') {
+                        window.hideConnectionMessage();
+                    }
+                    
                     // Notify about connection state
                     if (this.onConnectionStateChange) {
                         this.onConnectionStateChange(true);
+                    }
+                    
+                    // Try auto-login if we have stored tokens (for reconnections)
+                    if (localStorage.getItem('dicesoccer_refresh_token') && !this.isAuthenticated) {
+                        console.log('🔐 Attempting auto-login after reconnect');
+                        this.attemptAutoLogin().catch(err => {
+                            console.warn('⚠️ Auto-login failed:', err);
+                        });
                     }
                     
                     resolve();
@@ -99,6 +112,7 @@ class AuthClient {
             if (this.socket && this.socket.connected) {
                 console.log('✅ Already reconnected');
                 this.isReconnecting = false;
+                this.reconnectAttempts = 0;
                 if (this.reconnectInterval) {
                     clearInterval(this.reconnectInterval);
                     this.reconnectInterval = null;
@@ -110,13 +124,29 @@ class AuthClient {
             const delay = Math.min(5000 * this.reconnectAttempts, this.maxReconnectDelay);
             console.log(`🔄 Reconnection attempt ${this.reconnectAttempts} (next in ${delay/1000}s)...`);
             
+            // Notify app about reconnection attempt
+            if (typeof window.updateReconnectionAttempt === 'function') {
+                window.updateReconnectionAttempt(this.reconnectAttempts);
+            }
+            
             try {
-                if (this.socket && !this.socket.connected) {
+                if (this.socket) {
+                    // Force disconnect first to clear any stale connection state
+                    if (this.socket.connected) {
+                        this.socket.disconnect();
+                    }
+                    
+                    // Wait a moment for disconnect to complete
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    // Now reconnect
                     this.socket.connect();
                     
-                    // If we have stored tokens, try to auto-login
+                    // If we have stored tokens, try to auto-login after a successful connect
+                    // (the connect handler will trigger this via onConnectionStateChange)
                     if (localStorage.getItem('dicesoccer_refresh_token')) {
-                        await this.attemptAutoLogin();
+                        // Auto-login will be attempted in the connect handler
+                        console.log('🔐 Will attempt auto-login on reconnect');
                     }
                 }
             } catch (error) {

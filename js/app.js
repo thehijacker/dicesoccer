@@ -181,7 +181,8 @@ function updateMultiplayerButtonState(available) {
 
 // Show connection status message to user
 let connectionMessageTimeout = null;
-function showConnectionMessage(message, duration = 3000) {
+let currentReconnectAttempts = 0;
+function showConnectionMessage(message, duration = 3000, reconnectAttempts = 0) {
     const messageEl = document.getElementById('gameMessage');
     if (!messageEl) return;
     
@@ -191,7 +192,16 @@ function showConnectionMessage(message, duration = 3000) {
         connectionMessageTimeout = null;
     }
     
-    messageEl.textContent = message;
+    // Update reconnect attempts counter
+    currentReconnectAttempts = reconnectAttempts;
+    
+    // If showing reconnection message with attempts, add the counter
+    let displayMessage = message;
+    if (reconnectAttempts > 0 && message.includes('Reconnecting')) {
+        displayMessage = `${message} (${translationManager.get('attempt') || 'Attempt'} ${reconnectAttempts})`;
+    }
+    
+    messageEl.textContent = displayMessage;
     messageEl.classList.remove('hidden');
     messageEl.style.transform = 'translate(-50%, -50%)'; // Center message
     
@@ -200,9 +210,38 @@ function showConnectionMessage(message, duration = 3000) {
         connectionMessageTimeout = setTimeout(() => {
             messageEl.classList.add('hidden');
             connectionMessageTimeout = null;
+            currentReconnectAttempts = 0;
         }, duration);
     }
 }
+
+function hideConnectionMessage() {
+    const messageEl = document.getElementById('gameMessage');
+    if (messageEl) {
+        messageEl.classList.add('hidden');
+    }
+    if (connectionMessageTimeout) {
+        clearTimeout(connectionMessageTimeout);
+        connectionMessageTimeout = null;
+    }
+    currentReconnectAttempts = 0;
+}
+
+// Update reconnection attempt counter in message
+window.updateReconnectionAttempt = function(attempts) {
+    const message = translationManager.get('connectionLost') || 'Connection lost. Reconnecting...';
+    showConnectionMessage(message, 0, attempts);
+    
+    // Update lobby disconnect overlay if visible
+    const overlay = document.getElementById('lobbyDisconnectOverlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+        const messageEl = document.getElementById('lobbyDisconnectMessage');
+        if (messageEl) {
+            const attemptText = translationManager.get('attempt') || 'Attempt';
+            messageEl.textContent = `${translationManager.get('reconnecting') || 'Reconnecting...'} (${attemptText} ${attempts})`;
+        }
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     // Prevent context menu on right-click and long-press
@@ -229,39 +268,129 @@ document.addEventListener('DOMContentLoaded', () => {
                 multiplayerAvailable = true;
                 console.log('✅ Multiplayer features available');
                 
+                // Set up callback for when multiplayer is fully initialized
+                window.onMultiplayerInitialized = () => {
+                    console.log('✅ Multiplayer fully initialized');
+                    updateMultiplayerButtonState(true);
+                };
+                
                 // Set up connection state change callback
                 window.authClient.onConnectionStateChange = (connected) => {
                     console.log(`🔌 Connection state changed: ${connected ? 'Connected' : 'Disconnected'}`);
-                    updateMultiplayerButtonState(connected);
+                    // Don't enable button yet - wait for initialization
+                    if (!connected) {
+                        updateMultiplayerButtonState(false);
+                    }
                     
                     if (connected) {
                         // Show reconnection message
-                        showConnectionMessage(translationManager.get('connectionRestored') || 'Connection restored!');
+                        // showConnectionMessage(translationManager.get('connectionRestored') || 'Connection restored!');
+                        
+                        // Assign socket to multiplayer manager if it doesn't have one
+                        if (multiplayerManager && !multiplayerManager.socket && window.authClient.socket) {
+                            console.log('🔌 Assigning socket to multiplayer manager');
+                            multiplayerManager.socket = window.authClient.socket;
+                        }
+                        
+                        // Trigger re-initialization if multiplayer manager exists but isn't initialized
+                        if (multiplayerManager && multiplayerManager.socket && !multiplayerManager.initialized) {
+                            console.log('🔄 Re-initializing multiplayer after reconnection...');
+                            
+                            // Ensure playerId exists
+                            if (!multiplayerManager.playerId) {
+                                multiplayerManager.playerId = localStorage.getItem('dicesoccer_mp_playerid');
+                                if (!multiplayerManager.playerId) {
+                                    multiplayerManager.playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                                    localStorage.setItem('dicesoccer_mp_playerid', multiplayerManager.playerId);
+                                }
+                            }
+                            
+                            const playerName = window.authClient?.getUserDisplayName() || 'Player';
+                            console.log('📤 Sending init with playerId:', multiplayerManager.playerId, 'playerName:', playerName);
+                            
+                            multiplayerManager.socket.emit('init', { 
+                                playerId: multiplayerManager.playerId, 
+                                playerName: playerName 
+                            }, (response) => {
+                                if (response.success) {
+                                    console.log('✅ Multiplayer re-initialized after reconnection');
+                                    multiplayerManager.initialized = true;
+                                    multiplayerManager.connected = true;
+                                    if (typeof window.onMultiplayerInitialized === 'function') {
+                                        window.onMultiplayerInitialized();
+                                    }
+                                } else {
+                                    console.error('❌ Failed to re-initialize multiplayer:', response.error);
+                                }
+                            });
+                        }
                         
                         // Try to auto-login with stored tokens when reconnected
                         window.authClient.attemptAutoLogin().then(() => {
+                            console.log('🔍 Auto-login completed. isAuthenticated:', window.authClient.isAuthenticated);
                             if (window.authClient.isAuthenticated) {
                                 console.log('✅ Auto-logged in after reconnection');
+                                console.log('🔍 currentUser:', window.authClient.currentUser);
                                 // Update player name display if not in a game
                                 if (!currentGame) {
                                     const username = window.authClient.currentUser?.username;
-                                    if (username) {
-                                        document.getElementById('playerNameValue').textContent = username;
+                                    console.log('🔍 Username from currentUser:', username);
+                                    if (username && window.authUI) {
+                                        window.authUI.updatePlayerNameInMenu(username);
+                                    } else if (!username) {
+                                        console.warn('⚠️ No username in currentUser');
+                                    } else {
+                                        console.warn('⚠️ authUI not available');
                                     }
+                                    
+                                    // Update server with authenticated username
+                                    if (username && multiplayerManager && multiplayerManager.connected) {
+                                        multiplayerManager.updatePlayerName(username).catch(err => {
+                                            console.warn('⚠️ Failed to update server player name:', err);
+                                        });
+                                    }
+                                } else {
+                                    console.log('ℹ️ In game, not updating player name');
                                 }
+                            } else {
+                                // Not authenticated, keep manual name
+                                console.log('ℹ️ Not authenticated after reconnection');
                             }
                         }).catch(err => {
                             console.warn('⚠️ Auto-login after reconnection failed:', err);
                         });
                     } else {
                         // Show disconnection message
-                        showConnectionMessage(translationManager.get('connectionLost') || 'Connection lost. Reconnecting...', 0);
+                        // showConnectionMessage(translationManager.get('connectionLost') || 'Connection lost. Reconnecting...', 0);
                         
-                        // Close lobby if open
+                        // Mark multiplayer as not initialized
+                        if (multiplayerManager) {
+                            multiplayerManager.initialized = false;
+                        }
+                        
+                        // Revert to manual player name when disconnected
+                        const manualName = localStorage.getItem('dicesoccer_player1') ||  translationManager.get('player1');
+                        if (window.authUI) {
+                            console.log('🔄 Reverting to manual player name:', manualName);
+                            window.authUI.updatePlayerNameInMenu(manualName);
+                        }
+                        
+                        // Close lobby immediately if open - return to main menu
                         const lobbyModal = document.getElementById('lobbyModal');
                         if (lobbyModal && lobbyModal.classList.contains('active')) {
                             console.log('🚪 Closing lobby due to disconnection');
-                            closeLobby().catch(() => {});
+                            // Stop refresh interval immediately
+                            if (lobbyRefreshInterval) {
+                                clearInterval(lobbyRefreshInterval);
+                                lobbyRefreshInterval = null;
+                            }
+                            // Close the modal
+                            closeModal('lobbyModal');
+                            // Clear local state
+                            if (multiplayerManager) {
+                                multiplayerManager.isInLobby = false;
+                                multiplayerManager.wasInLobby = false;
+                            }
                         }
                         
                         // Close challenge dialog if open
@@ -270,6 +399,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             console.log('❌ Closing challenge dialog due to disconnection');
                             closeModal('challengeDialog');
                         }
+                        
+                        // Close challenge modal if open
+                        const challengeModal = document.getElementById('challengeModal');
+                        if (challengeModal && challengeModal.classList.contains('active')) {
+                            console.log('❌ Closing challenge modal due to disconnection');
+                            closeModal('challengeModal');
+                            currentChallengeInfo = null;
+                        }
                     }
                 };
                 
@@ -277,18 +414,127 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('⚠️ Multiplayer unavailable (playing offline):', error.message);
                 // Continue anyway - game works offline
                 
+                // Set up callback for when multiplayer is fully initialized
+                window.onMultiplayerInitialized = () => {
+                    console.log('✅ Multiplayer fully initialized');
+                    updateMultiplayerButtonState(true);
+                };
+                
                 // Still set up the connection callback for when it does connect
                 if (window.authClient) {
                     window.authClient.onConnectionStateChange = (connected) => {
                         console.log(`🔌 Connection state changed: ${connected ? 'Connected' : 'Disconnected'}`);
-                        updateMultiplayerButtonState(connected);
                         
                         if (connected) {
                             console.log('✅ Multiplayer now available');
-                            showConnectionMessage(translationManager.get('connectionRestored') || 'Connection restored!');
-                            window.authClient.attemptAutoLogin().catch(() => {});
+                            // showConnectionMessage(translationManager.get('connectionRestored') || 'Connection restored!');
+                            
+                            // Assign socket to multiplayer manager if it doesn't have one
+                            if (multiplayerManager && !multiplayerManager.socket && window.authClient.socket) {
+                                console.log('🔌 Assigning socket to multiplayer manager');
+                                multiplayerManager.socket = window.authClient.socket;
+                            }
+                            
+                            // Initialize multiplayer manager now that connection is available
+                            if (multiplayerManager && multiplayerManager.socket && !multiplayerManager.initialized) {
+                                console.log('🔄 Initializing multiplayer after connection...');
+                                
+                                // Ensure playerId exists
+                                if (!multiplayerManager.playerId) {
+                                    multiplayerManager.playerId = localStorage.getItem('dicesoccer_mp_playerid');
+                                    if (!multiplayerManager.playerId) {
+                                        multiplayerManager.playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                                        localStorage.setItem('dicesoccer_mp_playerid', multiplayerManager.playerId);
+                                    }
+                                }
+                                
+                                const playerName = window.authClient?.getUserDisplayName() || 'Player';
+                                console.log('📤 Sending init with playerId:', multiplayerManager.playerId, 'playerName:', playerName);
+                                
+                                multiplayerManager.socket.emit('init', { 
+                                    playerId: multiplayerManager.playerId, 
+                                    playerName: playerName 
+                                }, (response) => {
+                                    if (response.success) {
+                                        console.log('✅ Multiplayer initialized');
+                                        multiplayerManager.initialized = true;
+                                        multiplayerManager.connected = true;
+                                        if (typeof window.onMultiplayerInitialized === 'function') {
+                                            window.onMultiplayerInitialized();
+                                        }
+                                    } else {
+                                        console.error('❌ Failed to initialize multiplayer:', response.error);
+                                    }
+                                });
+                            }
+                            
+                            // Try to auto-login
+                            window.authClient.attemptAutoLogin().then(() => {
+                                console.log('🔍 Auto-login completed. isAuthenticated:', window.authClient.isAuthenticated);
+                                if (window.authClient.isAuthenticated) {
+                                    console.log('✅ Auto-logged in');
+                                    console.log('🔍 currentUser:', window.authClient.currentUser);
+                                    const username = window.authClient.currentUser?.username;
+                                    console.log('🔍 Username from currentUser:', username);
+                                    if (username && window.authUI) {
+                                        window.authUI.updatePlayerNameInMenu(username);
+                                    } else if (!username) {
+                                        console.warn('⚠️ No username in currentUser');
+                                    } else {
+                                        console.warn('⚠️ authUI not available');
+                                    }
+                                    
+                                    // Update server with authenticated username
+                                    if (username && multiplayerManager && multiplayerManager.connected) {
+                                        multiplayerManager.updatePlayerName(username).catch(err => {
+                                            console.warn('⚠️ Failed to update server player name:', err);
+                                        });
+                                    }
+                                }
+                            }).catch(err => {
+                                console.warn('⚠️ Auto-login failed:', err);
+                            });
                         } else {
-                            showConnectionMessage(translationManager.get('connectionLost') || 'Connection lost. Reconnecting...', 0);
+                            // showConnectionMessage(translationManager.get('connectionLost') || 'Connection lost. Reconnecting...', 0);
+                            updateMultiplayerButtonState(false);
+                            
+                            // Mark as not initialized
+                            if (multiplayerManager) {
+                                multiplayerManager.initialized = false;
+                            }
+                            
+                            // Revert to manual player name
+                            const manualName = localStorage.getItem('dicesoccer_player1') || translationManager.get('player1');
+                            if (window.authUI) {
+                                console.log('🔄 Reverting to manual player name:', manualName);
+                                window.authUI.updatePlayerNameInMenu(manualName);
+                            }
+                            
+                            // Close lobby if open
+                            const lobbyModal = document.getElementById('lobbyModal');
+                            if (lobbyModal && lobbyModal.classList.contains('active')) {
+                                console.log('🚪 Closing lobby due to disconnection');
+                                if (lobbyRefreshInterval) {
+                                    clearInterval(lobbyRefreshInterval);
+                                    lobbyRefreshInterval = null;
+                                }
+                                closeModal('lobbyModal');
+                                if (multiplayerManager) {
+                                    multiplayerManager.isInLobby = false;
+                                    multiplayerManager.wasInLobby = false;
+                                }
+                            }
+                            
+                            // Close challenge modals if open
+                            const challengeDialog = document.getElementById('challengeDialog');
+                            if (challengeDialog && challengeDialog.classList.contains('active')) {
+                                closeModal('challengeDialog');
+                            }
+                            const challengeModal = document.getElementById('challengeModal');
+                            if (challengeModal && challengeModal.classList.contains('active')) {
+                                closeModal('challengeModal');
+                                currentChallengeInfo = null;
+                            }
                         }
                     };
                     
@@ -551,6 +797,10 @@ function setViewportHeight() {
         handleAutoOrientationDetection();
         // Handle orientation changes during gameplay
         handleGameplayOrientationChange();
+        // Update shirt number sizes when window resizes
+        if (currentGame && typeof currentGame.updateShirtNumberSizes === 'function') {
+            currentGame.updateShirtNumberSizes();
+        }
     });
     window.addEventListener('orientationchange', () => {
         // Wait longer for dimensions to update after orientation change
@@ -559,6 +809,10 @@ function setViewportHeight() {
             handleAutoOrientationDetection();
             // Handle orientation changes during gameplay
             handleGameplayOrientationChange();
+            // Update shirt number sizes after orientation change
+            if (currentGame && typeof currentGame.updateShirtNumberSizes === 'function') {
+                currentGame.updateShirtNumberSizes();
+            }
         }, 300);
     });
 }
@@ -1358,7 +1612,7 @@ function initializeShirtModal() {
     const shirtGrid = document.getElementById('shirtGrid');
     shirtGrid.innerHTML = '';
     
-    shirtColors.forEach(color => {
+    getShirtColorNames().forEach(color => {
         const option = document.createElement('div');
         option.className = 'shirt-option';
         option.setAttribute('data-color', color);
@@ -1649,6 +1903,17 @@ async function proceedToLobby() {
     
     console.log('🎮 Entering lobby as:', playerName);
     
+    // Ensure server has the correct player name before entering lobby
+    if (playerName && multiplayerManager && multiplayerManager.connected) {
+        try {
+            console.log('📤 Updating server with player name before lobby entry:', playerName);
+            await multiplayerManager.updatePlayerName(playerName);
+        } catch (err) {
+            console.warn('⚠️ Failed to update player name on server:', err);
+            // Continue anyway - server might already have correct name
+        }
+    }
+    
     try {
         // Enter lobby
         const result = await multiplayerManager.enterLobby(playerName);
@@ -1680,6 +1945,12 @@ async function proceedToLobby() {
 }
 
 async function refreshLobby() {
+    // Don't refresh if not connected
+    if (!multiplayerManager || !multiplayerManager.connected) {
+        console.warn('⚠️ Skipping lobby refresh - not connected');
+        return;
+    }
+    
     const result = await multiplayerManager.getLobbyPlayers();
     
     if (!result.success) {
@@ -2227,22 +2498,31 @@ async function cancelChallenge() {
 }
 
 async function closeLobby() {
-    // Stop refresh interval
+    console.log('🚪 closeLobby() called');
+    
+    // Stop refresh interval immediately
     if (lobbyRefreshInterval) {
         clearInterval(lobbyRefreshInterval);
         lobbyRefreshInterval = null;
     }
     
-    // Leave lobby only if connected
+    // Close the modal immediately
+    closeModal('lobbyModal');
+    
+    // Try to leave lobby on server only if connected
     if (multiplayerManager && multiplayerManager.connected) {
         try {
             await multiplayerManager.leaveLobby();
         } catch (error) {
             console.warn('⚠️ Failed to leave lobby (possibly disconnected):', error);
         }
+    } else {
+        // Not connected, just clear local state
+        if (multiplayerManager) {
+            multiplayerManager.isInLobby = false;
+            multiplayerManager.wasInLobby = false;
+        }
     }
-    
-    closeModal('lobbyModal');
 }
 
 function updateLobbyUserStatus() {
@@ -2328,8 +2608,6 @@ function startMultiplayerGame(role, opponent) {
         gameState.originalPlayer2Name = gameState.player2Name;
     }
     
-    gameState.startGame('multiplayer');
-    
     // Store opponent info for game recording
     multiplayerManager.opponentUserId = opponent.userId;
     multiplayerManager.opponentUsername = opponent.username;
@@ -2342,10 +2620,16 @@ function startMultiplayerGame(role, opponent) {
         myPlayerName = window.authClient.getUserDisplayName(); // Guest_ABC123 or username
     }
     
-    // Set player names and roles
+    // Update gameState player names with authenticated names BEFORE starting game
+    gameState.player1Name = myPlayerName;
+    gameState.player2Name = opponent.playerName;
+    
+    // Now start the game with correct names
+    gameState.startGame('multiplayer');
+    
+    // Set player roles
     if (role === 'host') {
         // Host controls Player 1, opponent is Player 2
-        gameState.player2Name = opponent.playerName;
         multiplayerManager.isHost = true;
         multiplayerManager.localPlayer = 1;
         debugLog(`Host: I control Player 1 (${myPlayerName}), opponent controls Player 2 (${opponent.playerName})`);
@@ -2365,7 +2649,6 @@ function startMultiplayerGame(role, opponent) {
     } else {
         // Guest controls Player 2, but sees themselves as "Player 1" on their screen
         // We'll flip the display perspective in rendering
-        gameState.player2Name = opponent.playerName;
         multiplayerManager.isHost = false;
         multiplayerManager.localPlayer = 2;
         debugLog(`Guest: I control Player 2 (${myPlayerName}), opponent controls Player 1 (${opponent.playerName})`);

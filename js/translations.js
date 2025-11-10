@@ -19,16 +19,16 @@ const translations = {
         hard: "Hard",
 
         // Shirt colors
-        blue: "Blue",
-        green: "Green",
-        orange: "Orange",
-        yellow: "Yellow",
-        red: "Red",
-        pink: "Pink",
-        purple: "Purple",
-        barca: "Barcelona",
+        spain: "Spain",
+        france: "France",
+        slovenia: "Slovenia",
+        italy: "Italy",
+        germany: "Germany",
+        croatia: "Croatia",
         argentina: "Argentina",
-        slovenija: "Slovenia",
+        portugal: "Portugal",
+        brazil: "Brazil",
+        sweden: "Sweden",
 
         // Players
         player1: "Player 1",
@@ -92,6 +92,9 @@ const translations = {
         notLoggedIn: "Not logged in",
         connectionLost: "Connection lost. Reconnecting...",
         connectionRestored: "Connection restored!",
+        reconnecting: "Reconnecting...",
+        backToMenu: "Back to Menu",
+        attempt: "Attempt",
         
         // Auth errors
         failedToCreateGuest: "Failed to create guest user",
@@ -217,16 +220,16 @@ const translations = {
         hard: "Težka",
 
         // Shirt colors
-        blue: "Modra",
-        green: "Zelena",
-        orange: "Oranžna",
-        yellow: "Rumena",
-        red: "Rdeča",
-        pink: "Rožnata",
-        purple: "Vijolična",
-        barca: "Barcelona",
+        spain: "Španija",
+        france: "Francija",
+        slovenia: "Slovenija",
+        italy: "Italija",
+        germany: "Nemčija",
+        croatia: "Hrvaška",
         argentina: "Argentina",
-        slovenija: "Slovenija",
+        portugal: "Portugalska",
+        brazil: "Brazilija",
+        sweden: "Švedska",
 
         // Players
         player1: "Igralec 1",
@@ -290,6 +293,9 @@ const translations = {
         notLoggedIn: "Niste prijavljeni",
         connectionLost: "Povezava prekinjena. Ponovno povezovanje...",
         connectionRestored: "Povezava obnovljena!",
+        reconnecting: "Ponovno povezovanje...",
+        backToMenu: "Nazaj na meni",
+        attempt: "Poskus",
         
         // Auth errors
         failedToCreateGuest: "Ustvarjanje gostujočega uporabnika ni uspelo",

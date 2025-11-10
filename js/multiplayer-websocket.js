@@ -12,6 +12,14 @@ function wsDebugLog(...args) {
     }
 }
 
+// Helper to handle response errors silently for "Not initialized" during reconnection
+function handleResponseError(response, methodName) {
+    if (response.error !== 'Not initialized') {
+        console.warn(`⚠️ ${methodName} error:`, response.error);
+    }
+    return new Error(response.error);
+}
+
 class WebSocketMultiplayerManager {
     constructor() {
         this.serverUrl = null; // Will be set from config
@@ -27,6 +35,7 @@ class WebSocketMultiplayerManager {
         this.wasInLobby = false;
         this.onEvent = null; // Callback for game events
         this.connected = false;
+        this.initialized = false; // Track if 'init' handshake is complete
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.heartbeatInterval = null;
@@ -62,9 +71,15 @@ class WebSocketMultiplayerManager {
                         this.playerId = response.playerId;
                         localStorage.setItem('dicesoccer_mp_playerid', this.playerId);
                         console.log(`✅ Player initialized: ${playerName} (${this.playerId})`);
+                        this.initialized = true;
                         
                         // Set up multiplayer-specific event handlers (challenges, game events, etc.)
                         this.setupMultiplayerEventHandlers();
+                        
+                        // Notify that initialization is complete
+                        if (typeof window.onMultiplayerInitialized === 'function') {
+                            window.onMultiplayerInitialized();
+                        }
                         
                         if (typeof window.hideConnectionModal === 'function') {
                             window.hideConnectionModal();
@@ -72,6 +87,7 @@ class WebSocketMultiplayerManager {
                         resolve();
                     } else {
                         console.error('Init failed:', response.error);
+                        this.initialized = false;
                         reject(new Error(response.error || 'Initialization failed'));
                     }
                 });
@@ -160,6 +176,7 @@ class WebSocketMultiplayerManager {
             });
 
             this.socket.on('connect', async () => {
+                console.log('🔌 Multiplayer WebSocket connect event fired');
                 wsDebugLog('✅ Connected to WebSocket server');
                 this.connected = true;
                 this.reconnectAttempts = 0;
@@ -217,6 +234,12 @@ class WebSocketMultiplayerManager {
                 }, (response) => {
                     if (response.success) {
                         wsDebugLog('👤 Player initialized on server');
+                        this.initialized = true;
+                        
+                        // Notify that initialization is complete
+                        if (typeof window.onMultiplayerInitialized === 'function') {
+                            window.onMultiplayerInitialized();
+                        }
                         
                         // Check if we reconnected to an existing game
                         if (response.reconnected) {
@@ -243,7 +266,7 @@ class WebSocketMultiplayerManager {
                         
                         resolve();
                     } else {
-                        reject(new Error(response.error));
+                        reject(handleResponseError(response, 'init'));
                     }
                 });
             });
@@ -251,6 +274,7 @@ class WebSocketMultiplayerManager {
             this.socket.on('disconnect', (reason) => {
                 wsDebugLog('❌ Disconnected from WebSocket server:', reason);
                 this.connected = false;
+                this.initialized = false;
                 this.stopHeartbeat();
                 
                 // Remember state for reconnection
@@ -478,7 +502,7 @@ class WebSocketMultiplayerManager {
                     resolve(response);
                 } else {
                     wsDebugLog('❌ Failed to update player name:', response.error);
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'updatePlayerName'));
                 }
             });
         });
@@ -499,7 +523,7 @@ class WebSocketMultiplayerManager {
                     resolve(response);
                 } else {
                     wsDebugLog('❌ Failed to record game:', response.error);
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'recordGame'));
                 }
             });
         });
@@ -511,6 +535,10 @@ class WebSocketMultiplayerManager {
                 return reject(new Error('Not connected to server'));
             }
 
+            if (!this.initialized) {
+                return reject(new Error('Connection not fully initialized yet. Please wait a moment and try again.'));
+            }
+
             this.socket.emit('enterLobby', { playerName }, (response) => {
                 if (response.success) {
                     this.isInLobby = true;
@@ -518,7 +546,7 @@ class WebSocketMultiplayerManager {
                     wsDebugLog('🚪 Entered lobby');
                     resolve(response);
                 } else {
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'enterLobby'));
                 }
             });
         });
@@ -534,7 +562,7 @@ class WebSocketMultiplayerManager {
                 if (response.success) {
                     resolve(response);
                 } else {
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'getLobbyPlayers'));
                 }
             });
         });
@@ -551,7 +579,7 @@ class WebSocketMultiplayerManager {
                     wsDebugLog('⚔️ Challenge sent');
                     resolve(response);
                 } else {
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'challengePlayer'));
                 }
             });
         });
@@ -575,7 +603,7 @@ class WebSocketMultiplayerManager {
                     wsDebugLog('✅ Challenge accepted, starting game');
                     resolve(response);
                 } else {
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'acceptChallenge'));
                 }
             });
         });
@@ -596,7 +624,7 @@ class WebSocketMultiplayerManager {
                     resolve(response);
                 } else {
                     console.error('❌ Server returned error:', response.error);
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'declineChallenge'));
                 }
             });
         });
@@ -617,7 +645,7 @@ class WebSocketMultiplayerManager {
                     wsDebugLog('👁️ Joined as spectator');
                     resolve(response);
                 } else {
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'joinAsSpectator'));
                 }
             });
         });
@@ -655,15 +683,19 @@ class WebSocketMultiplayerManager {
     async leaveLobby() {
         return new Promise((resolve, reject) => {
             if (!this.socket || !this.connected) {
+                this.isInLobby = false;
+                this.wasInLobby = false;
                 return resolve({ success: true }); // Already disconnected
             }
 
             this.socket.emit('leaveLobby', {}, (response) => {
                 if (response.success) {
+                    this.isInLobby = false;
+                    this.wasInLobby = false;
                     wsDebugLog('🚪 Left lobby');
                     resolve(response);
                 } else {
-                    reject(new Error(response.error));
+                    reject(handleResponseError(response, 'leaveLobby'));
                 }
             });
         });

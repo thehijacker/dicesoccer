@@ -156,21 +156,38 @@ class SoundManager {
     }
 }
 
-// Shirt colors configuration
-const shirtColors = [
-    'blue', 'green', 'orange', 'yellow', 
-    'red', 'pink', 'purple', 'barca', 
-    'argentina', 'slovenija'
-];
+// Shirt colors configuration with custom number colors for each shirt
+const shirtColors = {
+    'spain': { name: 'spain', numberColor: '#FFD700' },      // Gold
+    'france': { name: 'france', numberColor: '#FFD700' },    // Gold
+    'slovenia': { name: 'slovenia', numberColor: '#FFD700' }, // Gold
+    'italy': { name: 'italy', numberColor: '#FFD700' },      // Gold
+    'germany': { name: 'germany', numberColor: '#FFFFFF' },  // White
+    'croatia': { name: 'croatia', numberColor: '#FFD700' },  // Gold
+    'argentina': { name: 'argentina', numberColor: '#0000FF' }, // Blue
+    'portugal': { name: 'portugal', numberColor: '#FFD700' }, // Gold
+    'brazil': { name: 'brazil', numberColor: '#FFD700' },    // Gold
+    'sweden': { name: 'sweden', numberColor: '#FFD700' }     // Gold
+};
 
-// Get shirt image path
-function getShirtImage(color, number = 1) {
-    return `images/${color}${number}.png`;
+// Get array of shirt color names (for compatibility)
+function getShirtColorNames() {
+    return Object.keys(shirtColors);
+}
+
+// Get shirt image path (now without number - single image per shirt)
+function getShirtImage(colorName) {
+    return `images/${colorName}.png`;
+}
+
+// Get the number color for a specific shirt
+function getShirtNumberColor(colorName) {
+    return shirtColors[colorName]?.numberColor || '#FFD700'; // Default to gold if not found
 }
 
 // Get a random shirt color different from the given color
 function getRandomDifferentShirtColor(excludeColor) {
-    const availableColors = shirtColors.filter(c => c !== excludeColor);
+    const availableColors = getShirtColorNames().filter(c => c !== excludeColor);
     return availableColors[Math.floor(Math.random() * availableColors.length)];
 }
 
@@ -233,7 +250,7 @@ class DiceSoccerGame {
         this.diceValue = 0;
         
         // Remove any animation clones that might still be present
-        document.querySelectorAll('.player-shirt.jumping-animation-right, .player-shirt.jumping-animation-left, .player-shirt.jumping-animation-player2-portrait').forEach(clone => {
+        document.querySelectorAll('.shirt-container.jumping-animation-right, .shirt-container.jumping-animation-left, .shirt-container.jumping-animation-player2-portrait').forEach(clone => {
             clone.remove();
         });
         
@@ -346,6 +363,25 @@ class DiceSoccerGame {
                 }
             }
         }
+        
+        // Update shirt number sizes after DOM is ready (only if not during animation)
+        if (!this.isMoving) {
+            requestAnimationFrame(() => this.updateShirtNumberSizes());
+        }
+    }
+
+    updateShirtNumberSizes() {
+        // Dynamically size all shirt numbers based on their container size
+        const shirtContainers = document.querySelectorAll('.shirt-container');
+        shirtContainers.forEach(container => {
+            const numberEl = container.querySelector('.shirt-number');
+            if (numberEl) {
+                const containerHeight = container.offsetHeight;
+                // Set font size to 60% of container height for good visibility
+                const fontSize = Math.max(containerHeight * 0.6, 12); // Minimum 12px
+                numberEl.style.fontSize = fontSize + 'px';
+            }
+        });
     }
 
     createCell(container, row, col, isFlippedView = false) {
@@ -370,6 +406,11 @@ class DiceSoccerGame {
         
         const piece = this.board[row][col];
         if (piece) {
+            // Create container for shirt + number
+            const shirtContainer = document.createElement('div');
+            shirtContainer.className = 'shirt-container';
+            
+            // Create shirt image
             const shirtImg = document.createElement('img');
             
             // In flipped view (guest), swap the visual appearance but keep actual player number
@@ -381,10 +422,19 @@ class DiceSoccerGame {
             }
             
             const shirtColor = displayPlayer === 1 ? gameState.getPlayer1Shirt() : gameState.getPlayer2Shirt();
-            shirtImg.src = getShirtImage(shirtColor, piece.number);
+            shirtImg.src = getShirtImage(shirtColor);
             shirtImg.className = `player-shirt player${displayPlayer}-shirt`;
             shirtImg.alt = `Player ${piece.player} - ${piece.number}`;
-            cell.appendChild(shirtImg);
+            
+            // Create number overlay with custom color for this shirt
+            const numberOverlay = document.createElement('div');
+            numberOverlay.className = 'shirt-number';
+            numberOverlay.textContent = piece.number;
+            numberOverlay.style.color = getShirtNumberColor(shirtColor);
+            
+            shirtContainer.appendChild(shirtImg);
+            shirtContainer.appendChild(numberOverlay);
+            cell.appendChild(shirtContainer);
         }
         
         cell.addEventListener('click', () => this.handleCellClick(row, col));
@@ -1086,8 +1136,8 @@ class DiceSoccerGame {
         });
         
         if (fromCell && toCell) {
-            const shirtImg = fromCell.querySelector('.player-shirt');
-            if (shirtImg) {
+            const shirtContainer = fromCell.querySelector('.shirt-container');
+            if (shirtContainer) {
                 // Get positions
                 const fromRect = fromCell.getBoundingClientRect();
                 const toRect = toCell.getBoundingClientRect();
@@ -1108,7 +1158,7 @@ class DiceSoccerGame {
                 const needsFlippedAnimation = isPortrait && isPlayer2 && gameState.twoPlayerMode && gameState.gameMode !== 'multiplayer';
                 
                 // Create clone for animation
-                const clone = shirtImg.cloneNode(true);
+                const clone = shirtContainer.cloneNode(true);
                 clone.style.position = 'fixed';
                 clone.style.left = fromRect.left + 'px';
                 clone.style.top = fromRect.top + 'px';
@@ -1133,8 +1183,8 @@ class DiceSoccerGame {
                 
                 document.body.appendChild(clone);
                 
-                // Completely remove original shirt element immediately
-                shirtImg.remove();
+                // Completely remove original shirt container immediately
+                shirtContainer.remove();
                 fromCell.style.pointerEvents = 'none';
                 
                 // Update board state immediately
@@ -1150,6 +1200,9 @@ class DiceSoccerGame {
                     requestAnimationFrame(() => {
                         // Now render the board to show piece at new position
                         this.renderBoard();
+                        
+                        // Force update shirt number sizes since isMoving is still true
+                        this.updateShirtNumberSizes();
                         
                         // Check for goal
                         const middleRow = Math.floor(this.rows / 2);

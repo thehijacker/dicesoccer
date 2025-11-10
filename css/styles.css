@@ -1382,11 +1382,42 @@ input:checked + .toggle-label::before {
     50% { transform: scale(1.05); }
 }
 
-.player-shirt {
+.shirt-container {
     width: 85%;
     height: 85%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-shirt {
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     transition: transform 0.3s ease;
+}
+
+.shirt-number {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1px; /* Will be set dynamically by JavaScript */
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 
+        -0.04em -0.04em 0 #000,
+        0.04em -0.04em 0 #000,
+        -0.04em 0.04em 0 #000,
+        0.04em 0.04em 0 #000;
+    pointer-events: none;
+    z-index: 1;
+    line-height: 1;
 }
 
 /* Flip Player 2 shirts in portrait mode for face-to-face play - ONLY for local 2-player games */
@@ -1394,18 +1425,23 @@ input:checked + .toggle-label::before {
     transform: rotate(180deg);
 }
 
+/* Also rotate the number for Player 2 in portrait mode */
+.vertical-game.local-game .player2-shirt ~ .shirt-number {
+    transform: translate(-50%, -50%) rotate(180deg);
+}
+
 /* Jump animation for moving pieces - 2D movement with rotation */
-.player-shirt.jumping-animation-right {
+.shirt-container.jumping-animation-right {
     animation: slideMove 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
 }
 
-.player-shirt.jumping-animation-left {
+.shirt-container.jumping-animation-left {
     animation: slideMove 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
 }
 
-.player-shirt.jumping-animation-player2-portrait {
+.shirt-container.jumping-animation-player2-portrait {
     animation: slideMoveRotated 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
 }

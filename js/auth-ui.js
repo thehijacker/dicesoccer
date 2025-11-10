@@ -255,6 +255,13 @@ class AuthUI {
             console.log('  - current gameState.player1Name:', window.gameState?.player1Name);
             
             if (!isGuest) {
+                // Save the current name as manual name if it's not already an authenticated username
+                if (typeof gameState !== 'undefined' && gameState.player1Name && 
+                    !localStorage.getItem('dicesoccer_manual_player_name')) {
+                    localStorage.setItem('dicesoccer_manual_player_name', gameState.player1Name);
+                    console.log('💾 Saved manual player name:', gameState.player1Name);
+                }
+                
                 player1NameEl.textContent = username;
                 // Also update gameState so it's used in all games
                 if (typeof gameState !== 'undefined') {
