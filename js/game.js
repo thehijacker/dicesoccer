@@ -158,17 +158,17 @@ class SoundManager {
 
 // Shirt colors configuration with custom number colors for each shirt
 const shirtColors = {
-    'spain': { name: 'spain', numberColor: '#FFD700' },      // Gold
-    'france': { name: 'france', numberColor: '#FFD700' },    // Gold
+    'spain': { name: 'spain', numberColor: '#FAFF00' },      // Lemon Glacier
+    'france': { name: 'france', numberColor: '#13F4EF' },    // Fluorescent Blue
     'slovenia': { name: 'slovenia', numberColor: '#FFFFFF' }, // White
-    'italy': { name: 'italy', numberColor: '#FFD700' },      // Gold
+    'italy': { name: 'italy', numberColor: '#68FF00' },      // Bright Green
     'germany': { name: 'germany', numberColor: '#FFFFFF' },  // White
     'croatia': { name: 'croatia', numberColor: '#FFD700' },  // Gold
-    'argentina': { name: 'argentina', numberColor: '#0000FF' }, // Blue
+    'argentina': { name: 'argentina', numberColor: '#13F4EF' }, // Fluorescent Blue
     'portugal': { name: 'portugal', numberColor: '#FFD700' }, // Gold
     'brazil': { name: 'brazil', numberColor: '#FFD700' },    // Gold
-    'sweden': { name: 'sweden', numberColor: '#FFD700' },     // Gold
-	'finland': { name: 'sweden', numberColor: '#FFD700' },     // Gold
+    'sweden': { name: 'sweden', numberColor: '#FAFF00' },     // Lemon Glacier
+	'finland': { name: 'sweden', numberColor: '#FFBF00' },     // Fluorescent Orange
 	'austria': { name: 'sweden', numberColor: '#FFD700' },     // Gold
 };
 

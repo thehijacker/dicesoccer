@@ -1659,7 +1659,12 @@ function initializeShirtModal() {
         option.appendChild(img);
         option.appendChild(span);
         
-        option.addEventListener('click', () => {
+        option.addEventListener('click', (e) => {
+            // Prevent selection if this shirt is disabled
+            if (option.classList.contains('disabled')) {
+                e.stopPropagation();
+                return;
+            }
             selectShirt(color);
         });
         
