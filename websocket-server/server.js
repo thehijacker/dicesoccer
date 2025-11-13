@@ -408,22 +408,31 @@ io.on('connection', (socket) => {
     // Verify access token (for auto-login)
     socket.on('verifyToken', (data, callback) => {
         try {
+            console.log('🔐 verifyToken called');
             const result = authManager.verifyAccessToken(data.accessToken);
             
             if (result.valid) {
+                console.log('✅ Token valid:', result.username, result.userId);
                 socket.userId = result.userId;
                 socket.username = result.username;
                 socket.isAuthenticated = true;
                 
                 // Update player info with userId and username
                 const playerId = lobbySockets.get(socket.id);
+                console.log('🔍 Looking up playerId:', playerId);
                 if (playerId) {
                     const player = players.get(playerId);
+                    console.log('🔍 Found player:', player ? player.playerName : 'NOT FOUND');
                     if (player) {
                         player.userId = result.userId;
                         player.username = result.username;
                         console.log(`✅ Updated player ${playerId} with userId: ${result.userId} (verifyToken)`);
+                        console.log('🔍 Player object now:', { userId: player.userId, username: player.username });
+                    } else {
+                        console.warn(`⚠️ Player ${playerId} not found in players map!`);
                     }
+                } else {
+                    console.warn('⚠️ No playerId found for socket.id:', socket.id);
                 }
                 
                 callback({
@@ -676,6 +685,19 @@ io.on('connection', (socket) => {
             
             const challenger = players.get(playerId);
             const target = players.get(targetPlayerId);
+            
+            console.log('⚔️ sendChallenge - Challenger info:', {
+                playerId: challenger?.playerId,
+                playerName: challenger?.playerName,
+                userId: challenger?.userId,
+                username: challenger?.username
+            });
+            console.log('⚔️ sendChallenge - Target info:', {
+                playerId: target?.playerId,
+                playerName: target?.playerName,
+                userId: target?.userId,
+                username: target?.username
+            });
             
             if (!challenger || !target) {
                 return callback({ success: false, error: 'Player not found' });
