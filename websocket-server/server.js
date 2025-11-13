@@ -627,10 +627,13 @@ io.on('connection', (socket) => {
             
             console.log(`🚪 ${player.playerName} entered lobby`);
             
-            // Notify all lobby players of the update
-            broadcastLobbyUpdate();
-            
             callback({ success: true });
+            
+            // Notify all lobby players of the update AFTER callback
+            // Use setImmediate to ensure socket.join completes first
+            setImmediate(() => {
+                broadcastLobbyUpdate();
+            });
         } catch (error) {
             console.error('Enter lobby error:', error);
             callback({ success: false, error: error.message });

@@ -3170,29 +3170,32 @@ class DiceSoccerGame {
         // Set event handler
         multiplayerManager.onEvent = (event) => this.handleMultiplayerEvent(event);
         
-        // If we're the host (player 1), send initial board positions
+        // If we're the host (player 1), send initial board positions after a brief delay
+        // to ensure guest has set up their event handler
         if (multiplayerManager.isHost) {
-            const positions = [];
-            for (let row = 0; row < this.rows; row++) {
-                for (let col = 0; col < this.cols; col++) {
-                    if (this.board[row][col]) {
-                        positions.push({
-                            row,
-                            col,
-                            player: this.board[row][col].player,
-                            number: this.board[row][col].number
-                        });
+            setTimeout(() => {
+                const positions = [];
+                for (let row = 0; row < this.rows; row++) {
+                    for (let col = 0; col < this.cols; col++) {
+                        if (this.board[row][col]) {
+                            positions.push({
+                                row,
+                                col,
+                                player: this.board[row][col].player,
+                                number: this.board[row][col].number
+                            });
+                        }
                     }
                 }
-            }
-            
-            debugLog(`🔵 Host sending initialPositions with my color: ${gameState.player1Shirt}`);
-            
-            multiplayerManager.sendEvent({
-                type: 'initialPositions',
-                positions: positions,
-                myColor: gameState.player1Shirt  // Host sends their P1 color
-            });
+                
+                debugLog(`🔵 Host sending initialPositions with my color: ${gameState.player1Shirt}`);
+                
+                multiplayerManager.sendEvent({
+                    type: 'initialPositions',
+                    positions: positions,
+                    myColor: gameState.player1Shirt  // Host sends their P1 color
+                });
+            }, 300); // 300ms delay to ensure guest is ready
         } else {
             // Guest sends their color to host
             debugLog(`🟠 Guest sending my color to host: ${gameState.player1Shirt}`);

@@ -1839,17 +1839,15 @@ async function openLobby() {
     if (window.authUI) {
         console.log('🔐 Checking authentication before lobby entry...');
         const isAuth = await window.authUI.checkAuth(async () => {
-            // Continue with lobby after auth
+            // Continue with lobby after auth (only called if NOT already authenticated)
             console.log('✅ Auth complete, proceeding to lobby');
             await proceedToLobby();
         });
         
         if (isAuth) {
-            // Already authenticated, proceed directly
+            // Already authenticated, proceed directly (callback won't be called)
             console.log('✅ Already authenticated, proceeding to lobby');
             await proceedToLobby();
-        } else {
-            console.log('🔒 Not authenticated, showing auth modal');
         }
         // If not authenticated, checkAuth will show modal and callback will handle it
         return;
