@@ -66,11 +66,11 @@ class AuthUI {
             // Already authenticated or playing as guest
             const userType = window.authClient.isGuest ? 'guest' : 'registered user';
             console.log(`✅ User already authenticated as ${userType}:`, window.authClient.currentUser.username);
-            if (this.onAuthComplete) this.onAuthComplete();
+            // Don't call callback when already authenticated - let caller handle it
             return true;
         }
         
-        // Show auth modal
+        // Show auth modal - callback will be called after successful auth
         console.log('🔒 Showing auth modal');
         this.show();
         return false;

@@ -705,9 +705,12 @@ io.on('connection', (socket) => {
             
             console.log(`⚔️ ${challenger.playerName} challenged ${target.playerName}`);
             
-            broadcastLobbyUpdate();
-            
             callback({ success: true, challengeId });
+            
+            // Notify all lobby players of the update AFTER callback
+            setImmediate(() => {
+                broadcastLobbyUpdate();
+            });
         } catch (error) {
             console.error('Send challenge error:', error);
             callback({ success: false, error: error.message });

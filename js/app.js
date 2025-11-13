@@ -2291,6 +2291,10 @@ async function sendChallenge(hintsEnabled) {
     document.getElementById('challengeHintsSelection').classList.add('hidden');
     document.getElementById('challengeWaiting').classList.remove('hidden');
     
+    // Set up event handler BEFORE sending challenge to avoid race condition
+    multiplayerManager.onEvent = handleLobbyEvent;
+    multiplayerManager.startPolling();
+    
     const result = await multiplayerManager.challengePlayer(
         currentChallengeInfo.targetPlayerId,
         hintsEnabled
@@ -2306,10 +2310,6 @@ async function sendChallenge(hintsEnabled) {
     // Store the challengeId for cancellation
     currentChallengeInfo.challengeId = result.challengeId;
     debugLog('✅ Challenge sent, challengeId:', result.challengeId);
-    
-    // Start polling for challenge response
-    multiplayerManager.onEvent = handleLobbyEvent;
-    multiplayerManager.startPolling();
 }
 
 function handleLobbyEvent(event) {

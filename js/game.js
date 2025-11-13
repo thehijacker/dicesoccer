@@ -3170,36 +3170,19 @@ class DiceSoccerGame {
         // Set event handler
         multiplayerManager.onEvent = (event) => this.handleMultiplayerEvent(event);
         
-        // If we're the host (player 1), send initial board positions after a brief delay
-        // to ensure guest has set up their event handler
         if (multiplayerManager.isHost) {
-            setTimeout(() => {
-                const positions = [];
-                for (let row = 0; row < this.rows; row++) {
-                    for (let col = 0; col < this.cols; col++) {
-                        if (this.board[row][col]) {
-                            positions.push({
-                                row,
-                                col,
-                                player: this.board[row][col].player,
-                                number: this.board[row][col].number
-                            });
-                        }
-                    }
-                }
-                
-                debugLog(`🔵 Host sending initialPositions with my color: ${gameState.player1Shirt}`);
-                
-                multiplayerManager.sendEvent({
-                    type: 'initialPositions',
-                    positions: positions,
-                    myColor: gameState.player1Shirt  // Host sends their P1 color
-                });
-            }, 300); // 300ms delay to ensure guest is ready
+            // Host waits for guest's ready signal before sending initial positions
+            debugLog('🔵 Host waiting for guest ready signal...');
         } else {
-            // Guest sends their color to host
-            debugLog(`🟠 Guest sending my color to host: ${gameState.player1Shirt}`);
+            // Guest sends ready signal and color to host
+            debugLog(`🟢 Guest ready, sending signal and color to host: ${gameState.player1Shirt}`);
             
+            multiplayerManager.sendEvent({
+                type: 'guestReady',
+                myColor: gameState.player1Shirt  // Guest sends their P1 color
+            });
+            
+            // Also send guestColor for backwards compatibility
             multiplayerManager.sendEvent({
                 type: 'guestColor',
                 myColor: gameState.player1Shirt  // Guest sends their P1 color
@@ -3209,6 +3192,41 @@ class DiceSoccerGame {
     
     handleMultiplayerEvent(event) {        
         switch (event.type) {
+            case 'guestReady':
+                // Guest is ready, host can now send initial board
+                if (multiplayerManager.isHost) {
+                    debugLog(`✅ Guest ready signal received, sending initialPositions`);
+                    
+                    const positions = [];
+                    for (let row = 0; row < this.rows; row++) {
+                        for (let col = 0; col < this.cols; col++) {
+                            if (this.board[row][col]) {
+                                positions.push({
+                                    row,
+                                    col,
+                                    player: this.board[row][col].player,
+                                    number: this.board[row][col].number
+                                });
+                            }
+                        }
+                    }
+                    
+                    debugLog(`🔵 Host sending initialPositions with my color: ${gameState.player1Shirt}`);
+                    
+                    multiplayerManager.sendEvent({
+                        type: 'initialPositions',
+                        positions: positions,
+                        myColor: gameState.player1Shirt  // Host sends their P1 color
+                    });
+                    
+                    // Also store guest's color
+                    if (event.myColor) {
+                        debugLog(`📥 Host received guest color: ${event.myColor}`);
+                        gameState.multiplayerPlayer2Shirt = event.myColor;
+                    }
+                }
+                break;
+                
             case 'initialPositions':
                 // Guest or spectator receives initial board and host's color
                 debugLog(`📥 Guest/Spectator received initialPositions with host color: ${event.myColor}`);
