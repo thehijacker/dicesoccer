@@ -1,3 +1,11 @@
+@font-face {
+    font-family: 'Oswald';
+    src: url('../fonts/Oswald-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Orientation classes for menu */
 .menu-container.horizontal-menu {
     display: flex !important;
@@ -1385,6 +1393,9 @@ input:checked + .toggle-label::before {
 .shirt-container {
     width: 85%;
     height: 85%;
+    transform-origin: center center;
+    /* Inherit the pulse animation from parent cell */
+    animation: inherit;
     position: relative;
     display: flex;
     align-items: center;
@@ -1408,6 +1419,9 @@ input:checked + .toggle-label::before {
     align-items: center;
     justify-content: center;
     font-size: 1px; /* Will be set dynamically by JavaScript */
+	
+	font-family: 'Oswald', sans-serif;
+	
     font-weight: bold;
     color: #FFD700;
     text-shadow: 

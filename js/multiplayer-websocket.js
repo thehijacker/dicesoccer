@@ -172,7 +172,10 @@ class WebSocketMultiplayerManager {
                 reconnection: true,
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,
-                reconnectionAttempts: this.maxReconnectAttempts
+                reconnectionAttempts: this.maxReconnectAttempts,
+                timeout: 20000, // 20 seconds timeout for connection attempt
+                pingTimeout: 120000, // 2 minutes - wait for server ping before considering disconnected
+                pingInterval: 30000 // 30 seconds - how often to ping server
             });
 
             this.socket.on('connect', async () => {
@@ -711,6 +714,12 @@ class WebSocketMultiplayerManager {
 
         wsDebugLog('📤 Sending event:', event.type);
         
+        // Send heartbeat along with important game events to keep connection fresh
+        // Especially important for mobile devices where timers may be throttled
+        if (['diceRolled', 'playerMoved', 'goal'].includes(event.type)) {
+            this.socket.emit('heartbeat', {});
+        }
+        
         this.socket.emit('gameEvent', event, (response) => {
             if (response.success) {
                 // Event sent successfully
@@ -752,12 +761,30 @@ class WebSocketMultiplayerManager {
                 this.socket.emit('heartbeat', {});
             }
         }, 30000);
+        
+        // Add Page Visibility API handling for mobile devices
+        // Mobile browsers throttle background tabs, so send immediate heartbeat when returning to foreground
+        if (typeof document.hidden !== 'undefined') {
+            this.visibilityChangeHandler = () => {
+                if (!document.hidden && this.socket && this.connected) {
+                    wsDebugLog('👁️ Page became visible, sending immediate heartbeat');
+                    this.socket.emit('heartbeat', {});
+                }
+            };
+            document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+        }
     }
 
     stopHeartbeat() {
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = null;
+        }
+        
+        // Remove visibility change listener
+        if (this.visibilityChangeHandler) {
+            document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+            this.visibilityChangeHandler = null;
         }
     }
 

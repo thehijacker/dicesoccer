@@ -1,5 +1,5 @@
 // Service Worker for Dice Soccer PWA
-const CACHE_VERSION = '2.5.0 AA';
+const CACHE_VERSION = '2.5.0 CC';
 const CACHE_NAME = `dice-soccer-${CACHE_VERSION}`;
 const urlsToCache = [
   './',
@@ -22,67 +22,19 @@ const urlsToCache = [
   './images/dice5.png',
   './images/dice6.png',
   
-  // All shirt colors (all numbers 1-6 for each color)
-  './images/blue1.png',
-  './images/blue2.png',
-  './images/blue3.png',
-  './images/blue4.png',
-  './images/blue5.png',
-  './images/blue6.png',
-  './images/green1.png',
-  './images/green2.png',
-  './images/green3.png',
-  './images/green4.png',
-  './images/green5.png',
-  './images/green6.png',
-  './images/red1.png',
-  './images/red2.png',
-  './images/red3.png',
-  './images/red4.png',
-  './images/red5.png',
-  './images/red6.png',
-  './images/yellow1.png',
-  './images/yellow2.png',
-  './images/yellow3.png',
-  './images/yellow4.png',
-  './images/yellow5.png',
-  './images/yellow6.png',
-  './images/orange1.png',
-  './images/orange2.png',
-  './images/orange3.png',
-  './images/orange4.png',
-  './images/orange5.png',
-  './images/orange6.png',
-  './images/pink1.png',
-  './images/pink2.png',
-  './images/pink3.png',
-  './images/pink4.png',
-  './images/pink5.png',
-  './images/pink6.png',
-  './images/purple1.png',
-  './images/purple2.png',
-  './images/purple3.png',
-  './images/purple4.png',
-  './images/purple5.png',
-  './images/purple6.png',
-  './images/barca1.png',
-  './images/barca2.png',
-  './images/barca3.png',
-  './images/barca4.png',
-  './images/barca5.png',
-  './images/barca6.png',
-  './images/argentina1.png',
-  './images/argentina2.png',
-  './images/argentina3.png',
-  './images/argentina4.png',
-  './images/argentina5.png',
-  './images/argentina6.png',
-  './images/slovenija1.png',
-  './images/slovenija2.png',
-  './images/slovenija3.png',
-  './images/slovenija4.png',
-  './images/slovenija5.png',
-  './images/slovenija6.png',
+  // All shirt colors
+  './images/germany.png',
+  './images/brazil.png',
+  './images/sweden.png',
+  './images/france.png',
+  './images/slovenia.png',
+  './images/croatia.png',
+  './images/italy.png',
+  './images/portugal.png',
+  './images/argentina.png',
+  './images/spain.png',
+  './images/finland.png',
+  './images/austria.png',
   
   // Menu icons (128px - most commonly used)
   './images/newgame128.png',
@@ -137,7 +89,10 @@ const urlsToCache = [
   './sounds/pop.mp3',
   './sounds/rolling-dice.mp3',
   './sounds/walk.mp3',
-  './sounds/whistle.mp3'
+  './sounds/whistle.mp3',
+  
+  // Shirt number font
+  '/fonts/Oswald-Bold.ttf'
 ];
 
 // 🔹 Install service worker and cache assets

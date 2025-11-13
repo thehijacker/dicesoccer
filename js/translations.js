@@ -29,6 +29,8 @@ const translations = {
         portugal: "Portugal",
         brazil: "Brazil",
         sweden: "Sweden",
+		austria: "Austria",
+		finland: "Finland",
 
         // Players
         player1: "Player 1",
@@ -230,6 +232,8 @@ const translations = {
         portugal: "Portugalska",
         brazil: "Brazilija",
         sweden: "Švedska",
+        austria: "Avstrija",
+        finland: "Finska",		
 
         // Players
         player1: "Igralec 1",

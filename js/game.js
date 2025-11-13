@@ -3,8 +3,8 @@ class GameState {
     constructor() {
         this.player1Name = localStorage.getItem('dicesoccer_player1') || '';
         this.player2Name = localStorage.getItem('dicesoccer_player2') || '';
-        this.player1Shirt = localStorage.getItem('dicesoccer_player1_shirt') || 'green';
-        this.player2Shirt = localStorage.getItem('dicesoccer_player2_shirt') || 'blue';
+        this.player1Shirt = localStorage.getItem('dicesoccer_player1_shirt') || 'brazil';
+        this.player2Shirt = localStorage.getItem('dicesoccer_player2_shirt') || 'argentina';
         this.difficulty = localStorage.getItem('dicesoccer_difficulty') || 'easy';
         this.soundEnabled = localStorage.getItem('dicesoccer_sound') !== 'false';
         this.orientation = localStorage.getItem('dicesoccer_orientation') || 'portrait';
@@ -160,14 +160,16 @@ class SoundManager {
 const shirtColors = {
     'spain': { name: 'spain', numberColor: '#FFD700' },      // Gold
     'france': { name: 'france', numberColor: '#FFD700' },    // Gold
-    'slovenia': { name: 'slovenia', numberColor: '#FFD700' }, // Gold
+    'slovenia': { name: 'slovenia', numberColor: '#FFFFFF' }, // White
     'italy': { name: 'italy', numberColor: '#FFD700' },      // Gold
     'germany': { name: 'germany', numberColor: '#FFFFFF' },  // White
     'croatia': { name: 'croatia', numberColor: '#FFD700' },  // Gold
     'argentina': { name: 'argentina', numberColor: '#0000FF' }, // Blue
     'portugal': { name: 'portugal', numberColor: '#FFD700' }, // Gold
     'brazil': { name: 'brazil', numberColor: '#FFD700' },    // Gold
-    'sweden': { name: 'sweden', numberColor: '#FFD700' }     // Gold
+    'sweden': { name: 'sweden', numberColor: '#FFD700' },     // Gold
+	'finland': { name: 'sweden', numberColor: '#FFD700' },     // Gold
+	'austria': { name: 'sweden', numberColor: '#FFD700' },     // Gold
 };
 
 // Get array of shirt color names (for compatibility)
@@ -2844,30 +2846,64 @@ class DiceSoccerGame {
             return;
         }
         
-        // Determine winner user ID
-        let winnerId = null;
-        const player1Name = gameState.player1Name || translationManager.get('player1');
+        // Determine the ACTUAL game roles (not UI perspective)
+        // Host is always actual Player 1, Guest is always actual Player 2
+        const isHost = multiplayerManager.isHost;
+        const localUserId = window.authClient.currentUser.userId;
+        const localUsername = window.authClient.currentUser.username;
+        const opponentUserId = multiplayerManager.opponentUserId;
+        const opponentUsername = multiplayerManager.opponentUsername;
         
-        if (winnerName === player1Name) {
-            // I won (I'm always player1 in my view)
-            winnerId = window.authClient.currentUser.userId;
+        // Determine actual player IDs and scores based on roles
+        let actualPlayer1UserId, actualPlayer1Username, actualPlayer1Score, actualPlayer1Moves;
+        let actualPlayer2UserId, actualPlayer2Username, actualPlayer2Score, actualPlayer2Moves;
+        
+        if (isHost) {
+            // I'm the host (actual Player 1)
+            actualPlayer1UserId = localUserId;
+            actualPlayer1Username = localUsername;
+            actualPlayer1Score = this.player1Score;
+            actualPlayer1Moves = this.player1Moves;
+            actualPlayer2UserId = opponentUserId;
+            actualPlayer2Username = opponentUsername;
+            actualPlayer2Score = this.player2Score;
+            actualPlayer2Moves = this.player2Moves;
         } else {
-            // Opponent won
-            winnerId = multiplayerManager.opponentUserId;
+            // I'm the guest (actual Player 2), but I see myself as Player 1 in UI
+            actualPlayer1UserId = opponentUserId;
+            actualPlayer1Username = opponentUsername;
+            actualPlayer1Score = this.player2Score; // Opponent's score is actual P1 score
+            actualPlayer1Moves = this.player2Moves;
+            actualPlayer2UserId = localUserId;
+            actualPlayer2Username = localUsername;
+            actualPlayer2Score = this.player1Score; // My score is actual P2 score
+            actualPlayer2Moves = this.player1Moves;
         }
         
-        // Prepare game data
+        // Determine winner ID
+        const player1Name = gameState.player1Name || translationManager.get('player1');
+        let winnerId = null;
+        
+        if (winnerName === player1Name) {
+            // Winner is who I see as Player 1 in my UI
+            winnerId = isHost ? localUserId : opponentUserId;
+        } else {
+            // Winner is who I see as Player 2 in my UI
+            winnerId = isHost ? opponentUserId : localUserId;
+        }
+        
+        // Prepare game data with ACTUAL player roles (not UI perspective)
         const gameData = {
-            player1UserId: window.authClient.currentUser.userId,
-            player2UserId: multiplayerManager.opponentUserId,
-            player1Username: window.authClient.currentUser.username,
-            player2Username: multiplayerManager.opponentUsername,
-            player1Score: this.player1Score,
-            player2Score: this.player2Score,
+            player1UserId: actualPlayer1UserId,
+            player2UserId: actualPlayer2UserId,
+            player1Username: actualPlayer1Username,
+            player2Username: actualPlayer2Username,
+            player1Score: actualPlayer1Score,
+            player2Score: actualPlayer2Score,
             winnerId: winnerId,
             gameDurationMs: this.totalGameTime,
-            player1Moves: this.player1Moves,
-            player2Moves: this.player2Moves,
+            player1Moves: actualPlayer1Moves,
+            player2Moves: actualPlayer2Moves,
             gameMode: 'multiplayer'
         };
         
@@ -2875,7 +2911,18 @@ class DiceSoccerGame {
             const result = await multiplayerManager.recordGame(gameData);
             
             if (result.success && result.ranked && result.eloChanges) {
-                this.eloChanges = result.eloChanges;
+                // Map ELO changes back to UI perspective
+                if (isHost) {
+                    // Host: player1 in result = me, player2 = opponent
+                    this.eloChanges = {
+                        player1: result.eloChanges.player1 // My ELO change
+                    };
+                } else {
+                    // Guest: player2 in result = me, player1 = opponent
+                    this.eloChanges = {
+                        player1: result.eloChanges.player2 // My ELO change (I'm actual P2)
+                    };
+                }
             }
         } catch (error) {
             console.error('❌ Error recording game:', error);
@@ -3165,7 +3212,7 @@ class DiceSoccerGame {
                 
                 // Spectators should not send events back
                 if (gameState.gameMode === 'spectator') {
-                    const hostColor = event.myColor || 'green';
+                    const hostColor = event.myColor || 'brazil';
                     const guestColor = event.guestColor || 'red'; // May be undefined in initial send
                     
                     // Spectators see host as P1, guest as P2
@@ -3183,7 +3230,7 @@ class DiceSoccerGame {
                 }
                 
                 // Guest player logic
-                const hostColor = event.myColor || 'green';
+                const hostColor = event.myColor || 'brazil';
                 const myColor = gameState.player1Shirt;
                 
                 // Guest always uses host's color as-is for opponent
@@ -3218,7 +3265,7 @@ class DiceSoccerGame {
                 
                 debugLog(`📥 Host received guest color: ${event.myColor}`);
                 
-                const guestColor = event.myColor || 'blue';
+                const guestColor = event.myColor || 'argentina';
                 const hostMyColor = gameState.player1Shirt;
                 
                 // Check if colors conflict
@@ -3338,10 +3385,10 @@ class DiceSoccerGame {
                     return;
                 }
                 
-                // Find the player shirt element in the source cell
-                const shirtImg = fromCell.querySelector('.player-shirt');
-                if (!shirtImg) {
-                    console.error('Could not find player shirt element in cell');
+                // Find the shirt container in the source cell
+                const shirtContainer = fromCell.querySelector('.shirt-container');
+                if (!shirtContainer) {
+                    console.error('Could not find shirt container in cell');
                     // Board was already updated above, just render
                     this.renderBoard();
                     soundManager.play('walk');
@@ -3376,8 +3423,8 @@ class DiceSoccerGame {
                 // In multiplayer, guest sees themselves at bottom with no rotation
                 const needsFlippedAnimation = isPortrait && isPlayer2 && gameState.twoPlayerMode && gameState.gameMode !== 'multiplayer';
                 
-                // Create clone for animation
-                const clone = shirtImg.cloneNode(true);
+                // Create clone for animation (clone entire container to include the number)
+                const clone = shirtContainer.cloneNode(true);
                 clone.style.position = 'fixed';
                 clone.style.left = fromRect.left + 'px';
                 clone.style.top = fromRect.top + 'px';
@@ -3402,8 +3449,8 @@ class DiceSoccerGame {
                 document.body.appendChild(clone);
                 
                 // Hide original immediately (board state already updated above)
-                shirtImg.style.opacity = '0';
-                shirtImg.style.pointerEvents = 'none';
+                shirtContainer.style.opacity = '0';
+                shirtContainer.style.pointerEvents = 'none';
                 fromCell.style.pointerEvents = 'none';
                 
                 soundManager.play('walk');

@@ -58,7 +58,7 @@ try {
 // Configuration
 const PORT = process.env.PORT || 7860;
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-const HEARTBEAT_TIMEOUT = 150000; // 2.5 minutes - allow time for winner modal
+const HEARTBEAT_TIMEOUT = 300000; // 5 minutes - allow for mobile browser throttling
 const LOBBY_CLEANUP_INTERVAL = 60000; // 1 minute
 
 // Data structures
@@ -67,6 +67,7 @@ const lobbySockets = new Map(); // socketId -> playerId
 const challenges = new Map(); // challengeId -> challenge info
 const games = new Map(); // gameId -> game session
 const playerGames = new Map(); // playerId -> gameId
+const recordedGames = new Map(); // gameId -> recorded game result (prevent duplicates)
 
 // Create HTTP server
 const server = http.createServer((req, res) => {
@@ -444,7 +445,34 @@ io.on('connection', (socket) => {
     // Record completed game
     socket.on('recordGame', async (data, callback) => {
         try {
+            const playerId = lobbySockets.get(socket.id);
+            if (!playerId) {
+                return callback({ success: false, error: 'Not initialized' });
+            }
+            
+            // Get the game ID to check if already recorded
+            const gameId = playerGames.get(playerId);
+            
+            // Check if this game was already recorded
+            if (gameId && recordedGames.has(gameId)) {
+                const existingResult = recordedGames.get(gameId);
+                console.log(`♻️ Game already recorded by other player, returning cached result`);
+                return callback(existingResult);
+            }
+            
+            // Record the game (first time)
             const result = await statsManager.recordGame(data);
+            
+            // Cache the result to prevent duplicate recording
+            if (gameId && result.success) {
+                recordedGames.set(gameId, result);
+                
+                // Clean up after 1 minute (keep it briefly in case of delays)
+                setTimeout(() => {
+                    recordedGames.delete(gameId);
+                }, 60000);
+            }
+            
             callback(result);
         } catch (error) {
             console.error('Record game error:', error);
@@ -1050,6 +1078,7 @@ io.on('connection', (socket) => {
                 
                 // Clean up game
                 games.delete(gameId);
+                recordedGames.delete(gameId);
             }
             
             const player = players.get(playerId);
@@ -1451,6 +1480,7 @@ function handlePlayerDisconnect(playerId) {
                 
                 // Clean up game
                 games.delete(gameId);
+                recordedGames.delete(gameId);
                 playerGames.delete(playerId);
                 playerGames.delete(opponentId);
                 players.delete(playerId);
@@ -1530,6 +1560,7 @@ function handlePlayerDisconnect(playerId) {
                         }
                         
                         games.delete(gameId);
+                        recordedGames.delete(gameId);
                     }
                     
                     // Remove disconnected player
@@ -1632,6 +1663,7 @@ setInterval(() => {
             }
             
             games.delete(gameId);
+            recordedGames.delete(gameId);
             continue;
         }
         
