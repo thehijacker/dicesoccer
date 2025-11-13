@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.5.0 DD';
+const APP_VERSION = '2.5.0 EE';
 
 // Global config
 let appConfig = {
@@ -331,6 +331,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         // Try to auto-login with stored tokens when reconnected
+                        // Reset auto-login flag so authentication can run again with the new socket
+                        if (window.authClient) {
+                            console.log('🔄 Resetting auto-login flag for reconnection');
+                            window.authClient.autoLoginAttempted = false;
+                        }
+                        
                         window.authClient.attemptAutoLogin().then(() => {
                             console.log('🔍 Auto-login completed. isAuthenticated:', window.authClient.isAuthenticated);
                             if (window.authClient.isAuthenticated) {
@@ -1467,6 +1473,13 @@ function setupEventListeners() {
         // Track if this was multiplayer
         const wasMultiplayer = gameState.gameMode === 'multiplayer';
         
+        // Notify opponent that we're leaving (before leaving the game)
+        if (wasMultiplayer && multiplayerManager && currentGame) {
+            multiplayerManager.sendEvent({
+                type: 'playerLeftToMenu'
+            });
+        }
+        
         // Leave multiplayer game if active
         if (wasMultiplayer && multiplayerManager) {
             await multiplayerManager.leaveGame();
@@ -1932,7 +1945,9 @@ async function proceedToLobby() {
     
     try {
         // Enter lobby
+        console.log('📍 Attempting to enter lobby...');
         const result = await multiplayerManager.enterLobby(playerName);
+        console.log('✅ enterLobby succeeded:', result);
         
         if (!result.success) {
             console.error(translationManager.get('failedToJoin') + ': ' + result.error);
@@ -1955,7 +1970,40 @@ async function proceedToLobby() {
             }, 3000);
         }
     } catch (error) {
-        console.error('Failed to enter lobby:', error);
+        console.error('❌ Failed to enter lobby:', error);
+        console.error('  - error.message:', error.message);
+        console.error('  - typeof error:', typeof error);
+        
+        // Check if error is due to not being initialized (server restart scenario)
+        if (error.message && error.message.includes('Not initialized')) {
+            console.log('🔄 Server does not recognize us, re-initializing...');
+            multiplayerManager.initialized = false;
+            multiplayerManager.connected = false;
+            
+            // Try to re-initialize and enter lobby
+            try {
+                const authSocket = window.authClient?.socket;
+                await multiplayerManager.init(authSocket);
+                
+                // Try entering lobby again
+                const result = await multiplayerManager.enterLobby(playerName);
+                if (result.success) {
+                    openModal('lobbyModal');
+                    updateLobbyUserStatus();
+                    await refreshLobby();
+                    
+                    if (!lobbyRefreshInterval) {
+                        lobbyRefreshInterval = setInterval(async () => {
+                            await refreshLobby();
+                        }, 3000);
+                    }
+                    return;
+                }
+            } catch (retryError) {
+                console.error('Failed to re-initialize and enter lobby:', retryError);
+            }
+        }
+        
         console.error(translationManager.get('failedToJoin') + ': ' + error.message);
     }
 }
@@ -2531,6 +2579,12 @@ async function closeLobby() {
     
     // Close the modal immediately
     closeModal('lobbyModal');
+    
+    // Also close winner modal if it's open (in case returning to lobby from finished game)
+    const winnerModal = document.getElementById('winnerModal');
+    if (winnerModal && winnerModal.classList.contains('active')) {
+        closeModal('winnerModal');
+    }
     
     // Try to leave lobby on server only if connected
     if (multiplayerManager && multiplayerManager.connected) {

@@ -88,13 +88,20 @@ class AuthClient {
                 });
             });
         } else {
+            console.log('🔌 Reusing existing socket for auth');
             this.socket = socket;
             // Send current language to server for existing socket
             this.sendLanguageToServer();
+            
+            // Reset auto-login flag so we can re-authenticate on the new socket
+            console.log('🔄 Reusing socket, resetting auto-login flag from', this.autoLoginAttempted, 'to false');
+            this.autoLoginAttempted = false;
         }
         
         // Try to auto-login with stored tokens
-        await this.attemptAutoLogin();
+        console.log('🔐 Calling attemptAutoLogin(), autoLoginAttempted:', this.autoLoginAttempted);
+        const loginResult = await this.attemptAutoLogin();
+        console.log('🔐 attemptAutoLogin() completed, result:', loginResult);
         
         return this.isAuthenticated;
     }
@@ -181,16 +188,24 @@ class AuthClient {
      * Attempt auto-login using stored refresh token
      */
     async attemptAutoLogin() {
+        console.log('🔐 attemptAutoLogin() called, autoLoginAttempted:', this.autoLoginAttempted);
         if (this.autoLoginAttempted) {
+            console.log('⏭️ Auto-login already attempted, skipping');
             return false;
         }
         
         this.autoLoginAttempted = true;
+        console.log('🔐 Setting autoLoginAttempted to true');
         
         try {
             // Check for stored tokens
             const storedRefreshToken = this.getStoredRefreshToken();
             const storedAccessToken = this.getStoredAccessToken();
+            
+            console.log('🔍 Stored tokens:', {
+                hasRefreshToken: !!storedRefreshToken,
+                hasAccessToken: !!storedAccessToken
+            });
             
             if (!storedRefreshToken) {
                 console.log('📱 No stored session found');
@@ -201,7 +216,9 @@ class AuthClient {
             
             // Try to verify access token first (faster)
             if (storedAccessToken) {
+                console.log('✅ Calling verifyToken with stored access token');
                 const verifyResult = await this.verifyToken(storedAccessToken);
+                console.log('🔍 verifyToken result:', verifyResult);
                 if (verifyResult.success) {
                     this.accessToken = storedAccessToken;
                     this.refreshToken = storedRefreshToken;

@@ -2778,8 +2778,13 @@ class DiceSoccerGame {
         `;
         
         // Add ELO changes if available (multiplayer ranked games)
+        console.log('🔍 Checking for ELO changes to display');
+        console.log('  - this.eloChanges:', this.eloChanges);
+        console.log('  - gameMode:', gameState.gameMode);
+        
         if (this.eloChanges) {
             const myChange = this.eloChanges.player1;
+            console.log('✅ Displaying ELO change:', myChange);
             const changeColor = myChange.change >= 0 ? '#4CAF50' : '#f44336';
             const changeSign = myChange.change >= 0 ? '+' : '';
             
@@ -2793,8 +2798,10 @@ class DiceSoccerGame {
             `;
             statsHTML += eloHTML;
             
-            // Clear for next game
-            this.eloChanges = null;
+            // Don't clear eloChanges here - it needs to persist for the gameStats handler
+            // this.eloChanges = null;
+        } else {
+            console.warn('⚠️ No ELO changes to display');
         }
         
         document.getElementById('finalStatsContent').innerHTML = statsHTML;
@@ -2910,6 +2917,12 @@ class DiceSoccerGame {
         try {
             const result = await multiplayerManager.recordGame(gameData);
             
+            console.log('🔍 recordGame result:', result);
+            console.log('  - success:', result.success);
+            console.log('  - ranked:', result.ranked);
+            console.log('  - eloChanges:', result.eloChanges);
+            console.log('  - isHost:', isHost);
+            
             if (result.success && result.ranked && result.eloChanges) {
                 // Map ELO changes back to UI perspective
                 if (isHost) {
@@ -2917,12 +2930,16 @@ class DiceSoccerGame {
                     this.eloChanges = {
                         player1: result.eloChanges.player1 // My ELO change
                     };
+                    console.log('✅ Host: Set this.eloChanges to:', this.eloChanges);
                 } else {
                     // Guest: player2 in result = me, player1 = opponent
                     this.eloChanges = {
                         player1: result.eloChanges.player2 // My ELO change (I'm actual P2)
                     };
+                    console.log('✅ Guest: Set this.eloChanges to:', this.eloChanges);
                 }
+            } else {
+                console.warn('⚠️ Not setting eloChanges:', { success: result.success, ranked: result.ranked, hasEloChanges: !!result.eloChanges });
             }
         } catch (error) {
             console.error('❌ Error recording game:', error);
@@ -3739,18 +3756,48 @@ class DiceSoccerGame {
                     <p><strong>${translationManager.get('totalTime')}:</strong> ${this.formatTime(this.totalGameTime)}</p>
                 `;
                 
-                // Re-add ELO changes if they were displayed (this.eloChanges was cleared in endGame)
-                // Check if the modal already has ELO displayed and preserve it
-                const currentContent = document.getElementById('finalStatsContent').innerHTML;
-                if (currentContent.includes('ELO Rating')) {
-                    const eloMatch = currentContent.match(/<div style="margin-top: 15px.*?<\/div>/s);
-                    if (eloMatch) {
-                        statsHTML += eloMatch[0];
-                    }
+                // Add ELO changes if available (may have been set in endGame)
+                console.log('🔍 Checking if ELO needs to be added in gameStats handler');
+                console.log('  - this.eloChanges:', this.eloChanges);
+                
+                if (this.eloChanges) {
+                    const myChange = this.eloChanges.player1;
+                    console.log('✅ Adding ELO change to stats:', myChange);
+                    const changeColor = myChange.change >= 0 ? '#4CAF50' : '#f44336';
+                    const changeSign = myChange.change >= 0 ? '+' : '';
+                    
+                    const eloHTML = `
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ddd;">
+                            <p style="font-weight: bold; color: ${changeColor}; font-size: 1.2em;">
+                                ${translationManager.get('eloRating') || 'ELO Rating'}: ${myChange.newElo} 
+                                (${changeSign}${myChange.change})
+                            </p>
+                        </div>
+                    `;
+                    statsHTML += eloHTML;
+                    
+                    // Clear for next game
+                    this.eloChanges = null;
+                } else {
+                    console.log('  - No ELO changes available');
                 }
                 
                 document.getElementById('finalStatsContent').innerHTML = statsHTML;
                 debugLog(`Updated stats display - P1 moves: ${this.player1Moves}, P2 moves: ${this.player2Moves}`);
+                break;
+            
+            case 'playerLeftToMenu':
+                // Opponent left to menu from winner modal
+                debugLog('Opponent left to menu, closing winner modal');
+                
+                // Close winner modal if open
+                const winnerModal = document.getElementById('winnerModal');
+                if (winnerModal && winnerModal.classList.contains('active')) {
+                    closeModal('winnerModal');
+                }
+                
+                // Show message that opponent left
+                this.showMessage(translationManager.get('opponentLeft') || 'Opponent left to menu', 3000);
                 break;
             
             case 'spectatorUpdate':
