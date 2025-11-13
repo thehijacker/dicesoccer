@@ -792,6 +792,16 @@ io.on('connection', (socket) => {
                 challengerSocket.join(gameId);
                 challengerSocket.leave('lobby');
                 
+                // Debug: Check opponent info before sending
+                console.log('🔍 Sending challengeAccepted to host:', {
+                    challengerId: challenger.playerId,
+                    challengerUserId: challenger.userId,
+                    challengerUsername: challenger.username,
+                    accepterId: accepter.playerId,
+                    accepterUserId: accepter.userId,
+                    accepterUsername: accepter.username
+                });
+                
                 // Notify challenger
                 challengerSocket.emit('challengeAccepted', {
                     gameId,
@@ -809,6 +819,16 @@ io.on('connection', (socket) => {
             socket.leave('lobby');
             
             console.log(`🎮 Game started: ${challenger.playerName} vs ${accepter.playerName} (${gameId})`);
+            
+            // Debug: Check opponent info before callback
+            console.log('🔍 Sending acceptChallenge callback to guest:', {
+                accepterId: accepter.playerId,
+                accepterUserId: accepter.userId,
+                accepterUsername: accepter.username,
+                challengerId: challenger.playerId,
+                challengerUserId: challenger.userId,
+                challengerUsername: challenger.username
+            });
             
             broadcastLobbyUpdate();
             

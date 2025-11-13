@@ -338,30 +338,8 @@ class WebSocketMultiplayerManager {
             });
 
             // Event handlers
-            this.socket.on('challenge', (data) => {
-                wsDebugLog('⚔️ Received challenge:', data);
-                // Handle incoming challenge in app.js
-                if (window.handleIncomingChallenge) {
-                    window.handleIncomingChallenge(data);
-                }
-            });
-
-            this.socket.on('challengeAccepted', (data) => {
-                wsDebugLog('🎮 Challenge accepted:', data);
-                this.gameId = data.gameId;
-                this.role = data.role;
-                this.isHost = (data.role === 'host');
-                this.localPlayer = this.isHost ? 1 : 2;
-                this.opponentInfo = data.opponent;
-                this.isInGame = true;
-
-                if (this.onEvent) {
-                    this.onEvent({
-                        type: 'challengeAccepted',
-                        ...data
-                    });
-                }
-            });
+            // Note: Event handlers are set up in setupMultiplayerEventHandlers()
+            // to avoid duplicate registrations
 
             this.socket.on('challengeDeclined', (data) => {
                 wsDebugLog('❌ Challenge declined:', data);
@@ -388,12 +366,8 @@ class WebSocketMultiplayerManager {
                 }
             });
 
-            this.socket.on('gameEvent', (event) => {
-                wsDebugLog('📨 Received game event:', event.type);
-                if (this.onEvent) {
-                    this.onEvent(event);
-                }
-            });
+            // Note: gameEvent handler is set up in setupMultiplayerEventHandlers()
+            // to avoid duplicate registrations
 
             this.socket.on('serverShutdown', (data) => {
                 console.warn('⚠️ Server shutting down:', data.message);
@@ -423,6 +397,15 @@ class WebSocketMultiplayerManager {
 
     // Setup multiplayer event handlers (for when reusing auth socket)
     setupMultiplayerEventHandlers() {
+        console.log('🔧 setupMultiplayerEventHandlers() called - removing old listeners first');
+        
+        // Remove any existing listeners to prevent duplicates
+        this.socket.off('challenge');
+        this.socket.off('challengeAccepted');
+        this.socket.off('gameEvent');
+        
+        console.log('✅ Old listeners removed, registering new ones');
+        
         // Event handlers for multiplayer functionality
         this.socket.on('challenge', (data) => {
             wsDebugLog('⚔️ Received challenge:', data);
@@ -432,6 +415,9 @@ class WebSocketMultiplayerManager {
         });
 
         this.socket.on('challengeAccepted', (data) => {
+            console.log('🔔 challengeAccepted event fired!');
+            console.log('  - data:', data);
+            console.log('  - this.onEvent exists:', !!this.onEvent);
             wsDebugLog('🎮 Challenge accepted:', data);
             this.gameId = data.gameId;
             this.role = data.role;
@@ -441,10 +427,13 @@ class WebSocketMultiplayerManager {
             this.isInGame = true;
 
             if (this.onEvent) {
+                console.log('  ✅ Calling this.onEvent with challengeAccepted');
                 this.onEvent({
                     type: 'challengeAccepted',
                     ...data
                 });
+            } else {
+                console.error('  ❌ No onEvent handler set!');
             }
         });
 

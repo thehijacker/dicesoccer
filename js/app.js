@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.5.0 CC';
+const APP_VERSION = '2.5.0 DD';
 
 // Global config
 let appConfig = {
@@ -316,6 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                     console.log('✅ Multiplayer re-initialized after reconnection');
                                     multiplayerManager.initialized = true;
                                     multiplayerManager.connected = true;
+                                    
+                                    // Re-setup event handlers after reconnection
+                                    console.log('🔧 Re-setting up multiplayer event handlers after reconnection');
+                                    multiplayerManager.setupMultiplayerEventHandlers();
+                                    
                                     if (typeof window.onMultiplayerInitialized === 'function') {
                                         window.onMultiplayerInitialized();
                                     }
@@ -2287,12 +2292,16 @@ async function challengePlayer(player) {
 }
 
 async function sendChallenge(hintsEnabled) {
+    debugLog('📤 sendChallenge called, hintsEnabled:', hintsEnabled);
+    
     // Hide hints selection, show waiting
     document.getElementById('challengeHintsSelection').classList.add('hidden');
     document.getElementById('challengeWaiting').classList.remove('hidden');
     
     // Set up event handler BEFORE sending challenge to avoid race condition
+    debugLog('🔌 Setting multiplayerManager.onEvent to handleLobbyEvent');
     multiplayerManager.onEvent = handleLobbyEvent;
+    debugLog('✅ Event handler set, typeof:', typeof multiplayerManager.onEvent);
     multiplayerManager.startPolling();
     
     const result = await multiplayerManager.challengePlayer(
@@ -2310,12 +2319,15 @@ async function sendChallenge(hintsEnabled) {
     // Store the challengeId for cancellation
     currentChallengeInfo.challengeId = result.challengeId;
     debugLog('✅ Challenge sent, challengeId:', result.challengeId);
+    debugLog('🔍 Verifying event handler is still set:', typeof multiplayerManager.onEvent);
 }
 
 function handleLobbyEvent(event) {
     debugLog('Lobby event received:', event);
+    debugLog('  - multiplayerManager.onEvent currently:', multiplayerManager.onEvent === handleLobbyEvent ? 'handleLobbyEvent' : 'OTHER');
     
     if (event.type === 'challengeAccepted') {
+        debugLog('✅ Challenge accepted, starting game');
         // Challenge was accepted, start the game
         multiplayerManager.stopPolling();
         closeModal('challengeModal');
@@ -2588,6 +2600,16 @@ function getTimeAgo(timestamp) {
 }
 
 function startMultiplayerGame(role, opponent) {
+    debugLog(`🎮 startMultiplayerGame called`);
+    debugLog(`  - role: ${role}`);
+    debugLog(`  - opponent:`, opponent);
+    debugLog(`  - multiplayerManager.onEvent currently:`, multiplayerManager.onEvent ? 'SET' : 'NULL');
+    
+    // IMPORTANT: Clear lobby event handler immediately
+    // The game will set its own event handler in setupMultiplayerHandlers()
+    debugLog('🧹 Clearing lobby event handler');
+    multiplayerManager.onEvent = null;
+    
     debugLog(`Starting multiplayer game as ${role}`, opponent);
     
     // Hide spectator count (will be shown if spectators join)
@@ -2607,10 +2629,20 @@ function startMultiplayerGame(role, opponent) {
     }
     
     // Store opponent info for game recording
+    console.log('🔍 Storing opponent info:', opponent);
+    console.log('  - opponent.userId:', opponent.userId);
+    console.log('  - opponent.username:', opponent.username);
+    console.log('  - opponent.playerId:', opponent.playerId);
+    console.log('  - opponent.playerName:', opponent.playerName);
+    
     multiplayerManager.opponentUserId = opponent.userId;
     multiplayerManager.opponentUsername = opponent.username;
     multiplayerManager.opponentPlayerId = opponent.playerId;
     multiplayerManager.opponentPlayerName = opponent.playerName;
+    
+    console.log('✅ Stored in multiplayerManager:');
+    console.log('  - opponentUserId:', multiplayerManager.opponentUserId);
+    console.log('  - opponentUsername:', multiplayerManager.opponentUsername);
     
     // Get authenticated player name for multiplayer (guest or registered)
     let myPlayerName = gameState.player1Name; // Default
@@ -2747,6 +2779,10 @@ function showScreen(screenId) {
 
 // Start new game
 function startNewGame() {
+    debugLog('🎮 startNewGame() called');
+    debugLog('  - gameState.gameMode:', gameState.gameMode);
+    debugLog('  - multiplayerManager.onEvent before cleanup:', multiplayerManager?.onEvent ? 'SET' : 'NULL');
+    
     // Cleanup old game instance before creating new one
     if (currentGame && typeof currentGame.cleanup === 'function') {
         debugLog('Cleaning up previous game instance');

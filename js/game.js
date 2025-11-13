@@ -3137,7 +3137,9 @@ class DiceSoccerGame {
         
         // Set up multiplayer handlers if in multiplayer mode
         if (gameState.gameMode === 'multiplayer') {
+            debugLog('🔌 Setting up multiplayer handlers...');
             this.setupMultiplayerHandlers();
+            debugLog('✅ Multiplayer handlers setup complete');
         }
         
         // Auto-roll dice for the first turn if autoDice is enabled
@@ -3162,13 +3164,22 @@ class DiceSoccerGame {
     }
     
     setupMultiplayerHandlers() {
+        debugLog('🔧 setupMultiplayerHandlers() called');
+        debugLog('  - multiplayerManager exists:', !!multiplayerManager);
+        debugLog('  - multiplayerManager.isHost:', multiplayerManager?.isHost);
+        debugLog('  - multiplayerManager.localPlayer:', multiplayerManager?.localPlayer);
+        
         if (!multiplayerManager) {
             console.error('❌ setupMultiplayerHandlers: multiplayerManager is null!');
             return;
         }
                 
         // Set event handler
-        multiplayerManager.onEvent = (event) => this.handleMultiplayerEvent(event);
+        debugLog('🔌 Setting multiplayerManager.onEvent to handleMultiplayerEvent');
+        multiplayerManager.onEvent = (event) => {
+            debugLog(`📨 Game received event: ${event.type}`);
+            this.handleMultiplayerEvent(event);
+        };
         
         if (multiplayerManager.isHost) {
             // Host waits for guest's ready signal before sending initial positions
@@ -3190,9 +3201,13 @@ class DiceSoccerGame {
         }
     }
     
-    handleMultiplayerEvent(event) {        
+    handleMultiplayerEvent(event) {
+        debugLog(`🎮 handleMultiplayerEvent called: ${event.type}`);
+        debugLog('  - multiplayerManager.isHost:', multiplayerManager?.isHost);
+        
         switch (event.type) {
             case 'guestReady':
+                debugLog('📥 Received guestReady event');
                 // Guest is ready, host can now send initial board
                 if (multiplayerManager.isHost) {
                     debugLog(`✅ Guest ready signal received, sending initialPositions`);
@@ -3212,6 +3227,7 @@ class DiceSoccerGame {
                     }
                     
                     debugLog(`🔵 Host sending initialPositions with my color: ${gameState.player1Shirt}`);
+                    debugLog(`🔵 Host sending ${positions.length} pieces`);
                     
                     multiplayerManager.sendEvent({
                         type: 'initialPositions',
@@ -3224,6 +3240,8 @@ class DiceSoccerGame {
                         debugLog(`📥 Host received guest color: ${event.myColor}`);
                         gameState.multiplayerPlayer2Shirt = event.myColor;
                     }
+                } else {
+                    debugLog('⚠️ Guest received guestReady event (should only go to host)');
                 }
                 break;
                 
