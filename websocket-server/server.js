@@ -139,11 +139,19 @@ io.on('connection', (socket) => {
             if (existingPlayer) {
                 console.log(`🔄 Player reconnecting: ${playerName} (${playerId})`);
                 
-                // Update socket ID
+                // Update socket ID and player info
                 existingPlayer.socketId = socket.id;
+                existingPlayer.playerName = playerName;
                 existingPlayer.status = existingPlayer.inGame ? 'in-game' : 'online';
                 existingPlayer.lastSeen = Date.now();
                 delete existingPlayer.disconnectedAt; // Clear disconnect timestamp
+                
+                // Update auth info from socket (if authenticated)
+                if (socket.userId && socket.username) {
+                    existingPlayer.userId = socket.userId;
+                    existingPlayer.username = socket.username;
+                    console.log(`✅ Updated player ${playerId} auth info: ${socket.username} (${socket.userId})`);
+                }
                 
                 lobbySockets.set(socket.id, playerId);
                 

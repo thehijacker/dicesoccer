@@ -336,6 +336,26 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (window.authClient.isAuthenticated) {
                                 console.log('✅ Auto-logged in after reconnection');
                                 console.log('🔍 currentUser:', window.authClient.currentUser);
+                                
+                                // CRITICAL: Re-initialize with authenticated user info
+                                // This updates the server player object with userId/username
+                                if (multiplayerManager && multiplayerManager.socket && multiplayerManager.playerId) {
+                                    const username = window.authClient.currentUser?.username;
+                                    if (username) {
+                                        console.log('🔄 Re-initializing with authenticated user:', username);
+                                        multiplayerManager.socket.emit('init', { 
+                                            playerId: multiplayerManager.playerId, 
+                                            playerName: username 
+                                        }, (response) => {
+                                            if (response.success) {
+                                                console.log('✅ Player object updated with authenticated user info');
+                                            } else {
+                                                console.error('❌ Failed to update player with auth info:', response.error);
+                                            }
+                                        });
+                                    }
+                                }
+                                
                                 // Update player name display if not in a game
                                 if (!currentGame) {
                                     const username = window.authClient.currentUser?.username;
@@ -346,13 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                         console.warn('⚠️ No username in currentUser');
                                     } else {
                                         console.warn('⚠️ authUI not available');
-                                    }
-                                    
-                                    // Update server with authenticated username
-                                    if (username && multiplayerManager && multiplayerManager.connected) {
-                                        multiplayerManager.updatePlayerName(username).catch(err => {
-                                            console.warn('⚠️ Failed to update server player name:', err);
-                                        });
                                     }
                                 } else {
                                     console.log('ℹ️ In game, not updating player name');
