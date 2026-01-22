@@ -1,5 +1,5 @@
 // Main application logic and UI interactions
-const APP_VERSION = '2.5.0 EE';
+const APP_VERSION = '2.5.1';
 
 // Global config
 let appConfig = {
@@ -2854,6 +2854,11 @@ function startNewGame() {
     debugLog('🎮 startNewGame() called');
     debugLog('  - gameState.gameMode:', gameState.gameMode);
     debugLog('  - multiplayerManager.onEvent before cleanup:', multiplayerManager?.onEvent ? 'SET' : 'NULL');
+
+    // Ensure multiplayer events don't leak into local/AI games
+    if (multiplayerManager && gameState.gameMode !== 'multiplayer' && gameState.gameMode !== 'spectator') {
+        multiplayerManager.onEvent = null;
+    }
     
     // Cleanup old game instance before creating new one
     if (currentGame && typeof currentGame.cleanup === 'function') {

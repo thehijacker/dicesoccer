@@ -161,7 +161,7 @@ const shirtColors = {
     'spain': { name: 'spain', numberColor: '#FAFF00' },      // Lemon Glacier
     'france': { name: 'france', numberColor: '#13F4EF' },    // Fluorescent Blue
     'slovenia': { name: 'slovenia', numberColor: '#FFFFFF' }, // White
-    'italy': { name: 'italy', numberColor: '#68FF00' },      // Bright Green
+    'italy': { name: 'italy', numberColor: '#FFD700' },      // Bright Green
     'germany': { name: 'germany', numberColor: '#FFFFFF' },  // White
     'croatia': { name: 'croatia', numberColor: '#FFD700' },  // Gold
     'argentina': { name: 'argentina', numberColor: '#13F4EF' }, // Fluorescent Blue
@@ -379,8 +379,8 @@ class DiceSoccerGame {
             const numberEl = container.querySelector('.shirt-number');
             if (numberEl) {
                 const containerHeight = container.offsetHeight;
-                // Set font size to 60% of container height for good visibility
-                const fontSize = Math.max(containerHeight * 0.6, 12); // Minimum 12px
+                // Set font size to 50% of container height for good visibility
+                const fontSize = Math.max(containerHeight * 0.5, 12); // Minimum 12px
                 numberEl.style.fontSize = fontSize + 'px';
             }
         });
@@ -1141,12 +1141,19 @@ class DiceSoccerGame {
             const shirtContainer = fromCell.querySelector('.shirt-container');
             if (shirtContainer) {
                 // Get positions
-                const fromRect = fromCell.getBoundingClientRect();
-                const toRect = toCell.getBoundingClientRect();
+                const fromCellRect = fromCell.getBoundingClientRect();
+                const fromContainerRect = shirtContainer.getBoundingClientRect();
+                const toCellRect = toCell.getBoundingClientRect();
+                
+                // Keep the same in-cell offset so the clone size/position matches the original
+                const offsetX = fromContainerRect.left - fromCellRect.left;
+                const offsetY = fromContainerRect.top - fromCellRect.top;
+                const targetLeft = toCellRect.left + offsetX;
+                const targetTop = toCellRect.top + offsetY;
                 
                 // Calculate distance
-                const deltaX = toRect.left - fromRect.left;
-                const deltaY = toRect.top - fromRect.top;
+                const deltaX = targetLeft - fromContainerRect.left;
+                const deltaY = targetTop - fromContainerRect.top;
                 
                 // Determine rotation direction based on player and movement
                 // Player 1 moves right (positive deltaX) - rotate clockwise
@@ -1162,10 +1169,10 @@ class DiceSoccerGame {
                 // Create clone for animation
                 const clone = shirtContainer.cloneNode(true);
                 clone.style.position = 'fixed';
-                clone.style.left = fromRect.left + 'px';
-                clone.style.top = fromRect.top + 'px';
-                clone.style.width = fromRect.width + 'px';
-                clone.style.height = fromRect.height + 'px';
+                clone.style.left = fromContainerRect.left + 'px';
+                clone.style.top = fromContainerRect.top + 'px';
+                clone.style.width = fromContainerRect.width + 'px';
+                clone.style.height = fromContainerRect.height + 'px';
                 clone.style.zIndex = '1000';
                 clone.style.pointerEvents = 'none';
                 clone.style.transition = 'none'; // Disable CSS transitions on the clone
@@ -2893,10 +2900,12 @@ class DiceSoccerGame {
         
         if (winnerName === player1Name) {
             // Winner is who I see as Player 1 in my UI
-            winnerId = isHost ? localUserId : opponentUserId;
+            // If I'm host, I see myself as P1, so I won
+            // If I'm guest, I see myself as P1, so I won
+            winnerId = localUserId;
         } else {
-            // Winner is who I see as Player 2 in my UI
-            winnerId = isHost ? opponentUserId : localUserId;
+            // Winner is who I see as Player 2 in my UI (the opponent)
+            winnerId = opponentUserId;
         }
         
         // Prepare game data with ACTUAL player roles (not UI perspective)
@@ -3219,6 +3228,13 @@ class DiceSoccerGame {
     }
     
     handleMultiplayerEvent(event) {
+        // Ignore multiplayer events when not in multiplayer/spectator mode
+        const isMultiplayerContext = gameState.gameMode === 'multiplayer' || gameState.gameMode === 'spectator';
+        if (!isMultiplayerContext) {
+            debugLog(`⛔ Ignoring multiplayer event outside multiplayer mode: ${event.type}`);
+            return;
+        }
+
         debugLog(`🎮 handleMultiplayerEvent called: ${event.type}`);
         debugLog('  - multiplayerManager.isHost:', multiplayerManager?.isHost);
         
@@ -3464,12 +3480,19 @@ class DiceSoccerGame {
                 }
                 
                 // Get positions for animation
-                const fromRect = fromCell.getBoundingClientRect();
-                const toRect = toCell.getBoundingClientRect();
+                const fromCellRect = fromCell.getBoundingClientRect();
+                const fromContainerRect = shirtContainer.getBoundingClientRect();
+                const toCellRect = toCell.getBoundingClientRect();
+                
+                // Keep the same in-cell offset so the clone size/position matches the original
+                const offsetX = fromContainerRect.left - fromCellRect.left;
+                const offsetY = fromContainerRect.top - fromCellRect.top;
+                const targetLeft = toCellRect.left + offsetX;
+                const targetTop = toCellRect.top + offsetY;
                 
                 // Calculate movement direction
-                const deltaX = toRect.left - fromRect.left;
-                const deltaY = toRect.top - fromRect.top;
+                const deltaX = targetLeft - fromContainerRect.left;
+                const deltaY = targetTop - fromContainerRect.top;
                 
                 const isMovingLeft = deltaX < 0;
                 const isPlayer2 = piece.player === 2;
@@ -3482,10 +3505,10 @@ class DiceSoccerGame {
                 // Create clone for animation (clone entire container to include the number)
                 const clone = shirtContainer.cloneNode(true);
                 clone.style.position = 'fixed';
-                clone.style.left = fromRect.left + 'px';
-                clone.style.top = fromRect.top + 'px';
-                clone.style.width = fromRect.width + 'px';
-                clone.style.height = fromRect.height + 'px';
+                clone.style.left = fromContainerRect.left + 'px';
+                clone.style.top = fromContainerRect.top + 'px';
+                clone.style.width = fromContainerRect.width + 'px';
+                clone.style.height = fromContainerRect.height + 'px';
                 clone.style.zIndex = '1000';
                 clone.style.pointerEvents = 'none';
                 
