@@ -21,3 +21,6 @@ logs/*
 
 # Keep the log folder structure
 !logs/.gitkeep
+
+# Claude files
+.claude/

@@ -1,5 +1,5 @@
 // Service Worker for Dice Soccer PWA
-const CACHE_VERSION = '2.5.1';
+const CACHE_VERSION = '2.5.2';
 const CACHE_NAME = `dice-soccer-${CACHE_VERSION}`;
 const urlsToCache = [
   './',
