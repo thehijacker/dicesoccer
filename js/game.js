@@ -822,21 +822,53 @@ class DiceSoccerGame {
 
     /**
      * Creates a new copy of the board and applies a move to it for simulation.
-     * @param {Array} currentBoard - The board state to simulate on.
-     * @param {object} move - The move to apply { fromRow, fromCol, toRow, toCol }.
-     * @returns {Array} A new board state with the move applied.
+     * Kept for compatibility with non-minimax helpers.
      */
     applyMove(currentBoard, move) {
-        // Deep copy the board to avoid modifying the original
-        const newBoard = JSON.parse(JSON.stringify(currentBoard));
+        const newBoard = currentBoard.map(row => row.slice());
         const piece = newBoard[move.fromRow][move.fromCol];
-        
         if (piece) {
             newBoard[move.toRow][move.toCol] = piece;
             newBoard[move.fromRow][move.fromCol] = null;
         }
-        
         return newBoard;
+    }
+
+    /**
+     * Applies a move IN PLACE on the board for fast minimax simulation.
+     * Returns the displaced piece (always null in this game — no captures).
+     */
+    makeMoveInPlace(board, move) {
+        const displaced = board[move.toRow][move.toCol]; // always null
+        board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];
+        board[move.fromRow][move.fromCol] = null;
+        return displaced;
+    }
+
+    /**
+     * Undoes a move applied with makeMoveInPlace, restoring exact board state.
+     */
+    undoMoveInPlace(board, move, displaced) {
+        board[move.fromRow][move.fromCol] = board[move.toRow][move.toCol];
+        board[move.toRow][move.toCol] = displaced; // restore displaced (null)
+    }
+
+    /**
+     * Orders moves for better alpha-beta pruning inside each dice-value branch.
+     * Goal moves first, then by how far forward the destination is.
+     */
+    orderMovesForSearch(moves, player) {
+        const middleRow = Math.floor(this.rows / 2);
+        const goalCol = player === 2 ? 0 : this.cols - 1;
+        moves.sort((a, b) => {
+            // Immediate goal scores first
+            const aGoal = (a.toCol === goalCol && a.toRow === middleRow) ? 1 : 0;
+            const bGoal = (b.toCol === goalCol && b.toRow === middleRow) ? 1 : 0;
+            if (bGoal !== aGoal) return bGoal - aGoal;
+            // Then by proximity to goal column
+            if (player === 2) return a.toCol - b.toCol; // lower col = closer for AI
+            return b.toCol - a.toCol;                   // higher col = closer for human
+        });
     }
 
     /**
@@ -947,124 +979,203 @@ class DiceSoccerGame {
      * @param {Array} board - The board state to evaluate.
      * @returns {number} The heuristic score. Higher is better for the AI.
      */
+    /**
+     * Improved static heuristic — called at leaf nodes of the minimax search.
+     * Improvements vs old version:
+     *  - Exponential (squared) proximity bonus so near-goal pieces score geometrically more
+     *  - Middle-row multiplier: a piece on the scoring lane is 4× more valuable than off-lane
+     *  - Urgency counter: pieces on the middle row within 3 moves of a goal get a large bonus/penalty
+     *  - Endgame urgency: when either side is at match-point the relevant weight triples
+     *  - Goalkeeper safety preserved
+     */
     evaluateBoardState(board, player1Score, player2Score) {
         let score = 0;
         const aiPlayer = 2;
         const humanPlayer = 1;
         const middleRow = Math.floor(this.rows / 2);
+        const p1Score = player1Score || 0;
+        const p2Score = player2Score || 0;
 
-        // --- Endgame Logic ---
-        const isEndgame = player1Score === 2 || player2Score === 2;
-        const goalProximityWeight = isEndgame ? 20 : 10; // Double the importance of getting to goal in endgame
+        // --- Endgame urgency weights ---
+        // When AI is one goal from winning, attack is 3× more important.
+        // When human is one goal from winning, defence is 3× more important.
+        const offenseWeight = p2Score >= 2 ? 3 : 1;
+        const defenseWeight = p1Score >= 2 ? 3 : 1;
 
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const piece = board[r][c];
                 if (!piece) continue;
 
+                const distFromMiddle = Math.abs(r - middleRow);
+                const isOnMiddleRow = r === middleRow;
+                // Row multiplier: 4× on middle row (scoring lane), 2× one off, 1× on edge
+                const rowMult = isOnMiddleRow ? 4 : Math.max(1, 3 - distFromMiddle);
+
                 if (piece.player === aiPlayer) {
-                    // AI's score
-                    // 1. Proximity to human's goal (col 0)
-                    score += (this.cols - 1 - c) * goalProximityWeight;
-                    // 2. Bonus for being on the middle row
-                    if (r === middleRow) score += 5;
-                    // 3. Goalkeeper safety (massive penalty for moving it)
-                    if (piece.number === 1 && (c !== this.cols - 1 || r !== middleRow)) {
-                        score -= 50000;
+                    // GK must stay in goal
+                    if (piece.number === 1) {
+                        if (c !== this.cols - 1 || r !== middleRow) score -= 50000;
+                        continue;
                     }
-                    // 4. NEW: Control of the Center
-                    if (c >= 3 && c <= 5) {
-                        score += 15; // Bonus for occupying central columns
-                    }
+                    // Squared proximity to human's goal (col 0); lower c = closer
+                    const distToGoal = c; // 0 = at goal, 8 = far away
+                    score += Math.pow(this.cols - distToGoal, 2) * rowMult * offenseWeight;
+                    // Center control bonus
+                    if (c >= 3 && c <= 5) score += 20;
                 } else {
-                    // Human's score (subtracted from AI's score)
-                    // 1. Proximity to AI's goal (col 8)
-                    score -= c * goalProximityWeight;
-                    // 2. Bonus for being on the middle row
-                    if (r === middleRow) score -= 5;
-                    // 3. Goalkeeper safety (if human moves GK, it's good for AI)
-                    if (piece.number === 1 && (c !== 0 || r !== middleRow)) {
-                        score += 1000;
+                    // Human GK out of goal = good for AI
+                    if (piece.number === 1) {
+                        if (c !== 0 || r !== middleRow) score += 1000;
+                        continue;
                     }
-                    // 4. NEW: Control of the Center (penalize human for it)
-                    if (c >= 3 && c <= 5) {
-                        score -= 15;
-                    }
+                    // Squared proximity to AI's goal (last col); higher c = closer
+                    const distToGoal = this.cols - 1 - c;
+                    score -= Math.pow(this.cols - distToGoal, 2) * rowMult * defenseWeight;
+                    // Center control penalty
+                    if (c >= 3 && c <= 5) score -= 20;
                 }
             }
         }
-        
+
+        // --- Urgency counter: pieces on the middle row within 3 moves of a goal ---
+        // These positions represent imminent scoring threats that must dominate the score.
+        for (let c = 0; c < this.cols; c++) {
+            const piece = board[middleRow][c];
+            if (!piece || piece.number === 1) continue;
+            if (piece.player === aiPlayer) {
+                const movesFromHumanGoal = c; // AI attacks col 0
+                if (movesFromHumanGoal <= 3) {
+                    score += (4 - movesFromHumanGoal) * 3000 * offenseWeight;
+                }
+            } else {
+                const movesFromAIGoal = this.cols - 1 - c; // Human attacks last col
+                if (movesFromAIGoal <= 3) {
+                    score -= (4 - movesFromAIGoal) * 3000 * defenseWeight;
+                }
+            }
+        }
+
         // --- Mobility Score ---
         const aiMoves = this.getAllValidMovesSim(aiPlayer, board, null).length;
         const humanMoves = this.getAllValidMovesSim(humanPlayer, board, null).length;
-        score += (aiMoves - humanMoves) * 10; // Reward having more moves than the opponent
+        score += (aiMoves - humanMoves) * 15;
 
-        // Check for win/loss states
-        if (board[middleRow][0]?.player === aiPlayer) return 100000; // AI wins
+        // --- Terminal states (checked last so they override everything) ---
+        if (board[middleRow][0]?.player === aiPlayer) return 100000;           // AI wins
         if (board[middleRow][this.cols - 1]?.player === humanPlayer) return -100000; // Human wins
-        
-        // Check for "no moves available" (block win/loss)
-        if (humanMoves === 0) return 90000; // AI forces a block win
-        if (aiMoves === 0) return -90000; // AI is blocked
+        if (humanMoves === 0) return 90000;  // Human completely blocked — AI wins
+        if (aiMoves === 0) return -90000;   // AI completely blocked — human wins
 
         return score;
     }
 
     /**
-     * The recursive Minimax search algorithm with Alpha-Beta Pruning.
-     * @param {Array} board - The current board state.
-     * @param {number} depth - The current depth in the search tree.
-     * @param {boolean} isMaximizingPlayer - True if it's the AI's turn (maximizer), false for human (minimizer).
-     * @param {number} alpha - The best score found so far for the maximizer.
-     * @param {number} beta - The best score found so far for the minimizer.
-     * @returns {number} The best possible score from this board state.
+     * Expectiminimax with Alpha-Beta pruning where applicable.
+     *
+     * Each half-turn is treated as a CHANCE NODE: the dice value is unknown, so
+     * we simulate all 6 possible dice outcomes, let each player pick their best
+     * move for that roll, and return the AVERAGE score over all 6 rolls.
+     * Within each dice-value branch the standard min/max with alpha-beta applies.
+     *
+     * This models the actual game mechanics (you must play the piece matching
+     * your dice), rather than the old "assume opponent can move any piece" fallback.
+     *
+     * @param {Array}   board             - Current board (mutated in-place, restored on return).
+     * @param {number}  depth             - Remaining search depth (half-turns).
+     * @param {boolean} isMaximizingPlayer - true = AI's turn, false = human's turn.
+     * @param {number}  alpha             - Alpha for pruning within a dice branch.
+     * @param {number}  beta              - Beta  for pruning within a dice branch.
+     * @param {number}  p1Score           - Current player-1 score (for endgame weight).
+     * @param {number}  p2Score           - Current player-2 score (for endgame weight).
      */
-    minimax(board, depth, isMaximizingPlayer, alpha, beta) {
-        // Base case: if we've reached max depth or it's a terminal state (win/loss/draw)
-        if (depth === 0 || board[Math.floor(this.rows / 2)][0] || board[Math.floor(this.rows / 2)][this.cols - 1]) {
-            return this.evaluateBoardState(board);
+    minimax(board, depth, isMaximizingPlayer, alpha, beta, p1Score, p2Score) {
+        const middleRow = Math.floor(this.rows / 2);
+
+        // Terminal: a piece already reached a goal cell on this board snapshot
+        if (board[middleRow][0]?.player === 2) return 100000;
+        if (board[middleRow][this.cols - 1]?.player === 1) return -100000;
+
+        if (depth === 0) {
+            return this.evaluateBoardState(board, p1Score, p2Score);
         }
 
-        if (isMaximizingPlayer) { // AI's turn (Maximizer)
-            let maxEval = -Infinity;
-            // We don't know the human's dice roll, so we must assume they can move ANY piece.
-            // This is a conservative assumption for the AI's move.
-            const moves = this.getAllValidMovesSim(2, board, null);
-            
-            if (moves.length === 0) {
-                return this.evaluateBoardState(board); // No moves, evaluate current board
-            }
+        if (isMaximizingPlayer) {
+            // --- CHANCE NODE: AI rolls dice ---
+            // Average the best score the AI can achieve over all 6 dice outcomes.
+            let totalScore = 0;
+            let diceCount = 0;
 
-            for (const move of moves) {
-                const newBoard = this.applyMove(board, move);
-                const evaluation = this.minimax(newBoard, depth - 1, false, alpha, beta);
-                maxEval = Math.max(maxEval, evaluation);
-                alpha = Math.max(alpha, evaluation);
-                if (beta <= alpha) {
-                    break; // Beta cutoff
+            for (let dice = 1; dice <= 6; dice++) {
+                const moves = this.getAllValidMovesSim(2, board, dice);
+                if (moves.length === 0) {
+                    // This dice value gives AI no moves (piece blocked / doesn't exist):
+                    // treat as a stand-still — evaluate current board
+                    totalScore += this.evaluateBoardState(board, p1Score, p2Score);
+                    diceCount++;
+                    continue;
                 }
-            }
-            return maxEval;
-        } else { // Opponent's turn (Minimizer)
-            let minEval = Infinity;
-            // The AI knows its own dice roll, so it simulates the opponent's response to moves made with that dice roll.
-            // However, for the lookahead, we assume the opponent can use ANY piece to counter.
-            const moves = this.getAllValidMovesSim(1, board, null);
 
-            if (moves.length === 0) {
-                return this.evaluateBoardState(board); // No moves, evaluate current board
-            }
+                this.orderMovesForSearch(moves, 2);
 
-            for (const move of moves) {
-                const newBoard = this.applyMove(board, move);
-                const evaluation = this.minimax(newBoard, depth - 1, true, alpha, beta);
-                minEval = Math.min(minEval, evaluation);
-                beta = Math.min(beta, evaluation);
-                if (beta <= alpha) {
-                    break; // Alpha cutoff
+                let maxEval = -Infinity;
+                // Alpha-beta applies within this dice-value branch
+                let localAlpha = alpha;
+                for (const move of moves) {
+                    const displaced = this.makeMoveInPlace(board, move);
+                    const scored = board[middleRow][0]?.player === 2;
+                    const newP2 = scored ? p2Score + 1 : p2Score;
+                    const eval_ = scored
+                        ? 100000
+                        : this.minimax(board, depth - 1, false, localAlpha, beta, p1Score, newP2);
+                    this.undoMoveInPlace(board, move, displaced);
+
+                    if (eval_ > maxEval) maxEval = eval_;
+                    if (eval_ > localAlpha) localAlpha = eval_;
+                    // (No global beta cutoff across dice outcomes — chance node semantics)
                 }
+                totalScore += maxEval;
+                diceCount++;
             }
-            return minEval;
+
+            return diceCount > 0 ? totalScore / diceCount : this.evaluateBoardState(board, p1Score, p2Score);
+
+        } else {
+            // --- CHANCE NODE: Human rolls dice ---
+            // Average the worst (for AI) score the human can achieve over all 6 dice outcomes.
+            let totalScore = 0;
+            let diceCount = 0;
+
+            for (let dice = 1; dice <= 6; dice++) {
+                const moves = this.getAllValidMovesSim(1, board, dice);
+                if (moves.length === 0) {
+                    // Human has no moves with this dice → blocked for this roll
+                    totalScore += this.evaluateBoardState(board, p1Score, p2Score);
+                    diceCount++;
+                    continue;
+                }
+
+                this.orderMovesForSearch(moves, 1);
+
+                let minEval = Infinity;
+                let localBeta = beta;
+                for (const move of moves) {
+                    const displaced = this.makeMoveInPlace(board, move);
+                    const scored = board[middleRow][this.cols - 1]?.player === 1;
+                    const newP1 = scored ? p1Score + 1 : p1Score;
+                    const eval_ = scored
+                        ? -100000
+                        : this.minimax(board, depth - 1, true, alpha, localBeta, newP1, p2Score);
+                    this.undoMoveInPlace(board, move, displaced);
+
+                    if (eval_ < minEval) minEval = eval_;
+                    if (eval_ < localBeta) localBeta = eval_;
+                }
+                totalScore += minEval;
+                diceCount++;
+            }
+
+            return diceCount > 0 ? totalScore / diceCount : this.evaluateBoardState(board, p1Score, p2Score);
         }
     }
 
@@ -1487,114 +1598,51 @@ class DiceSoccerGame {
         let bestScore = -Infinity;
         
         if (gameState.difficulty === 'hard') {
-            // Hard AI: Use Minimax to find the best move
-            const depth = 2; // 2-ply lookahead (AI's move, Opponent's response)
-            
-            // Get all possible moves for the current dice value (or any piece if none match)
+            // Hard AI: Pure Expectiminimax — depth 2 means the search sees:
+            //   Turn 1: Human's response (averaged over 6 dice outcomes, human picks best each)
+            //   Turn 2: AI's own next turn (averaged over 6 dice outcomes, AI picks best each)
+            // This gives genuine 3-ply look-ahead with correct dice probability modelling.
+            // No external bonus overrides — the minimax score drives the decision entirely.
+            const depth = 2;
             const possibleMoves = this.getAllValidMovesSim(this.currentPlayer, this.board, this.diceValue);
 
-            // CRITICAL: Check for immediate goal scoring opportunity FIRST
-            const middleRow = Math.floor(this.rows / 2);
-            const opponentGoalCol = 0; // AI is player 2, attacking column 0
-            
+            if (possibleMoves.length === 0) {
+                this.switchPlayer();
+                return;
+            }
+
+            // Order top-level moves so we see the most promising ones first
+            this.orderMovesForSearch(possibleMoves, 2);
+
+            debugLog('Hard AI: Starting expectiminimax depth', depth, 'for dice value', this.diceValue);
+
             for (const move of possibleMoves) {
-                if (move.toCol === opponentGoalCol && move.toRow === middleRow) {
-                    // IMMEDIATE GOAL! Take it without any further analysis
-                    bestPlayerMove = { 
-                        player: { row: move.fromRow, col: move.fromCol }, 
-                        move: { row: move.toRow, col: move.toCol }
+                const displaced = this.makeMoveInPlace(this.board, move);
+                // After AI's move, it's the human's turn (minimizer, depth - 1)
+                const score = this.minimax(
+                    this.board, depth, false,
+                    -Infinity, Infinity,
+                    this.player1Score, this.player2Score
+                );
+                this.undoMoveInPlace(this.board, move, displaced);
+
+                debugLog(`Move (${move.fromRow},${move.fromCol})->(${move.toRow},${move.toCol}): score=${score}`);
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestPlayerMove = {
+                        player: { row: move.fromRow, col: move.fromCol },
+                        move:   { row: move.toRow,   col: move.toCol }
                     };
-                    debugLog('Hard AI: Found immediate goal opportunity!');
-                    break;
                 }
             }
-            
-            // CRITICAL: Check for near-goal opportunities (1-2 moves away from goal)
-            if (!bestPlayerMove) {
-                for (const move of possibleMoves) {
-                    // If we're very close to goal (within 3 columns) and on middle row or can reach it
-                    if (move.toCol <= 3) {
-                        const distanceToMiddle = Math.abs(move.toRow - middleRow);
-                        // Piece is close to goal and close to middle row
-                        if (move.toCol <= 2 && distanceToMiddle <= 1) {
-                            debugLog(`Hard AI: Found near-goal opportunity at (${move.fromRow},${move.fromCol}) -> (${move.toRow},${move.toCol})`);
-                            if (!bestPlayerMove || move.toCol < bestPlayerMove.move.col) {
-                                bestPlayerMove = { 
-                                    player: { row: move.fromRow, col: move.fromCol }, 
-                                    move: { row: move.toRow, col: move.toCol }
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // If no immediate goal or near-goal found, use Minimax
-            if (!bestPlayerMove) {
-                debugLog('Hard AI: Evaluating moves for dice value:', this.diceValue);
-                
-                for (const move of possibleMoves) {
-                    // 1. Simulate AI's move
-                    const boardAfterAIMove = this.applyMove(this.board, move);
-                    
-                    // 2. Run Minimax to find the score assuming opponent plays optimally
-                    // We are in the minimizer's turn now (depth - 1)
-                    const score = this.minimax(boardAfterAIMove, depth - 1, false, -Infinity, Infinity);
 
-                    // Add bonuses for strategic positioning
-                    let finalScore = score;
-                    
-                    // CRITICAL: Heavily favor pieces that START closer to the goal
-                    // This ensures we move already-advanced pieces rather than pieces in the back
-                    const startDistanceToGoal = move.fromCol; // Lower is better for AI (goal at col 0)
-                    const pieceAdvancementBonus = (this.cols - startDistanceToGoal) * 800; // HUGE bonus for starting position
-                    finalScore += pieceAdvancementBonus;
-                    
-                    // CRITICAL: Also favor the destination being closer to goal
-                    const endDistanceToGoal = move.toCol;
-                    const destinationBonus = (this.cols - endDistanceToGoal) * 300; // Secondary bonus for ending position
-                    finalScore += destinationBonus;
-                    
-                    // Extra bonus if moving TOWARD the goal (reducing distance)
-                    const movingForward = move.toCol < move.fromCol;
-                    if (movingForward) {
-                        finalScore += 400; // Increased from 200
-                    }
-                    
-                    // CRITICAL: Check if this move OPENS a clear path to our own goal for opponent
-                    // This is more important than "blocking" bonuses
-                    const opensPathToOwnGoal = this.checkIfMoveClearsOpponentPath(move, boardAfterAIMove);
-                    if (opensPathToOwnGoal) {
-                        finalScore -= 20000; // HUGE penalty for opening path to own goal
-                    }
-                    
-                    // Reduced blocking bonus - minimax should handle this better
-                    const isBlocking = this.isBlockingOpponent(move.toRow, move.toCol);
-                    if (isBlocking) {
-                        finalScore += 5000; // Reduced from 15000
-                    }
+            debugLog(`Hard AI selected: (${bestPlayerMove?.player.row},${bestPlayerMove?.player.col})->(${bestPlayerMove?.move.row},${bestPlayerMove?.move.col}) score=${bestScore}`);
 
-                    debugLog(`Move from (${move.fromRow},${move.fromCol}) to (${move.toRow},${move.toCol}): minimax=${score}, pieceBonus=${pieceAdvancementBonus}, destBonus=${destinationBonus}, forward=${movingForward?400:0}, opensPath=${opensPathToOwnGoal?'YES':'NO'}, blocking=${isBlocking?5000:0}, TOTAL=${finalScore}`);
-
-                    if (finalScore > bestScore) {
-                        bestScore = finalScore;
-                        bestPlayerMove = { 
-                            player: { row: move.fromRow, col: move.fromCol }, 
-                            move: { row: move.toRow, col: move.toCol }
-                        };
-                    }
-                }
-                
-                debugLog(`Hard AI: Selected move from (${bestPlayerMove.player.row},${bestPlayerMove.player.col}) to (${bestPlayerMove.move.row},${bestPlayerMove.move.col}) with score ${bestScore}`);
-            }
-
-            // If no move was found (should be rare), fall back to the old method
+            // Fallback (should never be needed after the loop above)
             if (!bestPlayerMove && possibleMoves.length > 0) {
-                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-                 bestPlayerMove = { 
-                    player: { row: randomMove.fromRow, col: randomMove.fromCol }, 
-                    move: { row: randomMove.toRow, col: randomMove.toCol }
-                };
+                const m = possibleMoves[0];
+                bestPlayerMove = { player: { row: m.fromRow, col: m.fromCol }, move: { row: m.toRow, col: m.toCol } };
             }
 
         } else if (gameState.difficulty === 'normal') {
